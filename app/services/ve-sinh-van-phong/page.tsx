@@ -67,12 +67,12 @@ export default function VeSinhVanPhong() {
 
       {/* Dịch vụ khác */}
       <FadeInSection>
-        <section className="py-16 bg-gray-50">
+        <section className="py-8 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-6">
               CÁC DỊCH VỤ KHÁC
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Vệ sinh kính-alu */}
               <Link href="/services/ve-sinh-kinh-alu" className="block">
                 <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
@@ -180,7 +180,7 @@ export default function VeSinhVanPhong() {
                   </h3>
                   <p className="text-gray-600 mb-4">
                     Dịch vụ tổng vệ sinh toàn diện sau xây dựng, sự kiện hoặc định
-                    kỳ với đội ngũ chuyên nghiệp.
+                    kỳ nhanh chóng với đội ngũ chuyên nghiệp.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -226,7 +226,7 @@ export default function VeSinhVanPhong() {
                   </h3>
                   <p className="text-gray-600 mb-4">
                     Vệ sinh nhà máy, xưởng sản xuất theo tiêu chuẩn công nghiệp,
-                    đảm bảo an toàn và vệ sinh lao động.
+                    đảm bảo sạch sẽ, an toàn và vệ sinh lao động.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →

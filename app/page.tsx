@@ -1,3 +1,5 @@
+import Intro from "../components/Intro";
+
 export default function Home() {
   return (
     <div>
@@ -5,39 +7,12 @@ export default function Home() {
       <section
         className="relative text-white py-20 w-full h-[100vh] bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('/banner-home.png')`,
+          backgroundImage: `url('/banner-hd.jpg')`,
         }}
       ></section>
 
-      <section className="py-16 bg-[#A6F4D2]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Right side - Image */}
-            <div className="relative">
-              <img
-                src="/intro-image.png"
-                alt="PANPACIFIC Cleaning Services"
-                className="rounded-lg shadow-2xl w-[60%] h-auto object-cover"
-                width="600"
-                height="400"
-              />
-            </div>
-            {/* Left side - Text content */}
-            <div className="text-left">
-              <h1 className="text-3xl font-bold mb-6 text-[#262626]">
-                PANPACIFIC - DỊCH VỤ VỆ SINH CÔNG NGHIỆP CHUYÊN NGHIỆP
-              </h1>
-              <p className="text-xl mb-8 text-gray-800">
-                Chúng tôi là công ty hàng đầu về dịch vụ vệ sinh công nghiệp,
-                với sứ mệnh mang lại những không gian sạch sẽ, thoáng mát
-              </p>
-              <button className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition">
-                Đặt Dịch Vụ Ngay
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Animated Intro (image + text) */}
+      <Intro />
 
       {/* Lời Cảm Ơn Chân Thành */}
       <section id="about" className="py-16 bg-white">
@@ -46,25 +21,25 @@ export default function Home() {
             {/* Left side - Text content */}
             <div className="space-y-6">
               <h2 className="text-3xl font-bold text-[#4CCF96] mb-6">
-                Lời Cảm Ơn Chân Thành
+                Giới Thiệu Opti Clean
               </h2>
 
               <div className="space-y-4 text-gray-700">
                 <p className="italic font-semibold">
-                  PANPACIFIC chân thành cảm ơn quý khách hàng đã quan tâm tới
-                  dịch vụ của công ty chúng tôi.
+                  PANPACIFIC và Opti Clean chân thành cảm ơn quý khách hàng đã
+                  quan tâm tới sản phẩm và dịch vụ của chúng tôi.
                 </p>
 
                 <p>
-                  Với đội ngũ chuyên viên kỹ thuật có nhiều năm kinh nghiệm,
-                  cùng với đội ngũ nhân viên vệ sinh có lý lịch nhân thân rõ
-                  ràng, được đào tạo kỹ năng nghiệp vụ.
+                  Opti Clean kết hợp đội ngũ chuyên viên kỹ thuật nhiều năm kinh
+                  nghiệm và nhân viên được đào tạo bài bản, vận hành theo quy
+                  trình chuẩn.
                 </p>
 
                 <p>
-                  Bên cạnh đó với sự đầu tư hạ tầng của máy móc, công cụ dụng cụ
-                  hiện đại và luôn được cải tiến đổi mới sẽ cung cấp dịch vụ tốt
-                  nhất cho khách hàng với tiêu chí...
+                  Bên cạnh đó, Opti Clean sử dụng máy móc, dụng cụ và hóa chất
+                  hiện đại, liên tục cải tiến để đảm bảo hiệu quả và an toàn cho
+                  khách hàng.
                 </p>
 
                 <p className="text-center text-[#FF6B6B] font-bold text-xl italic py-4">
@@ -72,9 +47,9 @@ export default function Home() {
                 </p>
 
                 <p>
-                  Chúng tôi tự tin mang lại những dịch vụ tối ưu, tiết kiệm nhất
-                  góp phần nâng cao hơn những giá trị cuộc sống cho quý khách
-                  hàng và cộng đồng!
+                  Chúng tôi tự tin mang lại giải pháp tối ưu với Opti Clean,
+                  giúp tiết kiệm chi phí và nâng cao chất lượng cuộc sống cho
+                  khách hàng.
                 </p>
               </div>
             </div>
@@ -83,7 +58,7 @@ export default function Home() {
             <div className="relative">
               <img
                 src="/thank.png"
-                alt="PANPACIFIC cleaning service"
+                alt="Opti Clean - PANPACIFIC"
                 className="rounded-lg shadow-xl w-full h-auto object-cover"
                 width="800"
                 height="600"
@@ -98,17 +73,23 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Dịch Vụ Của Chúng Tôi
+              Giải pháp & dịch vụ Opti Clean
             </h2>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Vệ sinh kính-alu */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🪟</div>
-              <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
-                Vệ sinh kính-alu
-              </h3>
+              <img
+                  src="/vs-alu.jpg"
+                  alt="Vệ sinh kính-alu"
+                  className="w-full h-40 object-cover rounded-md mb-4"
+                  width={640}
+                  height={240}
+                />
+                <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
+                  Vệ sinh kính-alu
+                </h3>
               <p className="text-gray-600 mb-4">
                 Dịch vụ vệ sinh kính, cửa nhôm kính chuyên nghiệp cho tòa nhà,
                 văn phòng với đội ngũ lành nghề và thiết bị hiện đại.
@@ -123,7 +104,13 @@ export default function Home() {
 
             {/* Vệ sinh văn phòng */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🏢</div>
+              <img
+                src="/vs-vp.jpg"
+                alt="Vệ sinh văn phòng"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Vệ sinh văn phòng
               </h3>
@@ -141,7 +128,13 @@ export default function Home() {
 
             {/* Vệ sinh theo giờ */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">⏰</div>
+              <img
+                src="/vs-time.jpg"
+                alt="Vệ sinh theo giờ"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Vệ sinh theo giờ
               </h3>
@@ -159,7 +152,13 @@ export default function Home() {
 
             {/* Vệ sinh trường học */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🏫</div>
+              <img
+                src="/vs-sc.jpg"
+                alt="Vệ sinh trường học"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Vệ sinh trường học
               </h3>
@@ -177,7 +176,13 @@ export default function Home() {
 
             {/* Vệ sinh, giặt ghế thảm */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🛋️</div>
+              <img
+                src="/vs-tham.jpg"
+                alt="Vệ sinh, giặt ghế thảm"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Vệ sinh, giặt ghế thảm
               </h3>
@@ -195,7 +200,13 @@ export default function Home() {
 
             {/* Tổng vệ sinh */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🧹</div>
+              <img
+                src="/vs-tong.jpg"
+                alt="Tổng vệ sinh"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Tổng vệ sinh
               </h3>
@@ -213,7 +224,13 @@ export default function Home() {
 
             {/* Vệ sinh TTTM-siêu thị */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🛒</div>
+              <img
+                src="/vs-st.webp"
+                alt="Vệ sinh TTTM - siêu thị"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Vệ sinh TTTM-siêu thị
               </h3>
@@ -231,7 +248,13 @@ export default function Home() {
 
             {/* Vệ sinh nhà xưởng */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
-              <div className="text-4xl mb-4">🏭</div>
+              <img
+                src="/vs-nx.jpg"
+                alt="Vệ sinh nhà xưởng"
+                className="w-full h-40 object-cover rounded-md mb-4"
+                width={640}
+                height={240}
+              />
               <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
                 Vệ sinh nhà xưởng
               </h3>
@@ -253,17 +276,15 @@ export default function Home() {
       {/* Khách Hàng Tiêu Biểu */}
       <section id="customers" className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+            <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-[#8B6F47] mb-4">
               ĐỐI TÁC LÂU NĂM
             </h2>
             <p className="text-gray-600 max-w-3xl mx-auto">
-              Đội ngũ nhân viên và quản lí PANPACIFIC luôn làm việc chuyên
-              nghiệp và hiệu quả, để mọi không gian của khách hàng luôn sạch sẽ,
-              thoáng đãng và góp phần tạo nên môi trường làm việc tốt nhất cho
-              đội ngũ nhân viên. Các đối tác tin tưởng và đánh giá cao sự đáng
-              tin cậy của PANPACIFIC trong việc mang đến không gian sống và làm
-              việc hoàn hảo.
+              Nhiều đối tác đã tin dùng Opti Clean — sản phẩm và giải pháp
+              vệ sinh công nghiệp của PANPACIFIC. Với quy trình chặt chẽ và
+              công nghệ hiện đại, Opti Clean giúp duy trì môi trường làm việc
+              sạch sẽ, an toàn và nâng cao hiệu suất hoạt động cho doanh nghiệp.
             </p>
           </div>
 

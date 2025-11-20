@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PANPACIFIC - Dịch vụ vệ sinh công nghiệp",
-  description: "Hệ thống quản lý dịch vụ vệ sinh công nghiệp chuyên nghiệp",
+  title: "Opti Clean — PANPACIFIC",
+  description: "Opti Clean — giải pháp vệ sinh công nghiệp do PANPACIFIC phát triển",
 };
 
 export default function RootLayout({
@@ -31,10 +31,12 @@ export default function RootLayout({
         <header className="bg-[#19AD70] shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex justify-between items-center">
+              <a href="/">
               <div className="flex items-center">
                 <img src="/logo2.jpg" alt="PANPACIFIC" className="w-10 h-10 object-contain mr-3" />
                 <h1 className="text-2xl font-bold text-white">PANPACIFIC</h1>
               </div>
+              </a>
               <nav className="hidden md:flex gap-8">
                 <a
                   href="/"

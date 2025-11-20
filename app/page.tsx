@@ -1,11 +1,13 @@
 import Intro from "../components/Intro";
+import FadeInSection from "../components/FadeInSection";
+import ClientsSlider from "../components/ClientsSlider";
 
 export default function Home() {
   return (
     <div>
       {/* Hero Section */}
       <section
-        className="relative text-white py-20 w-full h-[100vh] bg-cover bg-center bg-no-repeat"
+        className="relative text-white py-20 w-full h-[20vh] md:h-[100vh] bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url('/banner-hd.jpg')`,
         }}
@@ -15,6 +17,7 @@ export default function Home() {
       <Intro />
 
       {/* Lời Cảm Ơn Chân Thành */}
+      <FadeInSection>
       <section id="about" className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -26,8 +29,8 @@ export default function Home() {
 
               <div className="space-y-4 text-gray-700">
                 <p className="italic font-semibold">
-                  PANPACIFIC và Opti Clean chân thành cảm ơn quý khách hàng đã
-                  quan tâm tới sản phẩm và dịch vụ của chúng tôi.
+                  PANPACIFIC chân thành cảm ơn quý khách hàng đã quan tâm tới 
+                  sản phẩm và dịch vụ Opti Clean của chúng tôi.
                 </p>
 
                 <p>
@@ -47,7 +50,7 @@ export default function Home() {
                 </p>
 
                 <p>
-                  Chúng tôi tự tin mang lại giải pháp tối ưu với Opti Clean,
+                  Chúng tôi tự tin mang lại giải pháp tối ưu với sản phẩm Opti Clean,
                   giúp tiết kiệm chi phí và nâng cao chất lượng cuộc sống cho
                   khách hàng.
                 </p>
@@ -67,8 +70,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeInSection>
 
       {/* Services Section */}
+      <FadeInSection>
       <section id="services" className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -272,8 +277,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeInSection>
 
       {/* Khách Hàng Tiêu Biểu */}
+      <FadeInSection>
       <section id="customers" className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -288,59 +295,14 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Logo Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img src="/mb.png" alt="Samsung" className="max-w-full h-auto" />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img
-                src="/ex.png"
-                alt="First Solar"
-                className="max-w-full h-auto"
-              />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img
-                src="/nk.png"
-                alt="AEON Mall"
-                className="max-w-full h-auto"
-              />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img src="/acb.jpg" alt="Olam" className="max-w-full h-auto" />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img src="/cgv.jpg" alt="Jabil" className="max-w-full h-auto" />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img src="/school1.jpg" alt="H&M" className="max-w-full h-auto" />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img
-                src="/vh.png"
-                alt="Coca Cola"
-                className="max-w-full h-auto"
-              />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img src="/flc.jpg" alt="HSBC" className="max-w-full h-auto" />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img src="/kd.png" alt="Client 9" className="max-w-full h-auto" />
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition">
-              <img
-                src="/th.png"
-                alt="Client 10"
-                className="max-w-full h-auto"
-              />
-            </div>
-          </div>
+          {/* Logo Slider */}
+          <ClientsSlider />
         </div>
       </section>
+      </FadeInSection>
 
       {/* Tin Tức Mới Nhất */}
+      <FadeInSection>
       <section id="news" className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -442,8 +404,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeInSection>
 
       {/* Liên Hệ */}
+      <FadeInSection>
       <section id="contact" className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -525,6 +489,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </FadeInSection>
     </div>
   );
 }

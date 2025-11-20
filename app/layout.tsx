@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Header from "@/components/Header";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Opti Clean — PANPACIFIC",
-  description: "Opti Clean — giải pháp vệ sinh công nghiệp do PANPACIFIC phát triển",
+  description:
+    "Opti Clean — giải pháp vệ sinh công nghiệp do PANPACIFIC phát triển",
 };
 
 export default function RootLayout({
@@ -28,100 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {/* Header */}
-        <header className="bg-[#19AD70] shadow-sm sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex justify-between items-center">
-              <a href="/">
-              <div className="flex items-center">
-                <img src="/logo2.jpg" alt="PANPACIFIC" className="w-10 h-10 object-contain mr-3" />
-                <h1 className="text-2xl font-bold text-white">PANPACIFIC</h1>
-              </div>
-              </a>
-              <nav className="hidden md:flex gap-8">
-                <a
-                  href="/"
-                  className="text-white font-bold transition uppercase relative pb-1 hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"
-                >
-                  Trang chủ
-                </a>
-                <a
-                  href="/#about"
-                  className="text-white font-bold transition uppercase relative pb-1 hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"
-                >
-                  Giới thiệu
-                </a>
-                
-                {/* Dropdown Dịch vụ */}
-                <div className="relative group">
-                  <a 
-                    href="/#services"
-                    className="text-white font-bold transition uppercase flex items-center gap-1 pb-1 group-hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"
-                  >
-                    Dịch vụ
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </a>
-                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                    <div className="py-2">
-                      <a href="/services/ve-sinh-kinh-alu" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh kính-alu
-                      </a>
-                      <a href="/services/ve-sinh-van-phong" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh văn phòng
-                      </a>
-                      <a href="/services/ve-sinh-theo-gio" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh theo giờ
-                      </a>
-                      <a href="/services/ve-sinh-truong-hoc" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh trường học
-                      </a>
-                      <a href="/services/ve-sinh-giat-ghe-tham" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh, giặt ghế thảm
-                      </a>
-                      <a href="/services/tong-ve-sinh" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Tổng vệ sinh
-                      </a>
-                      <a href="/services/ve-sinh-tttm-sieu-thi" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh TTTM-siêu thị
-                      </a>
-                      <a href="/services/ve-sinh-nha-xuong" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        Vệ sinh nhà xưởng
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                <a
-                  href="/#customers"
-                  className="text-white font-bold transition uppercase relative pb-1 hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"
-                >
-                  Khách hàng
-                </a>
-                <a
-                  href="/#news"
-                  className="text-white font-bold transition uppercase relative pb-1 hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"
-                >
-                  Tin tức
-                </a>
-                <a
-                  href="/#contact"
-                  className="text-white font-bold transition uppercase relative pb-1 hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"
-                >
-                  Liên hệ
-                </a>
-              </nav>
-              <div className="flex gap-4 items-center">
-                {/* <a
-                  href="/admin/dashboard"
-                  className="text-white hover:text-gray-200 font-bold transition"
-                >
-                  Admin
-                </a> */}
-              </div>
-            </div>
-          </div>
-        </header>
+        <Header />
 
         {/* Main Content */}
         <main>{children}</main>
@@ -141,14 +51,21 @@ export default function RootLayout({
           </a>
 
           {/* Phone Button */}
-          <a
-            href="tel:02866838966"
-            className="group relative"
-          >
+          <a href="tel:02866838966" className="group relative">
             <div className="flex items-center gap-3 bg-[#19AD70] rounded-full px-6 py-3 shadow-lg hover:shadow-2xl transition-all hover:scale-105">
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-[#19AD70]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                <svg
+                  className="w-5 h-5 text-[#19AD70]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                  />
                 </svg>
               </div>
               <span className="text-white font-bold text-lg">02866838966</span>
@@ -236,7 +153,6 @@ export default function RootLayout({
                 </ul>
               </div>
             </div>
-            
           </div>
         </footer>
       </body>

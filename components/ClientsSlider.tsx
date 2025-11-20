@@ -95,7 +95,7 @@ export default function ClientsSlider() {
                 <img
                   src={client.src}
                   alt={client.alt}
-                  className="max-w-full h-auto max-h-28 object-contain"
+                  className="max-w-full h-auto max-h-32 object-contain"
                 />
               </div>
             ))}

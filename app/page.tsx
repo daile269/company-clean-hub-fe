@@ -75,7 +75,7 @@ export default function Home() {
 
       {/* Services Section */}
       <FadeInSection>
-        <section id="services" className="py-16 bg-gray-50">
+        <section id="services" className="py-8 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -83,7 +83,7 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Vệ sinh kính-alu */}
               <Link href="/services/ve-sinh-kinh-alu" className="block">
                 <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
@@ -98,8 +98,8 @@ export default function Home() {
                     Vệ sinh kính-alu
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Dịch vụ vệ sinh kính, cửa nhôm kính chuyên nghiệp cho tòa nhà,
-                    văn phòng với đội ngũ lành nghề và thiết bị hiện đại.
+                    Dịch vụ vệ sinh kính, cửa nhôm kính chuyên nghiệp cho tòa
+                    nhà, văn phòng với đội ngũ lành nghề và thiết bị hiện đại.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -144,8 +144,8 @@ export default function Home() {
                     Vệ sinh theo giờ
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Dịch vụ vệ sinh linh hoạt theo giờ, phù hợp với mọi nhu cầu và
-                    thời gian của quý khách hàng, nhanh chóng – tiện lợi.
+                    Dịch vụ vệ sinh linh hoạt theo giờ, phù hợp với mọi nhu cầu
+                    và thời gian của quý khách hàng, nhanh chóng – tiện lợi.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -167,8 +167,8 @@ export default function Home() {
                     Vệ sinh trường học
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Dịch vụ vệ sinh chuyên biệt cho trường học, đảm bảo môi trường
-                    học tập an toàn và sạch sẽ cho học sinh.
+                    Dịch vụ vệ sinh chuyên biệt cho trường học, đảm bảo môi
+                    trường học tập an toàn và sạch sẽ cho học sinh.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -190,8 +190,8 @@ export default function Home() {
                     Vệ sinh, giặt ghế thảm
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Giặt hấp ghế sofa, thảm chuyên nghiệp với công nghệ hiện đại,
-                    loại bỏ vi khuẩn và mùi hôi hiệu quả.
+                    Giặt hấp ghế sofa, thảm chuyên nghiệp với công nghệ hiện
+                    đại, loại bỏ vi khuẩn và mùi hôi hiệu quả.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -213,8 +213,8 @@ export default function Home() {
                     Tổng vệ sinh
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Dịch vụ tổng vệ sinh toàn diện sau xây dựng, sự kiện hoặc định
-                    kỳ với đội ngũ chuyên nghiệp.
+                    Dịch vụ tổng vệ sinh toàn diện sau xây dựng, sự kiện hoặc
+                    định kỳ nhanh chóng với đội ngũ chuyên nghiệp.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -260,7 +260,7 @@ export default function Home() {
                   </h3>
                   <p className="text-gray-600 mb-4">
                     Vệ sinh nhà máy, xưởng sản xuất theo tiêu chuẩn công nghiệp,
-                    đảm bảo an toàn và vệ sinh lao động.
+                    đảm bảo sạch sẽ,an toàn và vệ sinh lao động.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -274,7 +274,7 @@ export default function Home() {
 
       {/* Khách Hàng Tiêu Biểu */}
       <FadeInSection>
-        <section id="customers" className="py-16 bg-white">
+        <section id="customers" className="py-8 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-[#8B6F47] mb-4">
@@ -290,7 +290,7 @@ export default function Home() {
 
       {/* Tin Tức Mới Nhất */}
       <FadeInSection>
-        <section id="news" className="py-16 bg-gray-50">
+        <section id="news" className="py-8 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-gray-900 mb-4">Tin Tức</h2>
@@ -390,10 +390,10 @@ export default function Home() {
 
       {/* Liên Hệ */}
       <FadeInSection>
-        <section id="contact" className="py-16 bg-white">
+        <section id="contact" className="py-6 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <div className="text-center mb-6">
+              <h2 className="text-4xl font-bold text-gray-900">
                 Liên Hệ Với Chúng Tôi
               </h2>
             </div>
@@ -449,7 +449,7 @@ export default function Home() {
             </div>
 
             {/* Additional Info */}
-            <div className="mt-12 text-center">
+            <div className="mt-6 text-center">
               <div className="inline-block bg-gray-50 px-8 py-6 rounded-lg">
                 <p className="text-gray-700 mb-2">
                   <span className="font-semibold">Email:</span>{" "}

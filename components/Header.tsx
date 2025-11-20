@@ -10,7 +10,7 @@ export default function Header() {
         <div className="flex justify-between items-center">
           <a href="/">
             <div className="flex items-center">
-              <div className="w-16 h-16 overflow-hidden mr-3 flex-shrink-0 rounded">
+              <div className="w-18 h-16 overflow-hidden mr-3 flex-shrink-0 rounded">
                 <img
                   src="/logo.png"
                   alt="PANPACIFIC"

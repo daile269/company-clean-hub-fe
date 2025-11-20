@@ -41,7 +41,7 @@ export default function Intro() {
     <section
       ref={ref}
       aria-label="Giới thiệu Opti Clean"
-      className="py-16 bg-[#A6F4D2] overflow-hidden"
+      className="py-6 bg-[#A6F4D2] overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -54,9 +54,9 @@ export default function Intro() {
             <img
               src="/intro-image.png"
               alt="Opti Clean - PANPACIFIC"
-              width={600}
+              width={900}
               height={400}
-              className="rounded-lg shadow-2xl w-[60%] h-auto object-cover transform transition-transform duration-500 hover:scale-105"
+              className="rounded-lg shadow-2xl w-[90%] h-auto object-cover transform transition-transform duration-500 hover:scale-105"
             />
           </div>
 

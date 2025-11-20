@@ -6,11 +6,11 @@ export default function Header() {
 
   return (
     <header className="bg-[#19AD70] shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <a href="/">
             <div className="flex items-center">
-              <div className="w-10 h-10 overflow-hidden mr-3 flex-shrink-0 rounded">
+              <div className="w-16 h-16 overflow-hidden mr-3 flex-shrink-0 rounded">
                 <img
                   src="/logo.png"
                   alt="PANPACIFIC"

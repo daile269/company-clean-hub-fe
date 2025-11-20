@@ -90,12 +90,12 @@ export default function ClientsSlider() {
             {getVisibleClients().map((client, index) => (
               <div
                 key={`${client.alt}-${index}`}
-                className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition transform hover:scale-105"
+                className="bg-white p-4 rounded-lg shadow-md flex items-center justify-center hover:shadow-xl transition transform hover:scale-105"
               >
                 <img
                   src={client.src}
                   alt={client.alt}
-                  className="max-w-full h-auto max-h-20 object-contain"
+                  className="max-w-full h-auto max-h-28 object-contain"
                 />
               </div>
             ))}

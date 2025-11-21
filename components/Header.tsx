@@ -5,16 +5,16 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-[#19AD70] shadow-sm sticky top-0 z-50">
+    <header className="bg-gradient-to-r from-white from-[20%] to-[#19AD70] to-[20%] shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <a href="/">
             <div className="flex items-center">
-              <div className="w-18 h-16 overflow-hidden mr-3 flex-shrink-0 rounded">
+              <div className="w-18 h-18 overflow-hidden flex-shrink-0 rounded">
                 <img
                   src="/logo.png"
                   alt="PANPACIFIC"
-                  className="w-full h-full object-contain transform scale-125 transition-transform duration-300"
+                  className="w-full h-full object-contain transform scale-120"
                 />
               </div>
             </div>

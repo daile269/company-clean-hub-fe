@@ -32,6 +32,7 @@ export default function RootLayout({
       >
         {/* Header */}
         <Header />
+        
 
         {/* Main Content */}
         <main>{children}</main>

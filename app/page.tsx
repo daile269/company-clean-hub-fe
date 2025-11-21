@@ -8,7 +8,7 @@ export default function Home() {
     <div>
       {/* Hero Section */}
       <section
-        className="relative text-white py-20 w-full h-[20vh] md:h-[100vh] bg-cover bg-center bg-no-repeat"
+        className="relative text-white w-full h-[20vh] md:h-[80vh] bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url('/banner-hd.jpg')`,
         }}
@@ -19,7 +19,7 @@ export default function Home() {
 
       {/* Lời Cảm Ơn Chân Thành */}
       <FadeInSection>
-        <section id="about" className="py-16 bg-white">
+        <section id="about" className="py-10 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               {/* Left side - Text content */}
@@ -63,7 +63,7 @@ export default function Home() {
                 <img
                   src="/thank.png"
                   alt="Opti Clean - PANPACIFIC"
-                  className="rounded-lg shadow-xl w-full h-auto object-cover"
+                  className="rounded-lg shadow-2xl w-[90%] h-[400px] object-cover"
                   width="800"
                   height="600"
                 />

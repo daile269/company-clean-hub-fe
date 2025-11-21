@@ -56,7 +56,7 @@ export default function Intro() {
               alt="Opti Clean - PANPACIFIC"
               width={900}
               height={400}
-              className="rounded-lg shadow-2xl w-[90%] h-auto object-cover transform transition-transform duration-500 hover:scale-105"
+              className="rounded-lg shadow-2xl w-[90%] h-[180px] md:h-[300px] object-cover transform transition-transform duration-500 hover:scale-105"
             />
           </div>
 

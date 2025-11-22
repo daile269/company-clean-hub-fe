@@ -5,7 +5,17 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-gradient-to-r from-white from-[20%] to-[#19AD70] to-[20%] shadow-sm sticky top-0 z-50">
+    <header
+      className="
+    bg-[#19AD70]          /* mobile: chỉ màu xanh */
+    md:bg-gradient-to-r   /* desktop: gradient */
+    md:from-white 
+    md:from-[20%] 
+    md:to-[#19AD70] 
+    md:to-[20%]
+    shadow-sm sticky top-0 z-50
+  "
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <a href="/">

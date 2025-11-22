@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+"use client";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import { usePathname } from "next/navigation";
 
 
 const geistSans = Geist({
@@ -14,31 +15,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Opti Clean — PANPACIFIC",
-  description:
-    "Opti Clean — giải pháp vệ sinh công nghiệp do PANPACIFIC phát triển",
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isAdminPage = pathname?.startsWith("/admin");
+
   return (
     <html lang="vi">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* Header */}
-        <Header />
-        
+        {/* Header - Hidden on admin pages */}
+        {!isAdminPage && <Header />}
 
         {/* Main Content */}
         <main>{children}</main>
 
-        {/* Floating Contact Buttons */}
-        <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-4">
+        {/* Floating Contact Buttons - Hidden on admin pages */}
+        {!isAdminPage && (
+          <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-4">
           {/* Zalo Button */}
           <a
             href="https://zalo.me/0367897956"
@@ -73,8 +71,10 @@ export default function RootLayout({
             </div>
           </a>
         </div>
+        )}
 
-        {/* Footer */}
+        {/* Footer - Hidden on admin pages */}
+        {!isAdminPage && (
         <footer className="bg-[#19AD70] text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid md:grid-cols-3 gap-8 mb-1">
@@ -156,6 +156,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        )}
       </body>
     </html>
   );

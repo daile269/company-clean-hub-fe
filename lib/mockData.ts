@@ -7,6 +7,9 @@ import {
   SalaryStatus,
   User,
   UserRole,
+  Rating,
+  ScheduleType,
+  Assignment,
 } from "@/types";
 
 // Mock data cho người dùng
@@ -429,5 +432,74 @@ export const mockPayrolls: Payroll[] = [
     notes: "Đã ứng 3,000,000 VNĐ",
     createdAt: new Date("2024-11-01"),
     updatedAt: new Date("2024-11-15"),
+  },
+];
+
+// Mock data cho phân công/điều động nhân viên
+export const mockAssignments: Assignment[] = [
+  {
+    id: "A1",
+    customerId: "1",
+    employeeId: "1",
+    scheduleType: ScheduleType.FIXED,
+    startDate: new Date("2024-01-01"),
+    workSchedule: "T2-T6, 8:00-17:00",
+    notes: "Phụ trách tòa nhà văn phòng 10 tầng",
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+  },
+  {
+    id: "A2",
+    customerId: "2",
+    employeeId: "2",
+    scheduleType: ScheduleType.FIXED,
+    startDate: new Date("2024-02-01"),
+    workSchedule: "T2-T7, 7:00-15:00",
+    notes: "Bảo trì và đội vệ sinh chung",
+    createdAt: new Date("2024-02-01"),
+    updatedAt: new Date("2024-02-01"),
+  },
+  {
+    id: "A3",
+    customerId: "3",
+    employeeId: "3",
+    scheduleType: ScheduleType.TEMPORARY,
+    startDate: new Date("2024-03-15"),
+    endDate: new Date("2024-06-15"),
+    workSchedule: "Theo ca linh hoạt",
+    notes: "Hợp đồng thời vụ 3 tháng",
+    createdAt: new Date("2024-03-01"),
+    updatedAt: new Date("2024-03-01"),
+  },
+];
+
+// Mock data cho đánh giá nhân viên (rating/feedback)
+export const mockRatings: Rating[] = [
+  {
+    id: "R1",
+    employeeId: "1",
+    customerId: "1",
+    assignmentId: "A1",
+    rating: 5,
+    feedback: "Làm việc chuyên nghiệp, đúng giờ",
+    createdAt: new Date("2024-06-10"),
+  },
+  {
+    id: "R2",
+    employeeId: "2",
+    customerId: "2",
+    assignmentId: "A2",
+    rating: 4,
+    feedback: "Thái độ tốt nhưng cần chú ý vệ sinh kỹ hơn",
+    createdAt: new Date("2024-07-20"),
+  },
+  {
+    id: "R3",
+    employeeId: "3",
+    customerId: "3",
+    assignmentId: "A3",
+    rating: 4,
+    feedback: "Hoàn thành công việc theo yêu cầu",
+    createdAt: new Date("2024-05-01"),
   },
 ];

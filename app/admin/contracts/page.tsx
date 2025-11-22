@@ -1,14 +1,24 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { mockContracts, mockCustomers } from "@/lib/mockData";
 import { Contract } from "@/types";
 
 export default function ContractsPage() {
+  const router = useRouter();
   const [contracts] = useState<Contract[]>(mockContracts);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(
-    null
-  );
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState<Partial<Contract>>({
+    contractNumber: "",
+    customerId: "",
+    value: 0,
+    vat: 10,
+    startDate: new Date(),
+    endDate: new Date(),
+    description: "",
+    notes: "",
+  });
 
   const getCustomerName = (customerId: string) => {
     const customer = mockCustomers.find((c) => c.id === customerId);
@@ -36,6 +46,26 @@ export default function ContractsPage() {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
 
+  const formatDateInput = (date: Date) => {
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleAddContract = () => {
+    alert("Đã thêm hợp đồng mới (mock)");
+    setShowAddModal(false);
+    setAddForm({
+      contractNumber: "",
+      customerId: "",
+      value: 0,
+      vat: 10,
+      startDate: new Date(),
+      endDate: new Date(),
+      description: "",
+      notes: "",
+    });
+  };
+
   const getContractStatus = (contract: Contract) => {
     const now = new Date();
     const endDate = new Date(contract.endDate);
@@ -43,10 +73,12 @@ export default function ContractsPage() {
 
     if (now < startDate) return { status: "Chưa bắt đầu", color: "gray" };
     if (now > endDate) return { status: "Hết hạn", color: "red" };
-    
-    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    const daysLeft = Math.ceil(
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
     if (daysLeft <= 30) return { status: "Sắp hết hạn", color: "yellow" };
-    
+
     return { status: "Đang thực hiện", color: "green" };
   };
 
@@ -67,7 +99,10 @@ export default function ContractsPage() {
     <div>
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý hợp đồng</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
           <svg
             className="w-5 h-5"
             fill="none"
@@ -236,16 +271,19 @@ export default function ContractsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredContracts.map((contract) => {
                 const status = getContractStatus(contract);
                 return (
-                  <tr key={contract.id} className="hover:bg-gray-50">
+                  <tr
+                    key={contract.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() =>
+                      router.push(`/admin/contracts/${contract.id}`)
+                    }
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {contract.contractNumber}
@@ -288,20 +326,6 @@ export default function ContractsPage() {
                         {status.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setSelectedContract(contract)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        Xem
-                      </button>
-                      <button className="text-green-600 hover:text-green-900 mr-3">
-                        Sửa
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        Xóa
-                      </button>
-                    </td>
                   </tr>
                 );
               })}
@@ -334,16 +358,16 @@ export default function ContractsPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selectedContract && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      {/* Add Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Chi tiết hợp đồng
+                Thêm hợp đồng mới
               </h2>
               <button
-                onClick={() => setSelectedContract(null)}
+                onClick={() => setShowAddModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg
@@ -362,115 +386,163 @@ export default function ContractsPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Số hợp đồng
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedContract.contractNumber}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Khách hàng
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {getCustomerName(selectedContract.customerId)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Giá trị hợp đồng
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatCurrency(selectedContract.value)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    VAT
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedContract.vat}%
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Ngày bắt đầu
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatDate(selectedContract.startDate)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Ngày kết thúc
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatDate(selectedContract.endDate)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Trạng thái
-                  </label>
-                  <p className="mt-1">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        getContractStatus(selectedContract).color === "green"
-                          ? "bg-green-100 text-green-800"
-                          : getContractStatus(selectedContract).color ===
-                            "yellow"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : getContractStatus(selectedContract).color === "red"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {getContractStatus(selectedContract).status}
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Tổng giá trị (bao gồm VAT)
-                  </label>
-                  <p className="mt-1 text-sm font-bold text-blue-600">
-                    {formatCurrency(
-                      selectedContract.value * (1 + selectedContract.vat / 100)
-                    )}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-500">
-                    Mô tả
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedContract.description || "N/A"}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-500">
-                    Ghi chú
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedContract.notes || "N/A"}
-                  </p>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số hợp đồng *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.contractNumber}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, contractNumber: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: HD001/2024"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Khách hàng *
+                </label>
+                <select
+                  value={addForm.customerId}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, customerId: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Chọn khách hàng</option>
+                  {mockCustomers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá trị hợp đồng (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={addForm.value}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, value: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VAT (%) *
+                </label>
+                <input
+                  type="number"
+                  value={addForm.vat}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, vat: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày bắt đầu *
+                </label>
+                <input
+                  type="date"
+                  value={formatDateInput(addForm.startDate || new Date())}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      startDate: new Date(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày kết thúc *
+                </label>
+                <input
+                  type="date"
+                  value={formatDateInput(addForm.endDate || new Date())}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      endDate: new Date(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả
+                </label>
+                <textarea
+                  value={addForm.description || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, description: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Mô tả hợp đồng"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ghi chú
+                </label>
+                <textarea
+                  value={addForm.notes || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, notes: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ghi chú thêm"
+                />
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setSelectedContract(null)}
+                onClick={() => setShowAddModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
-                Đóng
+                Hủy
               </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Chỉnh sửa
+              <button
+                onClick={handleAddContract}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm hợp đồng
               </button>
             </div>
           </div>

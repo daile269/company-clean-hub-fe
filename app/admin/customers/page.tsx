@@ -1,14 +1,24 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { mockCustomers } from "@/lib/mockData";
 import { Customer } from "@/types";
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers] = useState<Customer[]>(mockCustomers);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
-  );
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState<Partial<Customer>>({
+    code: "",
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    taxCode: "",
+    contactPerson: "",
+    createdAt: new Date(),
+  });
 
   const filteredCustomers = customers.filter((customer) => {
     const searchLower = searchTerm.toLowerCase();
@@ -25,13 +35,34 @@ export default function CustomersPage() {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
 
+  const formatDateInput = (date: Date) => {
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleAddCustomer = () => {
+    alert("Đã thêm khách hàng mới (mock)");
+    setShowAddModal(false);
+    setAddForm({
+      code: "",
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      taxCode: "",
+      contactPerson: "",
+      createdAt: new Date(),
+    });
+  };
+
   return (
     <div>
       <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Quản lý khách hàng
-        </h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý khách hàng</h1>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
           <svg
             className="w-5 h-5"
             fill="none"
@@ -215,14 +246,15 @@ export default function CustomersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày tạo
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-gray-50">
+                <tr
+                  key={customer.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {customer.code}
                   </td>
@@ -245,20 +277,6 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(customer.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => setSelectedCustomer(customer)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Xem
-                    </button>
-                    <button className="text-green-600 hover:text-green-900 mr-3">
-                      Sửa
-                    </button>
-                    <button className="text-red-600 hover:text-red-900">
-                      Xóa
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -291,16 +309,16 @@ export default function CustomersPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selectedCustomer && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      {/* Add Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Chi tiết khách hàng
+                Thêm khách hàng mới
               </h2>
               <button
-                onClick={() => setSelectedCustomer(null)}
+                onClick={() => setShowAddModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg
@@ -319,84 +337,156 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Mã khách hàng
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.code}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Tên khách hàng
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.name}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Mã số thuế
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.taxCode || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Người liên hệ
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.contactPerson || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Số điện thoại
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.phone}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Email
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.email || "N/A"}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-500">
-                    Địa chỉ
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedCustomer.address}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Ngày tạo
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatDate(selectedCustomer.createdAt)}
-                  </p>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mã khách hàng *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.code}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, code: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: KH001"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên khách hàng *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Tên công ty/tổ chức"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mã số thuế
+                </label>
+                <input
+                  type="text"
+                  value={addForm.taxCode || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, taxCode: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Mã số thuế"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Người liên hệ
+                </label>
+                <input
+                  type="text"
+                  value={addForm.contactPerson || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, contactPerson: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Họ tên người liên hệ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số điện thoại *
+                </label>
+                <input
+                  type="tel"
+                  value={addForm.phone}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0123456789"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={addForm.email || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, email: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Địa chỉ *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.address}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, address: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Địa chỉ công ty/tổ chức"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày tạo
+                </label>
+                <input
+                  type="date"
+                  value={formatDateInput(addForm.createdAt || new Date())}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      createdAt: new Date(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setSelectedCustomer(null)}
+                onClick={() => setShowAddModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
-                Đóng
+                Hủy
               </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Chỉnh sửa
+              <button
+                onClick={handleAddCustomer}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm khách hàng
               </button>
             </div>
           </div>

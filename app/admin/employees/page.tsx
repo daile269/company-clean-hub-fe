@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { mockEmployees } from "@/lib/mockData";
 import { Employee, EmployeeType } from "@/types";
 
@@ -8,9 +9,23 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState<Partial<Employee>>({
+    code: "",
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    idCard: "",
+    bankAccount: "",
+    employeeType: EmployeeType.PERMANENT,
+    monthlySalary: 0,
+    joinDate: new Date(),
+  });
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null
   );
+
+  const router = useRouter();
 
   const filteredEmployees = employees.filter((emp) => {
     const matchesSearch =
@@ -33,6 +48,28 @@ export default function EmployeesPage() {
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
+  };
+
+  const formatDateInput = (date: Date) => {
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleAddEmployee = () => {
+    alert("Đã thêm nhân viên mới (mock)");
+    setShowAddModal(false);
+    setAddForm({
+      code: "",
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      idCard: "",
+      bankAccount: "",
+      employeeType: EmployeeType.PERMANENT,
+      monthlySalary: 0,
+      joinDate: new Date(),
+    });
   };
 
   return (
@@ -212,14 +249,15 @@ export default function EmployeesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày vào
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEmployees.map((employee) => (
-                <tr key={employee.id} className="hover:bg-gray-50">
+                <tr
+                  key={employee.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/admin/employees/${employee.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {employee.code}
                   </td>
@@ -266,20 +304,6 @@ export default function EmployeesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(employee.joinDate)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => setSelectedEmployee(employee)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Xem
-                    </button>
-                    <button className="text-green-600 hover:text-green-900 mr-3">
-                      Sửa
-                    </button>
-                    <button className="text-red-600 hover:text-red-900">
-                      Xóa
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -310,6 +334,249 @@ export default function EmployeesPage() {
           </div>
         )}
       </div>
+
+      {/* Add Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Thêm nhân viên mới
+              </h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mã nhân viên *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.code}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, code: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: NV001"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Họ và tên *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập họ tên"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số điện thoại *
+                </label>
+                <input
+                  type="tel"
+                  value={addForm.phone}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0123456789"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={addForm.email || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, email: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Địa chỉ *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.address}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, address: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập địa chỉ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CCCD *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.idCard}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, idCard: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Số CCCD"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số tài khoản
+                </label>
+                <input
+                  type="text"
+                  value={addForm.bankAccount || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, bankAccount: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Số tài khoản ngân hàng"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại nhân viên *
+                </label>
+                <select
+                  value={addForm.employeeType}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      employeeType: e.target.value as EmployeeType,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value={EmployeeType.PERMANENT}>Chính thức</option>
+                  <option value={EmployeeType.TEMPORARY}>Tạm thời</option>
+                </select>
+              </div>
+
+              {addForm.employeeType === EmployeeType.PERMANENT ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương tháng *
+                  </label>
+                  <input
+                    type="number"
+                    value={addForm.monthlySalary || ""}
+                    onChange={(e) =>
+                      setAddForm({
+                        ...addForm,
+                        monthlySalary: Number(e.target.value),
+                        dailySalary: undefined,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="VND"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương ngày *
+                  </label>
+                  <input
+                    type="number"
+                    value={addForm.dailySalary || ""}
+                    onChange={(e) =>
+                      setAddForm({
+                        ...addForm,
+                        dailySalary: Number(e.target.value),
+                        monthlySalary: undefined,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="VND"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày vào làm *
+                </label>
+                <input
+                  type="date"
+                  value={formatDateInput(addForm.joinDate || new Date())}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      joinDate: new Date(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAddEmployee}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm nhân viên
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selectedEmployee && (
@@ -438,7 +705,21 @@ export default function EmployeesPage() {
               >
                 Đóng
               </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                  />
+                </svg>
                 Chỉnh sửa
               </button>
             </div>

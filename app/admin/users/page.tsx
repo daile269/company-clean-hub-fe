@@ -1,14 +1,25 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { mockUsers } from "@/lib/mockData";
 import { User, UserRole } from "@/types";
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users] = useState<User[]>(mockUsers);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState<Partial<User>>({
+    code: "",
+    name: "",
+    email: "",
+    phone: "",
+    role: UserRole.EMPLOYEE,
+    password: "",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -24,6 +35,26 @@ export default function UsersPage() {
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
+  };
+
+  const formatDateInput = (date: Date) => {
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleAddUser = () => {
+    alert("Đã thêm người dùng mới (mock)");
+    setShowAddModal(false);
+    setAddForm({
+      code: "",
+      name: "",
+      email: "",
+      phone: "",
+      role: UserRole.EMPLOYEE,
+      password: "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   };
 
   const getRoleName = (role: UserRole) => {
@@ -81,9 +112,7 @@ export default function UsersPage() {
   return (
     <div>
       <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Quản lý người dùng
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý người dùng</h1>
         <button
           onClick={() => setShowAddModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
@@ -111,9 +140,7 @@ export default function UsersPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Tổng người dùng</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.length}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{users.length}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <svg
@@ -277,14 +304,15 @@ export default function UsersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày tạo
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr
+                  key={user.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/admin/users/${user.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {user.code}
                   </td>
@@ -320,20 +348,6 @@ export default function UsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(user.createdAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => setSelectedUser(user)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Xem
-                    </button>
-                    <button className="text-green-600 hover:text-green-900 mr-3">
-                      Sửa
-                    </button>
-                    <button className="text-red-600 hover:text-red-900">
-                      Xóa
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -365,16 +379,16 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Detail Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      {/* Add Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Chi tiết người dùng
+                Thêm người dùng mới
               </h2>
               <button
-                onClick={() => setSelectedUser(null)}
+                onClick={() => setShowAddModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg
@@ -393,91 +407,135 @@ export default function UsersPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-center mb-6">
-                <div className="h-24 w-24 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl">
-                  {selectedUser.name.charAt(0)}
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mã người dùng *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.code}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, code: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: USER001"
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Mã người dùng
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedUser.code}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Họ và tên
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedUser.name}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Email
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedUser.email || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Số điện thoại
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedUser.phone || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Vai trò
-                  </label>
-                  <p className="mt-1">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(
-                        selectedUser.role
-                      )}`}
-                    >
-                      {getRoleName(selectedUser.role)}
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Ngày tạo
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatDate(selectedUser.createdAt)}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Cập nhật lần cuối
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatDate(selectedUser.updatedAt)}
-                  </p>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Họ và tên *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập họ tên"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={addForm.email || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, email: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  value={addForm.phone || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0123456789"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vai trò *
+                </label>
+                <select
+                  value={addForm.role}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, role: e.target.value as UserRole })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value={UserRole.MANAGER_LEVEL_1}>
+                    Quản lý tổng 1
+                  </option>
+                  <option value={UserRole.MANAGER_LEVEL_2}>
+                    Quản lý tổng 2
+                  </option>
+                  <option value={UserRole.REGIONAL_MANAGER}>
+                    Quản lý vùng
+                  </option>
+                  <option value={UserRole.ACCOUNTANT}>Kế toán</option>
+                  <option value={UserRole.EMPLOYEE}>Nhân viên</option>
+                  <option value={UserRole.CUSTOMER}>Khách hàng</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mật khẩu *
+                </label>
+                <input
+                  type="password"
+                  value={addForm.password || ""}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, password: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập mật khẩu"
+                />
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setSelectedUser(null)}
+                onClick={() => setShowAddModal(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
-                Đóng
+                Hủy
               </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Chỉnh sửa
-              </button>
-              <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
-                Đổi mật khẩu
+              <button
+                onClick={handleAddUser}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm người dùng
               </button>
             </div>
           </div>

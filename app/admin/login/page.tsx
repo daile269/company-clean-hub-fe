@@ -1,44 +1,48 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { authService } from "@/services/authService";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Mock credentials
-  const mockUsers = [
-    { email: "admin@panpacific.com", password: "admin123", role: "Admin" },
-    { email: "manager@panpacific.com", password: "manager123", role: "Manager" },
-  ];
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const user = mockUsers.find(
-        (u) => u.email === email && u.password === password
-      );
-
-      if (user) {
-        // Store user info in localStorage
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("userEmail", user.email);
-        localStorage.setItem("userRole", user.role);
+    try {
+      const response = await authService.login({ username, password });
+      console.log("Login response:", response);
+      
+      if (response.success && response.data) {
+        console.log("Login successful, redirecting...");
+        console.log("Token saved:", localStorage.getItem('token'));
         
-        // Redirect to admin dashboard
+        // Try router.push with refresh
         router.push("/admin");
+        router.refresh();
+        
+        // Fallback to window.location if router doesn't work
+        setTimeout(() => {
+          if (window.location.pathname === "/admin/login") {
+            console.log("Router push failed, using window.location");
+            window.location.replace("/admin");
+          }
+        }, 500);
       } else {
-        setError("Email hoặc mật khẩu không đúng");
+        setError(response.message || "Đăng nhập thất bại");
         setLoading(false);
       }
-    }, 500);
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "Tên đăng nhập hoặc mật khẩu không đúng");
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,13 +62,13 @@ export default function LoginPage() {
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* Email */}
+            {/* Username */}
             <div>
               <label
-                htmlFor="email"
+                htmlFor="username"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Email
+                Tên đăng nhập
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -78,18 +82,18 @@ export default function LoginPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                     />
                   </svg>
                 </div>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="admin@panpacific.com"
+                  placeholder="accountant01"
                 />
               </div>
             </div>
@@ -190,14 +194,9 @@ export default function LoginPage() {
             </p>
             <div className="space-y-2 text-xs">
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium text-gray-700">Admin:</p>
-                <p className="text-gray-600">Email: admin@panpacific.com</p>
-                <p className="text-gray-600">Password: admin123</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium text-gray-700">Manager:</p>
-                <p className="text-gray-600">Email: manager@panpacific.com</p>
-                <p className="text-gray-600">Password: manager123</p>
+                <p className="font-medium text-gray-700">Accountant:</p>
+                <p className="text-gray-600">Username: accountant01</p>
+                <p className="text-gray-600">Password: Pass123456</p>
               </div>
             </div>
           </div>

@@ -1,39 +1,81 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { mockContracts, mockCustomers } from "@/lib/mockData";
 import { Contract } from "@/types";
+import contractService from "@/services/contractService";
+import toast from "react-hot-toast";
 
 export default function ContractsPage() {
   const router = useRouter();
-  const [contracts] = useState<Contract[]>(mockContracts);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  
+  // Search state
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState<Partial<Contract>>({
-    contractNumber: "",
+  const [addForm, setAddForm] = useState({
     customerId: "",
-    value: 0,
-    vat: 10,
-    startDate: new Date(),
-    endDate: new Date(),
+    serviceIds: [] as number[],
+    startDate: "",
+    endDate: "",
+    basePrice: 0,
+    vat: 0,
+    total: 0,
+    extraCost: 0,
+    discountCost: 0,
+    finalPrice: 0,
+    paymentStatus: "PENDING",
     description: "",
-    notes: "",
   });
 
-  const getCustomerName = (customerId: string) => {
-    const customer = mockCustomers.find((c) => c.id === customerId);
-    return customer?.name || "N/A";
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchKeyword(searchTerm);
+      setCurrentPage(0); // Reset to first page when search changes
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load contracts from API
+  useEffect(() => {
+    const loadContracts = async () => {
+      try {
+        setLoading(true);
+        const response = await contractService.getAll({
+          keyword: searchKeyword,
+          page: currentPage,
+          pageSize: pageSize,
+        });
+        
+        setContracts(response.content);
+        setTotalPages(response.totalPages);
+        setTotalElements(response.totalElements);
+      } catch (error) {
+        console.error("Error loading contracts:", error);
+        toast.error("Không thể tải danh sách hợp đồng");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadContracts();
+  }, [searchKeyword, currentPage, pageSize]);
+
+  const getCustomerName = (customerId: string, customerName?: string) => {
+    return customerName || "N/A";
   };
 
-  const filteredContracts = contracts.filter((contract) => {
-    const searchLower = searchTerm.toLowerCase();
-    const customerName = getCustomerName(contract.customerId).toLowerCase();
-    return (
-      contract.contractNumber.toLowerCase().includes(searchLower) ||
-      customerName.includes(searchLower) ||
-      contract.description?.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredContracts = contracts;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -51,19 +93,62 @@ export default function ContractsPage() {
     return d.toISOString().split("T")[0];
   };
 
-  const handleAddContract = () => {
-    alert("Đã thêm hợp đồng mới (mock)");
-    setShowAddModal(false);
-    setAddForm({
-      contractNumber: "",
-      customerId: "",
-      value: 0,
-      vat: 10,
-      startDate: new Date(),
-      endDate: new Date(),
-      description: "",
-      notes: "",
-    });
+  const handleAddContract = async () => {
+    try {
+      // Validate required fields
+      if (!addForm.customerId || !addForm.startDate || !addForm.endDate || addForm.basePrice <= 0) {
+        toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+        return;
+      }
+
+      const createData = {
+        customerId: Number(addForm.customerId),
+        serviceIds: addForm.serviceIds,
+        startDate: addForm.startDate,
+        endDate: addForm.endDate,
+        basePrice: addForm.basePrice,
+        vat: addForm.vat,
+        total: addForm.total,
+        extraCost: addForm.extraCost,
+        discountCost: addForm.discountCost,
+        finalPrice: addForm.finalPrice,
+        paymentStatus: addForm.paymentStatus,
+        description: addForm.description,
+      };
+
+      await contractService.create(createData);
+      toast.success("Đã thêm hợp đồng mới thành công");
+      setShowAddModal(false);
+      
+      // Reset form
+      setAddForm({
+        customerId: "",
+        serviceIds: [],
+        startDate: "",
+        endDate: "",
+        basePrice: 0,
+        vat: 0,
+        total: 0,
+        extraCost: 0,
+        discountCost: 0,
+        finalPrice: 0,
+        paymentStatus: "PENDING",
+        description: "",
+      });
+      
+      // Reload contracts list
+      const response = await contractService.getAll({
+        keyword: searchKeyword,
+        page: currentPage,
+        pageSize: pageSize,
+      });
+      setContracts(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
+    } catch (error) {
+      console.error("Error creating contract:", error);
+      toast.error("Không thể tạo hợp đồng");
+    }
   };
 
   const getContractStatus = (contract: Contract) => {
@@ -83,7 +168,7 @@ export default function ContractsPage() {
   };
 
   const totalContractValue = contracts.reduce(
-    (sum, contract) => sum + contract.value,
+    (sum, contract) => sum + (contract.finalPrice || 0),
     0
   );
 
@@ -127,7 +212,7 @@ export default function ContractsPage() {
             <div>
               <p className="text-sm text-gray-600">Tổng hợp đồng</p>
               <p className="text-2xl font-bold text-gray-900">
-                {contracts.length}
+                {totalElements}
               </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
@@ -257,16 +342,22 @@ export default function ContractsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số hợp đồng
+                  Mã HĐ
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Khách hàng
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Giá trị
+                  Dịch vụ
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Giá trị cuối
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thời hạn
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  TT thanh toán
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
@@ -274,61 +365,128 @@ export default function ContractsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredContracts.map((contract) => {
-                const status = getContractStatus(contract);
-                return (
-                  <tr
-                    key={contract.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() =>
-                      router.push(`/admin/contracts/${contract.id}`)
-                    }
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {contract.contractNumber}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {contract.description}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getCustomerName(contract.customerId)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(contract.value)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        VAT: {contract.vat}%
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatDate(contract.startDate)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        đến {formatDate(contract.endDate)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          status.color === "green"
-                            ? "bg-green-100 text-green-800"
-                            : status.color === "yellow"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : status.color === "red"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {status.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredContracts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">
+                      Không tìm thấy hợp đồng
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Thử thay đổi từ khóa tìm kiếm
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredContracts.map((contract) => {
+                  const status = getContractStatus(contract);
+                  return (
+                    <tr
+                      key={contract.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() =>
+                        router.push(`/admin/contracts/${contract.id}`)
+                      }
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {contract.id}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {contract.description}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {getCustomerName(contract.customerId, contract.customerName)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {contract.serviceNames && contract.serviceNames.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {contract.serviceNames.slice(0, 2).map((serviceName, idx) => (
+                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {serviceName}
+                                </span>
+                              ))}
+                              {contract.serviceNames.length > 2 && (
+                                <span className="text-xs text-gray-500">+{contract.serviceNames.length - 2}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Chưa có dịch vụ</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatCurrency(contract.finalPrice)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Base: {formatCurrency(contract.basePrice)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(contract.startDate)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          đến {formatDate(contract.endDate)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            contract.paymentStatus === "PAID"
+                              ? "bg-green-100 text-green-800"
+                              : contract.paymentStatus === "PARTIAL"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {contract.paymentStatus === "PAID" ? "Đã thanh toán" : 
+                           contract.paymentStatus === "PARTIAL" ? "Thanh toán 1 phần" : 
+                           "Chưa thanh toán"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            status.color === "green"
+                              ? "bg-green-100 text-green-800"
+                              : status.color === "yellow"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : status.color === "red"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {status.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -354,6 +512,94 @@ export default function ContractsPage() {
             <p className="mt-1 text-sm text-gray-500">
               Thử thay đổi từ khóa tìm kiếm
             </p>
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {!loading && filteredContracts.length > 0 && (
+          <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                disabled={currentPage === 0}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Hiển thị{" "}
+                  <span className="font-medium">{currentPage * pageSize + 1}</span>{" "}
+                  đến{" "}
+                  <span className="font-medium">
+                    {Math.min((currentPage + 1) * pageSize, totalElements)}
+                  </span>{" "}
+                  trong tổng số{" "}
+                  <span className="font-medium">{totalElements}</span> kết quả
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                    disabled={currentPage === 0}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Trước</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i;
+                    } else if (currentPage < 3) {
+                      pageNumber = i;
+                    } else if (currentPage > totalPages - 4) {
+                      pageNumber = totalPages - 5 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          currentPage === pageNumber
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        {pageNumber + 1}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Sau</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -389,67 +635,39 @@ export default function ContractsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số hợp đồng *
+                  ID Khách hàng *
                 </label>
                 <input
-                  type="text"
-                  value={addForm.contractNumber}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, contractNumber: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: HD001/2024"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Khách hàng *
-                </label>
-                <select
+                  type="number"
                   value={addForm.customerId}
                   onChange={(e) =>
                     setAddForm({ ...addForm, customerId: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Chọn khách hàng</option>
-                  {mockCustomers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá trị hợp đồng (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={addForm.value}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, value: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
+                  placeholder="VD: 8"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (%) *
+                  ID Dịch vụ *
                 </label>
                 <input
-                  type="number"
-                  value={addForm.vat}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, vat: Number(e.target.value) })
-                  }
+                  type="text"
+                  value={addForm.serviceIds.join(", ")}
+                  onChange={(e) => {
+                    const ids = e.target.value
+                      .split(",")
+                      .map(id => id.trim())
+                      .filter(id => id !== "")
+                      .map(id => Number(id))
+                      .filter(id => !isNaN(id));
+                    setAddForm({ ...addForm, serviceIds: ids });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="10"
+                  placeholder="VD: 1, 2, 3"
                 />
+                <p className="text-xs text-gray-500 mt-1">Nhập các ID cách nhau bằng dấu phẩy</p>
               </div>
 
               <div>
@@ -458,12 +676,9 @@ export default function ContractsPage() {
                 </label>
                 <input
                   type="date"
-                  value={formatDateInput(addForm.startDate || new Date())}
+                  value={addForm.startDate}
                   onChange={(e) =>
-                    setAddForm({
-                      ...addForm,
-                      startDate: new Date(e.target.value),
-                    })
+                    setAddForm({ ...addForm, startDate: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -475,15 +690,123 @@ export default function ContractsPage() {
                 </label>
                 <input
                   type="date"
-                  value={formatDateInput(addForm.endDate || new Date())}
+                  value={addForm.endDate}
                   onChange={(e) =>
-                    setAddForm({
-                      ...addForm,
-                      endDate: new Date(e.target.value),
-                    })
+                    setAddForm({ ...addForm, endDate: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá cơ bản (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={addForm.basePrice}
+                  onChange={(e) => {
+                    const basePrice = Number(e.target.value);
+                    const total = basePrice + addForm.vat;
+                    const finalPrice = total + addForm.extraCost - addForm.discountCost;
+                    setAddForm({ ...addForm, basePrice, total, finalPrice });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="10000000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VAT (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={addForm.vat}
+                  onChange={(e) => {
+                    const vat = Number(e.target.value);
+                    const total = addForm.basePrice + vat;
+                    const finalPrice = total + addForm.extraCost - addForm.discountCost;
+                    setAddForm({ ...addForm, vat, total, finalPrice });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="1000000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tổng (Base + VAT)
+                </label>
+                <input
+                  type="number"
+                  value={addForm.total}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chi phí phát sinh (VND)
+                </label>
+                <input
+                  type="number"
+                  value={addForm.extraCost}
+                  onChange={(e) => {
+                    const extraCost = Number(e.target.value);
+                    const finalPrice = addForm.total + extraCost - addForm.discountCost;
+                    setAddForm({ ...addForm, extraCost, finalPrice });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giảm giá (VND)
+                </label>
+                <input
+                  type="number"
+                  value={addForm.discountCost}
+                  onChange={(e) => {
+                    const discountCost = Number(e.target.value);
+                    const finalPrice = addForm.total + addForm.extraCost - discountCost;
+                    setAddForm({ ...addForm, discountCost, finalPrice });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="500000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá cuối cùng (VND)
+                </label>
+                <input
+                  type="number"
+                  value={addForm.finalPrice}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái thanh toán *
+                </label>
+                <select
+                  value={addForm.paymentStatus}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, paymentStatus: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="PENDING">Chưa thanh toán</option>
+                  <option value="PARTIAL">Thanh toán 1 phần</option>
+                  <option value="PAID">Đã thanh toán</option>
+                </select>
               </div>
 
               <div className="col-span-2">
@@ -491,28 +814,13 @@ export default function ContractsPage() {
                   Mô tả
                 </label>
                 <textarea
-                  value={addForm.description || ""}
+                  value={addForm.description}
                   onChange={(e) =>
                     setAddForm({ ...addForm, description: e.target.value })
                   }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Mô tả hợp đồng"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ghi chú
-                </label>
-                <textarea
-                  value={addForm.notes || ""}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, notes: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ghi chú thêm"
+                  placeholder="Hợp đồng dọn dẹp văn phòng"
                 />
               </div>
             </div>

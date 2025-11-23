@@ -1,46 +1,78 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { mockServices } from "@/lib/mockData";
-import { Service } from "@/types";
+import serviceService, { ApiService } from "@/services/serviceService";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function ServicesPage() {
-  const [services] = useState<Service[]>(mockServices);
+  const router = useRouter();
+  
+  const [services, setServices] = useState<ApiService[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  
+  // Search state
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
+  
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState<Partial<Service>>({
-    code: "",
-    name: "",
+  const [addForm, setAddForm] = useState({
+    title: "",
     description: "",
-    unit: "tháng",
-    basePrice: 0,
-    isActive: true,
-    category: "",
+    priceFrom: 0,
+    priceTo: 0,
+    mainImage: "",
+    status: "ACTIVE",
   });
 
-  const router = useRouter();
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchKeyword(searchTerm);
+      setCurrentPage(0); // Reset to first page when search changes
+    }, 500);
 
-  const categories = Array.from(
-    new Set(services.map((s) => s.category).filter((c) => c))
-  );
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load services from API
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        setLoading(true);
+        const response = await serviceService.getAll({
+          keyword: searchKeyword,
+          page: currentPage,
+          pageSize: pageSize,
+        });
+        
+        setServices(response.content);
+        setTotalPages(response.totalPages);
+        setTotalElements(response.totalElements);
+      } catch (error) {
+        console.error("Error loading services:", error);
+        toast.error("Không thể tải danh sách dịch vụ");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadServices();
+  }, [searchKeyword, currentPage, pageSize]);
 
   const filteredServices = services.filter((service) => {
-    const matchesSearch =
-      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.description?.toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesStatus =
       filterStatus === "all" ||
-      (filterStatus === "active" && service.isActive) ||
-      (filterStatus === "inactive" && !service.isActive);
+      (filterStatus === "active" && service.status === "ACTIVE") ||
+      (filterStatus === "inactive" && service.status === "INACTIVE");
 
-    const matchesCategory =
-      filterCategory === "all" || service.category === filterCategory;
-
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesStatus;
   });
 
   const formatCurrency = (amount: number) => {
@@ -50,18 +82,46 @@ export default function ServicesPage() {
     }).format(amount);
   };
 
-  const handleAddService = () => {
-    alert("Đã thêm dịch vụ mới (mock)");
-    setShowAddModal(false);
-    setAddForm({
-      code: "",
-      name: "",
-      description: "",
-      unit: "tháng",
-      basePrice: 0,
-      isActive: true,
-      category: "",
-    });
+  const handleAddService = async () => {
+    try {
+      // Validate required fields
+      if (!addForm.title || addForm.priceFrom <= 0 || addForm.priceTo <= 0) {
+        toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+        return;
+      }
+
+      if (addForm.priceFrom > addForm.priceTo) {
+        toast.error("Giá từ phải nhỏ hơn hoặc bằng giá đến");
+        return;
+      }
+
+      await serviceService.create(addForm);
+      toast.success("Đã thêm dịch vụ mới thành công");
+      setShowAddModal(false);
+      
+      // Reset form
+      setAddForm({
+        title: "",
+        description: "",
+        priceFrom: 0,
+        priceTo: 0,
+        mainImage: "",
+        status: "ACTIVE",
+      });
+      
+      // Reload services list
+      const response = await serviceService.getAll({
+        keyword: searchKeyword,
+        page: currentPage,
+        pageSize: pageSize,
+      });
+      setServices(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
+    } catch (error) {
+      console.error("Error creating service:", error);
+      toast.error("Không thể tầo dịch vụ");
+    }
   };
 
   return (
@@ -91,7 +151,7 @@ export default function ServicesPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tìm kiếm
@@ -120,24 +180,6 @@ export default function ServicesPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Loại dịch vụ
-            </label>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Tất cả</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="flex items-end">
             <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
               Xuất Excel
@@ -153,7 +195,7 @@ export default function ServicesPage() {
             <div>
               <p className="text-sm text-gray-600">Tổng dịch vụ</p>
               <p className="text-2xl font-bold text-gray-900">
-                {services.length}
+                {totalElements}
               </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
@@ -179,7 +221,7 @@ export default function ServicesPage() {
             <div>
               <p className="text-sm text-gray-600">Đang hoạt động</p>
               <p className="text-2xl font-bold text-green-600">
-                {services.filter((s) => s.isActive).length}
+                {services.filter((s) => s.status === "ACTIVE").length}
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
@@ -205,7 +247,7 @@ export default function ServicesPage() {
             <div>
               <p className="text-sm text-gray-600">Ngừng hoạt động</p>
               <p className="text-2xl font-bold text-red-600">
-                {services.filter((s) => !s.isActive).length}
+                {services.filter((s) => s.status === "INACTIVE").length}
               </p>
             </div>
             <div className="bg-red-100 p-3 rounded-full">
@@ -234,19 +276,13 @@ export default function ServicesPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mã DV
+                  ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tên dịch vụ
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Loại
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Đơn vị
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Giá cơ bản
+                  Khoảng giá
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
@@ -254,70 +290,163 @@ export default function ServicesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredServices.map((service) => (
-                <tr
-                  key={service.id}
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => router.push(`/admin/services/${service.id}`)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {service.code}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {service.name}
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {service.description}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {service.category}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {service.unit}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
-                    {formatCurrency(service.basePrice)}/{service.unit}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        service.isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {service.isActive ? "Hoạt động" : "Ngừng"}
-                    </span>
                   </td>
                 </tr>
-              ))}
+              ) : filteredServices.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">
+                      Không tìm thấy dịch vụ
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredServices.map((service) => (
+                  <tr
+                    key={service.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/admin/services/${service.id}`)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      #{service.id}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {service.title}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {service.description}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
+                      <div>{formatCurrency(service.priceFrom)}</div>
+                      <div className="text-xs text-gray-500">- {formatCurrency(service.priceTo)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          service.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {service.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-
-        {filteredServices.length === 0 && (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              Không tìm thấy dịch vụ
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
-            </p>
+        
+        {/* Pagination */}
+        {!loading && filteredServices.length > 0 && (
+          <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                disabled={currentPage === 0}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Hiển thị{" "}
+                  <span className="font-medium">{currentPage * pageSize + 1}</span>{" "}
+                  đến{" "}
+                  <span className="font-medium">
+                    {Math.min((currentPage + 1) * pageSize, totalElements)}
+                  </span>{" "}
+                  trong tổng số{" "}
+                  <span className="font-medium">{totalElements}</span> kết quả
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                    disabled={currentPage === 0}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Trước</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i;
+                    } else if (currentPage < 3) {
+                      pageNumber = i;
+                    } else if (currentPage > totalPages - 4) {
+                      pageNumber = totalPages - 5 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          currentPage === pageNumber
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        {pageNumber + 1}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Sau</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -351,30 +480,15 @@ export default function ServicesPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={addForm.code}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, code: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: DV001"
-                />
-              </div>
-
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tên dịch vụ *
                 </label>
                 <input
                   type="text"
-                  value={addForm.name}
+                  value={addForm.title}
                   onChange={(e) =>
-                    setAddForm({ ...addForm, name: e.target.value })
+                    setAddForm({ ...addForm, title: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Nhập tên dịch vụ"
@@ -386,7 +500,7 @@ export default function ServicesPage() {
                   Mô tả
                 </label>
                 <textarea
-                  value={addForm.description || ""}
+                  value={addForm.description}
                   onChange={(e) =>
                     setAddForm({ ...addForm, description: e.target.value })
                   }
@@ -398,67 +512,62 @@ export default function ServicesPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={addForm.category || ""}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, category: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: Vệ sinh văn phòng"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Đơn vị tính *
-                </label>
-                <select
-                  value={addForm.unit}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, unit: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="tháng">Tháng</option>
-                  <option value="ngày">Ngày</option>
-                  <option value="giờ">Giờ</option>
-                  <option value="lần">Lần</option>
-                  <option value="m2">m²</option>
-                  <option value="phòng">Phòng</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cơ bản (VND) *
+                  Giá từ (VND) *
                 </label>
                 <input
                   type="number"
-                  value={addForm.basePrice}
+                  value={addForm.priceFrom}
                   onChange={(e) =>
-                    setAddForm({ ...addForm, basePrice: Number(e.target.value) })
+                    setAddForm({ ...addForm, priceFrom: Number(e.target.value) })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
+                  placeholder="500000"
                 />
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá đến (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={addForm.priceTo}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, priceTo: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="2000000"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ảnh chính (URL)
+                </label>
+                <input
+                  type="text"
+                  value={addForm.mainImage}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, mainImage: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Trạng thái *
                 </label>
                 <select
-                  value={addForm.isActive ? "active" : "inactive"}
+                  value={addForm.status}
                   onChange={(e) =>
-                    setAddForm({ ...addForm, isActive: e.target.value === "active" })
+                    setAddForm({ ...addForm, status: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="active">Hoạt động</option>
-                  <option value="inactive">Ngừng hoạt động</option>
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Ngừng hoạt động</option>
                 </select>
               </div>
             </div>
@@ -494,6 +603,7 @@ export default function ServicesPage() {
           </div>
         </div>
       )}
+      <Toaster position="top-right" />
     </div>
   );
 }

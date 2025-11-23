@@ -1,45 +1,40 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { mockContracts, mockCustomers } from "@/lib/mockData";
+import { useState, useEffect } from "react";
 import { Contract } from "@/types";
+import contractService from "@/services/contractService";
+import toast from "react-hot-toast";
 
 export default function ContractDetailPage() {
   const params = useParams();
   const router = useRouter();
   const contractId = params.id as string;
 
-  const contract = useMemo(
-    () => mockContracts.find((c) => c.id === contractId),
-    [contractId]
-  );
-
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState<Contract | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Contract>>({});
 
-  if (!contract) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Không tìm thấy hợp đồng
-            </h2>
-            <button
-              onClick={() => router.push("/admin/contracts")}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              ← Quay lại danh sách
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Load contract details
+  useEffect(() => {
+    const loadContract = async () => {
+      try {
+        setLoading(true);
+        const data = await contractService.getById(contractId);
+        setContract(data);
+      } catch (error) {
+        console.error("Error loading contract:", error);
+        toast.error("Không thể tải thông tin hợp đồng");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const getCustomerName = (customerId: string) => {
-    const customer = mockCustomers.find((c) => c.id === customerId);
-    return customer ? customer.name : "N/A";
+    loadContract();
+  }, [contractId]);
+
+  const getCustomerName = (customerName?: string) => {
+    return customerName || "N/A";
   };
 
   const getContractStatus = (contract: Contract) => {
@@ -72,31 +67,111 @@ export default function ContractDetailPage() {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
 
-  const formatDateInput = (date: Date) => {
+  const formatDateInput = (date?: Date) => {
+    if (!date) return "";
     const d = new Date(date);
     return d.toISOString().split("T")[0];
   };
 
   const handleEdit = () => {
+    if (!contract) return;
     setEditForm({ ...contract });
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
-    alert("Đã cập nhật hợp đồng (mock)");
-    setShowEditModal(false);
-    setEditForm(null);
-  };
-
-  const handleDelete = () => {
-    if (confirm("Xác nhận xóa hợp đồng này?")) {
-      alert("Đã xóa hợp đồng (mock)");
-      router.push("/admin/contracts");
+  const handleSaveEdit = async () => {
+    if (!contract || !editForm) return;
+    
+    try {
+      // Calculate total and finalPrice before sending to API
+      const basePrice = editForm.basePrice || 0;
+      const vat = editForm.vat || 0;
+      const extraCost = editForm.extraCost || 0;
+      const discountCost = editForm.discountCost || 0;
+      
+      const total = basePrice + vat;
+      const finalPrice = total + extraCost - discountCost;
+      
+      const updateData = {
+        customerId: contract.customerId, // Keep original customerId
+        serviceIds: contract.serviceIds, // Keep original serviceIds
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        basePrice: basePrice,
+        vat: vat,
+        total: total,
+        extraCost: extraCost,
+        discountCost: discountCost,
+        finalPrice: finalPrice,
+        paymentStatus: editForm.paymentStatus,
+        description: editForm.description,
+      };
+      
+      await contractService.update(contract.id, updateData);
+      toast.success("Đã cập nhật hợp đồng thành công");
+      setShowEditModal(false);
+      // Reload contract data
+      const updatedContract = await contractService.getById(contract.id);
+      setContract(updatedContract);
+    } catch (error) {
+      console.error("Error updating contract:", error);
+      toast.error("Không thể cập nhật hợp đồng");
     }
   };
 
+  const handleDelete = async () => {
+    if (!contract) return;
+    
+    if (confirm("Xác nhận xóa hợp đồng này?")) {
+      try {
+        await contractService.delete(contract.id);
+        toast.success("Đã xóa hợp đồng thành công");
+        router.push("/admin/contracts");
+      } catch (error) {
+        console.error("Error deleting contract:", error);
+        toast.error("Không thể xóa hợp đồng");
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-8">
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!contract) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Không tìm thấy hợp đồng
+            </h2>
+            <button
+              onClick={() => router.push("/admin/contracts")}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              ← Quay lại danh sách
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const status = getContractStatus(contract);
-  const totalValue = contract.value * (1 + contract.vat / 100);
+  const paymentStatusLabel = contract.paymentStatus === "PAID" ? "Đã thanh toán" :
+                             contract.paymentStatus === "PARTIAL" ? "Thanh toán 1 phần" :
+                             "Chưa thanh toán";
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -175,10 +250,10 @@ export default function ContractDetailPage() {
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Hợp đồng {contract.contractNumber}
+                  Hợp đồng #{contract.id}
                 </h1>
                 <p className="text-gray-600">
-                  Khách hàng: {getCustomerName(contract.customerId)}
+                  Khách hàng: {getCustomerName(contract.customerName)}
                 </p>
               </div>
               <span
@@ -205,9 +280,9 @@ export default function ContractDetailPage() {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Số hợp đồng
+                  Mã hợp đồng
                 </label>
-                <p className="text-gray-900">{contract.contractNumber}</p>
+                <p className="text-gray-900">#{contract.id}</p>
               </div>
 
               <div>
@@ -215,16 +290,16 @@ export default function ContractDetailPage() {
                   Khách hàng
                 </label>
                 <p className="text-gray-900">
-                  {getCustomerName(contract.customerId)}
+                  {getCustomerName(contract.customerName)}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giá trị hợp đồng
+                  Giá cơ bản
                 </label>
                 <p className="text-gray-900 font-semibold">
-                  {formatCurrency(contract.value)}
+                  {formatCurrency(contract.basePrice)}
                 </p>
               </div>
 
@@ -232,21 +307,84 @@ export default function ContractDetailPage() {
                 <label className="block text-sm font-medium text-gray-500 mb-1">
                   VAT
                 </label>
-                <p className="text-gray-900">{contract.vat}%</p>
+                <p className="text-gray-900">{formatCurrency(contract.vat)}</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Tổng giá trị (bao gồm VAT)
+                  Tổng (Base + VAT)
                 </label>
-                <p className="text-blue-600 font-bold text-lg">
-                  {formatCurrency(totalValue)}
+                <p className="text-gray-900 font-semibold">
+                  {formatCurrency(contract.total)}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Trạng thái
+                  Chi phí phát sinh
+                </label>
+                <p className="text-gray-900">
+                  {formatCurrency(contract.extraCost)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Giảm giá
+                </label>
+                <p className="text-gray-900">
+                  {formatCurrency(contract.discountCost)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Giá cuối cùng
+                </label>
+                <p className="text-blue-600 font-bold text-lg">
+                  {formatCurrency(contract.finalPrice)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Trạng thái thanh toán
+                </label>
+                <p>
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      contract.paymentStatus === "PAID"
+                        ? "bg-green-100 text-green-800"
+                        : contract.paymentStatus === "PARTIAL"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {paymentStatusLabel}
+                  </span>
+                </p>
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Dịch vụ
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {contract.serviceNames && contract.serviceNames.length > 0 ? (
+                    contract.serviceNames.map((serviceName, idx) => (
+                      <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        {serviceName}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">Chưa có dịch vụ</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Trạng thái hợp đồng
                 </label>
                 <p>
                   <span
@@ -287,15 +425,6 @@ export default function ContractDetailPage() {
                   {contract.description || "Không có mô tả"}
                 </p>
               </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Ghi chú
-                </label>
-                <p className="text-gray-900">
-                  {contract.notes || "Không có ghi chú"}
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -332,62 +461,164 @@ export default function ContractDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số hợp đồng *
+                  Mã hợp đồng
                 </label>
                 <input
                   type="text"
-                  value={editForm.contractNumber}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, contractNumber: e.target.value })
-                  }
+                  value={editForm.id || ""}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Khách hàng
+                </label>
+                <input
+                  type="text"
+                  value={editForm.customerName || ""}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá cơ bản (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={editForm.basePrice || 0}
+                  onChange={(e) => {
+                    const basePrice = Number(e.target.value);
+                    const vat = editForm.vat || 0;
+                    const extraCost = editForm.extraCost || 0;
+                    const discountCost = editForm.discountCost || 0;
+                    const total = basePrice + vat;
+                    const finalPrice = total + extraCost - discountCost;
+                    setEditForm({ 
+                      ...editForm, 
+                      basePrice, 
+                      total,
+                      finalPrice 
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Khách hàng *
+                  VAT (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={editForm.vat || 0}
+                  onChange={(e) => {
+                    const vat = Number(e.target.value);
+                    const basePrice = editForm.basePrice || 0;
+                    const extraCost = editForm.extraCost || 0;
+                    const discountCost = editForm.discountCost || 0;
+                    const total = basePrice + vat;
+                    const finalPrice = total + extraCost - discountCost;
+                    setEditForm({ 
+                      ...editForm, 
+                      vat, 
+                      total,
+                      finalPrice 
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chi phí phát sinh (VND)
+                </label>
+                <input
+                  type="number"
+                  value={editForm.extraCost || 0}
+                  onChange={(e) => {
+                    const extraCost = Number(e.target.value);
+                    const basePrice = editForm.basePrice || 0;
+                    const vat = editForm.vat || 0;
+                    const discountCost = editForm.discountCost || 0;
+                    const total = basePrice + vat;
+                    const finalPrice = total + extraCost - discountCost;
+                    setEditForm({ 
+                      ...editForm, 
+                      extraCost,
+                      finalPrice 
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giảm giá (VND)
+                </label>
+                <input
+                  type="number"
+                  value={editForm.discountCost || 0}
+                  onChange={(e) => {
+                    const discountCost = Number(e.target.value);
+                    const basePrice = editForm.basePrice || 0;
+                    const vat = editForm.vat || 0;
+                    const extraCost = editForm.extraCost || 0;
+                    const total = basePrice + vat;
+                    const finalPrice = total + extraCost - discountCost;
+                    setEditForm({ 
+                      ...editForm, 
+                      discountCost,
+                      finalPrice 
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái thanh toán *
                 </label>
                 <select
-                  value={editForm.customerId}
+                  value={editForm.paymentStatus || "PENDING"}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, customerId: e.target.value })
+                    setEditForm({ ...editForm, paymentStatus: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {mockCustomers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
+                  <option value="PENDING">Chưa thanh toán</option>
+                  <option value="PARTIAL">Thanh toán 1 phần</option>
+                  <option value="PAID">Đã thanh toán</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá trị hợp đồng (VND) *
+                  Tổng (Base + VAT)
                 </label>
                 <input
                   type="number"
-                  value={editForm.value}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, value: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={editForm.total || 0}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (%) *
+                  Giá cuối cùng (VND)
                 </label>
                 <input
                   type="number"
-                  value={editForm.vat}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, vat: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={editForm.finalPrice || 0}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-blue-600"
                 />
               </div>
 
@@ -433,20 +664,6 @@ export default function ContractDetailPage() {
                   value={editForm.description || ""}
                   onChange={(e) =>
                     setEditForm({ ...editForm, description: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ghi chú
-                </label>
-                <textarea
-                  value={editForm.notes || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, notes: e.target.value })
                   }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -1,21 +1,58 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { mockServices } from "@/lib/mockData";
-import { Service } from "@/types";
+import { useState, useEffect } from "react";
+import serviceService, { ApiService } from "@/services/serviceService";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function ServiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const serviceId = params.id as string;
 
-  const service = useMemo(
-    () => mockServices.find((s) => s.id === serviceId),
-    [serviceId]
-  );
-
+  const [service, setService] = useState<ApiService | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState<Service | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    priceFrom: 0,
+    priceTo: 0,
+    mainImage: "",
+    status: "ACTIVE",
+  });
+
+  // Load service detail
+  useEffect(() => {
+    const loadService = async () => {
+      try {
+        setLoading(true);
+        const data = await serviceService.getById(serviceId);
+        setService(data);
+      } catch (error) {
+        console.error("Error loading service:", error);
+        toast.error("Không thể tải thông tin dịch vụ");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadService();
+  }, [serviceId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="flex justify-center items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+            <p className="mt-4 text-gray-600">Đang tải...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!service) {
     return (
@@ -44,25 +81,65 @@ export default function ServiceDetailPage() {
     }).format(amount);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
+  const formatDate = (dateString: string) => {
+    return new Intl.DateTimeFormat("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(dateString));
   };
 
   const handleEdit = () => {
-    setEditForm({ ...service });
+    setEditForm({
+      title: service.title,
+      description: service.description || "",
+      priceFrom: service.priceFrom,
+      priceTo: service.priceTo,
+      mainImage: service.mainImage || "",
+      status: service.status,
+    });
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
-    alert("Đã cập nhật dịch vụ (mock)");
-    setShowEditModal(false);
-    setEditForm(null);
+  const handleSaveEdit = async () => {
+    if (!editForm.title || editForm.priceFrom <= 0 || editForm.priceTo <= 0) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+      return;
+    }
+
+    if (editForm.priceFrom >= editForm.priceTo) {
+      toast.error("Giá từ phải nhỏ hơn giá đến");
+      return;
+    }
+
+    try {
+      await serviceService.update(serviceId, editForm);
+      toast.success("Cập nhật dịch vụ thành công");
+      setShowEditModal(false);
+      
+      // Reload service data
+      const updatedService = await serviceService.getById(serviceId);
+      setService(updatedService);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      toast.error(`Lỗi: ${errorMessage}`);
+    }
   };
 
-  const handleDelete = () => {
-    if (confirm("Xác nhận xóa dịch vụ này?")) {
-      alert("Đã xóa dịch vụ (mock)");
+  const handleDelete = async () => {
+    if (!confirm("Xác nhận xóa dịch vụ này?")) {
+      return;
+    }
+
+    try {
+      await serviceService.delete(serviceId);
+      toast.success("Xóa dịch vụ thành công");
       router.push("/admin/services");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      toast.error(`Lỗi: ${errorMessage}`);
     }
   };
 
@@ -113,7 +190,7 @@ export default function ServiceDetailPage() {
               </svg>
               Sửa
             </button>
-            <button
+            {/* <button
               onClick={handleDelete}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
             >
@@ -132,7 +209,7 @@ export default function ServiceDetailPage() {
                 />
               </svg>
               Xóa
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -143,18 +220,18 @@ export default function ServiceDetailPage() {
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {service.name}
+                  {service.title}
                 </h1>
-                <p className="text-gray-600">{service.code}</p>
+                <p className="text-gray-600">ID: #{service.id}</p>
               </div>
               <span
                 className={`px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full ${
-                  service.isActive
+                  service.status === "ACTIVE"
                     ? "bg-green-100 text-green-800"
                     : "bg-red-100 text-red-800"
                 }`}
               >
-                {service.isActive ? "Đang hoạt động" : "Ngừng hoạt động"}
+                {service.status === "ACTIVE" ? "Đang hoạt động" : "Ngừng hoạt động"}
               </span>
             </div>
           </div>
@@ -167,38 +244,33 @@ export default function ServiceDetailPage() {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Mã dịch vụ
+                  ID dịch vụ
                 </label>
-                <p className="text-gray-900">{service.code}</p>
+                <p className="text-gray-900">#{service.id}</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
                   Tên dịch vụ
                 </label>
-                <p className="text-gray-900">{service.name}</p>
+                <p className="text-gray-900">{service.title}</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Loại dịch vụ
-                </label>
-                <p className="text-gray-900">{service.category}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Đơn vị tính
-                </label>
-                <p className="text-gray-900">{service.unit}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giá cơ bản
+                  Giá từ
                 </label>
                 <p className="text-blue-600 font-bold text-lg">
-                  {formatCurrency(service.basePrice)}/{service.unit}
+                  {formatCurrency(service.priceFrom)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Giá đến
+                </label>
+                <p className="text-blue-600 font-bold text-lg">
+                  {formatCurrency(service.priceTo)}
                 </p>
               </div>
 
@@ -209,15 +281,31 @@ export default function ServiceDetailPage() {
                 <p>
                   <span
                     className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      service.isActive
+                      service.status === "ACTIVE"
                         ? "bg-green-100 text-green-800"
                         : "bg-red-100 text-red-800"
                     }`}
                   >
-                    {service.isActive ? "Hoạt động" : "Ngừng"}
+                    {service.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
                   </span>
                 </p>
               </div>
+
+              {service.mainImage && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Ảnh chính
+                  </label>
+                  <img
+                    src={service.mainImage}
+                    alt={service.title}
+                    className="w-32 h-32 object-cover rounded-lg"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -247,8 +335,8 @@ export default function ServiceDetailPage() {
       </div>
 
       {/* Edit Modal */}
-      {showEditModal && editForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50 p-4">
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
@@ -275,31 +363,18 @@ export default function ServiceDetailPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={editForm.code}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, code: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tên dịch vụ *
                 </label>
                 <input
                   type="text"
-                  value={editForm.name}
+                  value={editForm.title}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, name: e.target.value })
+                    setEditForm({ ...editForm, title: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập tên dịch vụ"
                 />
               </div>
 
@@ -308,76 +383,74 @@ export default function ServiceDetailPage() {
                   Mô tả
                 </label>
                 <textarea
-                  value={editForm.description || ""}
+                  value={editForm.description}
                   onChange={(e) =>
                     setEditForm({ ...editForm, description: e.target.value })
                   }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Mô tả dịch vụ"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={editForm.category || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, category: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Đơn vị tính *
-                </label>
-                <select
-                  value={editForm.unit}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, unit: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="tháng">Tháng</option>
-                  <option value="ngày">Ngày</option>
-                  <option value="giờ">Giờ</option>
-                  <option value="lần">Lần</option>
-                  <option value="m2">m²</option>
-                  <option value="phòng">Phòng</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cơ bản (VND) *
+                  Giá từ (VND) *
                 </label>
                 <input
                   type="number"
-                  value={editForm.basePrice}
+                  value={editForm.priceFrom}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, basePrice: Number(e.target.value) })
+                    setEditForm({ ...editForm, priceFrom: Number(e.target.value) })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="500000"
                 />
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá đến (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={editForm.priceTo}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, priceTo: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="2000000"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ảnh chính (URL)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.mainImage}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, mainImage: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Trạng thái *
                 </label>
                 <select
-                  value={editForm.isActive ? "active" : "inactive"}
+                  value={editForm.status}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, isActive: e.target.value === "active" })
+                    setEditForm({ ...editForm, status: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="active">Hoạt động</option>
-                  <option value="inactive">Ngừng hoạt động</option>
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Ngừng hoạt động</option>
                 </select>
               </div>
             </div>
@@ -413,6 +486,8 @@ export default function ServiceDetailPage() {
           </div>
         </div>
       )}
+      
+      <Toaster position="top-right" />
     </div>
   );
 }

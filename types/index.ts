@@ -45,13 +45,18 @@ export interface User {
 // Khách hàng
 export interface Customer {
   id: string;
-  code: string;                  // Mã KH
+  code: string;                  // Mã KH (customerCode)
+  username?: string;             // Tên đăng nhập
+  password?: string;             // Mật khẩu
   name: string;
   address: string;
   phone: string;
   email?: string;
-  contactPerson?: string;        // Người liên hệ
+  contactPerson?: string;        // Người liên hệ (contactInfo)
   taxCode?: string;              // Mã số thuế
+  company?: string;              // Tên công ty
+  status?: string;               // Trạng thái (ACTIVE/INACTIVE)
+  description?: string;          // Mô tả
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,13 +65,22 @@ export interface Customer {
 export interface Contract {
   id: string;
   customerId: string;
-  contractNumber: string;        // Số hợp đồng
-  value: number;                 // Giá trị hợp đồng
-  vat: number;                   // VAT (%)
+  customerName?: string;         // Tên khách hàng (từ API)
+  serviceIds?: number[];         // Danh sách ID dịch vụ
+  serviceNames?: string[];       // Danh sách tên dịch vụ
+  contractNumber?: string;       // Số hợp đồng
   startDate: Date;
   endDate: Date;
+  basePrice: number;             // Giá cơ bản
+  vat: number;                   // VAT (số tiền)
+  total: number;                 // Tổng (basePrice + vat)
+  extraCost: number;             // Chi phí phát sinh
+  discountCost: number;          // Giảm giá
+  finalPrice: number;            // Giá cuối cùng
+  paymentStatus: string;         // Trạng thái thanh toán
   description?: string;
   notes?: string;
+  value?: number;                // Legacy field (backward compatible)
   createdAt: Date;
   updatedAt: Date;
 }

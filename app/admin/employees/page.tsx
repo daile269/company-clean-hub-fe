@@ -104,32 +104,85 @@ export default function EmployeesPage() {
       toast.error("Tên đăng nhập không được để trống");
       return;
     }
-    if (!addForm.password || addForm.password.trim() === "") {
-      toast.error("Mật khẩu không được để trống");
+    if (addForm.username.length < 3 || addForm.username.length > 50) {
+      toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
       return;
     }
     if (!addForm.code || addForm.code.trim() === "") {
       toast.error("Mã nhân viên không được để trống");
       return;
     }
-    if (!addForm.name || addForm.name.trim() === "") {
-      toast.error("Họ và tên không được để trống");
+    if (addForm.code.length > 50) {
+      toast.error("Mã nhân viên không được vượt quá 50 ký tự");
+      return;
+    }
+    if (!addForm.password || addForm.password.trim() === "") {
+      toast.error("Mật khẩu không được để trống");
+      return;
+    }
+    if (addForm.password.length < 6 || addForm.password.length > 255) {
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
     if (!addForm.phone || addForm.phone.trim() === "") {
       toast.error("Số điện thoại không được để trống");
       return;
     }
+    if (addForm.phone.length > 50) {
+      toast.error("Số điện thoại không được vượt quá 50 ký tự");
+      return;
+    }
     if (!addForm.email || addForm.email.trim() === "") {
       toast.error("Email không được để trống");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(addForm.email)) {
+      toast.error("Email không hợp lệ");
+      return;
+    }
+    if (addForm.email.length > 255) {
+      toast.error("Email không được vượt quá 255 ký tự");
       return;
     }
     if (!addForm.idCard || addForm.idCard.trim() === "") {
       toast.error("CCCD không được để trống");
       return;
     }
-    if (!addForm.address || addForm.address.trim() === "") {
-      toast.error("Địa chỉ không được để trống");
+    if (addForm.idCard.length > 50) {
+      toast.error("CCCD không được vượt quá 50 ký tự");
+      return;
+    }
+    if (addForm.address && addForm.address.length > 255) {
+      toast.error("Địa chỉ không được vượt quá 255 ký tự");
+      return;
+    }
+    if (!addForm.name || addForm.name.trim() === "") {
+      toast.error("Tên nhân viên không được để trống");
+      return;
+    }
+    if (addForm.name.length > 150) {
+      toast.error("Tên không được vượt quá 150 ký tự");
+      return;
+    }
+    if (!addForm.employeeType) {
+      toast.error("Loại hình tuyển dụng bắt buộc");
+      return;
+    }
+    if (addForm.monthlySalary && addForm.monthlySalary < 0) {
+      toast.error("Lương cơ bản phải là số lớn hơn hoặc bằng 0");
+      return;
+    }
+    if (addForm.dailySalary && addForm.dailySalary < 0) {
+      toast.error("Lương theo ngày phải là số lớn hơn hoặc bằng 0");
+      return;
+    }
+    if (addForm.socialInsurance && addForm.socialInsurance < 0) {
+      toast.error("Bảo hiểm xã hội phải là số lớn hơn hoặc bằng 0");
+      return;
+    }
+    if (addForm.healthInsurance && addForm.healthInsurance < 0) {
+      toast.error("Bảo hiểm y tế phải là số lớn hơn hoặc bằng 0");
       return;
     }
 

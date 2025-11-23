@@ -1,7 +1,8 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { mockCustomers } from "@/lib/mockData";
+import toast, { Toaster } from "react-hot-toast";
+import { customerService } from "@/services/customerService";
 import { Customer } from "@/types";
 
 export default function CustomerDetail() {
@@ -9,16 +10,57 @@ export default function CustomerDetail() {
   const id = params?.id as string | undefined;
   const router = useRouter();
 
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editForm, setEditForm] = useState<Customer | null>(null);
 
-  const customer: Customer | undefined = useMemo(
-    () =>
-      mockCustomers.find(
-        (c) => c.id === id || c.id.toString() === id || c.code === id
-      ),
-    [id]
-  );
+  // Load customer data from API
+  useEffect(() => {
+    if (id) {
+      loadCustomer();
+    }
+  }, [id]);
+
+  const loadCustomer = async () => {
+    try {
+      setLoading(true);
+      const data = await customerService.getById(id!);
+      setCustomer(data);
+    } catch (error) {
+      console.error("Error loading customer:", error);
+      toast.error("Không thể tải thông tin khách hàng");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <svg
+          className="animate-spin h-10 w-10 text-blue-600"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      </div>
+    );
+  }
 
   if (!customer) {
     return (
@@ -37,17 +79,55 @@ export default function CustomerDetail() {
   };
 
   const handleEdit = () => {
-    setEditForm({ ...customer });
+    setEditForm({ 
+      ...customer!,
+      username: customer?.username || "",
+      password: customer?.password || ""
+    });
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
-    alert("Đã lưu thay đổi (mock)");
-    setShowEditModal(false);
+  const handleSaveEdit = async () => {
+    if (!editForm) return;
+
+    try {
+      const response = await customerService.update(editForm.id, editForm);
+      if (response.success) {
+        toast.success("Đã cập nhật thông tin khách hàng thành công");
+        setShowEditModal(false);
+        // Reload customer data
+        loadCustomer();
+      } else {
+        toast.error(response.message || "Cập nhật thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error updating customer:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!customer) return;
+
+    try {
+      const response = await customerService.delete(customer.id);
+      if (response.success) {
+        toast.success("Đã xóa khách hàng thành công");
+        setShowDeleteModal(false);
+        // Navigate back to customers list
+        router.push("/admin/customers");
+      } else {
+        toast.error(response.message || "Xóa thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error deleting customer:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi xóa");
+    }
   };
 
   return (
     <div className="p-6">
+      <Toaster position="top-right" />
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Chi tiết khách hàng</h1>
@@ -93,14 +173,8 @@ export default function CustomerDetail() {
             </svg>
             Sửa
           </button>
-          <button
-            onClick={() => {
-              const ok = confirm("Xác nhận xóa khách hàng này? (mock)");
-              if (ok) {
-                alert("Đã xóa khách hàng (mock).");
-                router.push("/admin/customers");
-              }
-            }}
+          {/* <button
+            onClick={() => setShowDeleteModal(true)}
             className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
           >
             <svg
@@ -118,7 +192,7 @@ export default function CustomerDetail() {
               />
             </svg>
             Xóa
-          </button>
+          </button> */}
         </div>
       </div>
       <div className="bg-white rounded-lg shadow p-6">
@@ -153,12 +227,12 @@ export default function CustomerDetail() {
             <p className="text-sm text-gray-600">Địa chỉ</p>
             <p className="text-sm text-gray-900">{customer.address}</p>
           </div>
-          <div>
+          {/* <div>
             <p className="text-sm text-gray-600">Ngày tạo</p>
             <p className="text-sm text-gray-900">
               {formatDate(customer.createdAt)}
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -289,7 +363,7 @@ export default function CustomerDetail() {
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ngày tạo
                 </label>
@@ -304,7 +378,7 @@ export default function CustomerDetail() {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-              </div>
+              </div> */}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

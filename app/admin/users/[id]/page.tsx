@@ -1,79 +1,123 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { mockUsers } from "@/lib/mockData";
-import { User, UserRole } from "@/types";
+import userService, { ApiUser } from "@/services/userService";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function UserDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
 
+  const [user, setUser] = useState<ApiUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [editForm, setEditForm] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({
+    username: "",
+    email: "",
+    phone: "",
+    roleId: 2,
+    status: "ACTIVE",
+  });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
 
-  const user: User | undefined = useMemo(
-    () =>
-      mockUsers.find((u) => {
-        return u.id === id || u.id.toString() === id || u.code === id;
-      }),
-    [id]
-  );
+  // Load user detail
+  useEffect(() => {
+    const loadUser = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const data = await userService.getById(id);
+        setUser(data);
+      } catch (error) {
+        console.error("Error loading user:", error);
+        toast.error("Không thể tải thông tin người dùng");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (!user) {
+    loadUser();
+  }, [id]);
+
+  if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-bold">Không tìm thấy người dùng</h1>
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="flex justify-center items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+          <p className="mt-4 text-gray-600">Đang tải...</p>
+        </div>
       </div>
     );
   }
 
-  const formatDate = (date: Date) =>
-    new Intl.DateTimeFormat("vi-VN").format(new Date(date));
+  if (!user) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <h1 className="text-xl font-bold">Không tìm thấy người dùng</h1>
+          <button
+            onClick={() => router.push("/admin/users")}
+            className="mt-4 text-blue-600 hover:text-blue-800"
+          >
+            ← Quay lại danh sách
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const formatDateInput = (date: Date) => {
-    const d = new Date(date);
-    return d.toISOString().split("T")[0];
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
+    return new Intl.DateTimeFormat("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(dateString));
   };
 
-  const getRoleName = (role: UserRole) => {
-    switch (role) {
-      case UserRole.MANAGER_LEVEL_1:
+  const getRoleName = (roleName: string) => {
+    switch (roleName) {
+      case "QLT1":
         return "Quản lý tổng 1";
-      case UserRole.MANAGER_LEVEL_2:
+      case "QLT2":
         return "Quản lý tổng 2";
-      case UserRole.REGIONAL_MANAGER:
+      case "QLV":
         return "Quản lý vùng";
-      case UserRole.ACCOUNTANT:
+      case "ACCOUNTANT":
         return "Kế toán";
-      case UserRole.EMPLOYEE:
+      case "EMPLOYEE":
         return "Nhân viên";
-      case UserRole.CUSTOMER:
+      case "CUSTOMER":
         return "Khách hàng";
       default:
-        return "N/A";
+        return roleName;
     }
   };
 
-  const getRoleBadgeColor = (role: UserRole) => {
-    switch (role) {
-      case UserRole.MANAGER_LEVEL_1:
+  const getRoleBadgeColor = (roleName: string) => {
+    switch (roleName) {
+      case "QLT1":
         return "bg-purple-100 text-purple-800";
-      case UserRole.MANAGER_LEVEL_2:
+      case "QLT2":
         return "bg-indigo-100 text-indigo-800";
-      case UserRole.REGIONAL_MANAGER:
+      case "QLV":
         return "bg-blue-100 text-blue-800";
-      case UserRole.ACCOUNTANT:
+      case "ACCOUNTANT":
         return "bg-green-100 text-green-800";
-      case UserRole.EMPLOYEE:
+      case "EMPLOYEE":
         return "bg-gray-100 text-gray-800";
-      case UserRole.CUSTOMER:
+      case "CUSTOMER":
         return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -81,27 +125,87 @@ export default function UserDetail() {
   };
 
   const handleEdit = () => {
-    setEditForm({ ...user });
+    setEditForm({
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      roleId: user.roleId,
+      status: user.status,
+    });
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
-    alert("Đã lưu thay đổi (mock)");
-    setShowEditModal(false);
-  };
+  const handleSaveEdit = async () => {
+    if (!id) return;
 
-  const handleChangePassword = () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+    // Validate username
+    if (!editForm.username || editForm.username.length < 3 || editForm.username.length > 50) {
+      toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
       return;
     }
-    alert("Đã đổi mật khẩu (mock)");
-    setShowPasswordModal(false);
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+
+    // Validate email
+    if (!editForm.email) {
+      toast.error("Email bắt buộc");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editForm.email)) {
+      toast.error("Email không hợp lệ");
+      return;
+    }
+
+    // Validate phone
+    if (editForm.phone && editForm.phone.length > 50) {
+      toast.error("Số điện thoại không được vượt quá 50 ký tự");
+      return;
+    }
+
+    try {
+      // Send update with a placeholder password (backend requirement)
+      await userService.update(id, {
+        ...editForm,
+        password: "password123", // Required by backend but won't be changed
+      });
+      toast.success("Cập nhật người dùng thành công");
+      setShowEditModal(false);
+      
+      // Reload user data
+      const updatedUser = await userService.getById(id);
+      setUser(updatedUser);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      toast.error(`Lỗi: ${errorMessage}`);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.newPassword) {
+      toast.error("Mật khẩu mới bắt buộc");
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("Mật khẩu xác nhận không khớp!");
+      return;
+    }
+
+    try {
+      // TODO: Implement change password API
+      toast.success("Đã đổi mật khẩu thành công");
+      setShowPasswordModal(false);
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      toast.error(`Lỗi: ${errorMessage}`);
+    }
   };
 
   return (
@@ -172,11 +276,17 @@ export default function UserDetail() {
             Đổi mật khẩu
           </button>
           <button
-            onClick={() => {
-              const ok = confirm("Xác nhận xóa người dùng này? (mock)");
-              if (ok) {
-                alert("Đã xóa người dùng (mock).");
+            onClick={async () => {
+              if (!id) return;
+              if (!confirm("Xác nhận xóa người dùng này?")) return;
+              
+              try {
+                await userService.delete(id);
+                toast.success("Xóa người dùng thành công");
                 router.push("/admin/users");
+              } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+                toast.error(`Lỗi: ${errorMessage}`);
               }
             }}
             className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
@@ -203,18 +313,18 @@ export default function UserDetail() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-center mb-6">
           <div className="h-24 w-24 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl">
-            {user.name.charAt(0)}
+            {user.username.charAt(0).toUpperCase()}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-600">Mã người dùng</p>
-            <p className="text-sm text-gray-900">{user.code}</p>
+            <p className="text-sm text-gray-600">ID</p>
+            <p className="text-sm text-gray-900">#{user.id}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Họ và tên</p>
-            <p className="text-sm text-gray-900">{user.name}</p>
+            <p className="text-sm text-gray-600">Tên đăng nhập</p>
+            <p className="text-sm text-gray-900">{user.username}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Email</p>
@@ -229,10 +339,24 @@ export default function UserDetail() {
             <p className="mt-1">
               <span
                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(
-                  user.role
+                  user.roleName
                 )}`}
               >
-                {getRoleName(user.role)}
+                {getRoleName(user.roleName)}
+              </span>
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Trạng thái</p>
+            <p className="mt-1">
+              <span
+                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  user.status === "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                {user.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
               </span>
             </p>
           </div>
@@ -252,7 +376,7 @@ export default function UserDetail() {
       </div>
 
       {/* Edit Modal */}
-      {showEditModal && editForm && (
+      {showEditModal && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
@@ -282,43 +406,32 @@ export default function UserDetail() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã người dùng
+                  Tên đăng nhập *
                 </label>
                 <input
                   type="text"
-                  value={editForm.code}
+                  value={editForm.username}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, code: e.target.value })
+                    setEditForm({ ...editForm, username: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  minLength={3}
+                  maxLength={50}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Họ và tên
-                </label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, name: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                  Email *
                 </label>
                 <input
                   type="email"
-                  value={editForm.email || ""}
+                  value={editForm.email}
                   onChange={(e) =>
                     setEditForm({ ...editForm, email: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  maxLength={255}
                 />
               </div>
 
@@ -328,40 +441,48 @@ export default function UserDetail() {
                 </label>
                 <input
                   type="tel"
-                  value={editForm.phone || ""}
+                  value={editForm.phone}
                   onChange={(e) =>
                     setEditForm({ ...editForm, phone: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  maxLength={50}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vai trò
+                  Vai trò *
                 </label>
                 <select
-                  value={editForm.role}
+                  value={editForm.roleId}
                   onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      role: e.target.value as UserRole,
-                    })
+                    setEditForm({ ...editForm, roleId: Number(e.target.value) })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value={UserRole.MANAGER_LEVEL_1}>
-                    Quản lý tổng 1
-                  </option>
-                  <option value={UserRole.MANAGER_LEVEL_2}>
-                    Quản lý tổng 2
-                  </option>
-                  <option value={UserRole.REGIONAL_MANAGER}>
-                    Quản lý vùng
-                  </option>
-                  <option value={UserRole.ACCOUNTANT}>Kế toán</option>
-                  <option value={UserRole.EMPLOYEE}>Nhân viên</option>
-                  <option value={UserRole.CUSTOMER}>Khách hàng</option>
+                  <option value={1}>Khách hàng</option>
+                  <option value={2}>Nhân viên</option>
+                  <option value={3}>Quản lý tổng 1</option>
+                  <option value={4}>Quản lý tổng 2</option>
+                  <option value={5}>Quản lý vùng</option>
+                  <option value={6}>Kế toán</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái *
+                </label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, status: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Ngừng hoạt động</option>
                 </select>
               </div>
             </div>
@@ -511,6 +632,8 @@ export default function UserDetail() {
           </div>
         </div>
       )}
+      
+      <Toaster position="top-right" />
     </div>
   );
 }

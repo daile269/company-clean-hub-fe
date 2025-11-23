@@ -10,7 +10,8 @@ export enum UserRole {
 
 // Enum cho loại nhân viên
 export enum EmployeeType {
-  PERMANENT = 'PERMANENT',        // Chính thức
+  FIXED_BY_CONTRACT = 'FIXED_BY_CONTRACT',        // Chính thức (Hợp đồng cố định)
+  FIXED_BY_DAY = 'FIXED_BY_DAY',        // Bán thời gian (Cố định theo ngày)
   TEMPORARY = 'TEMPORARY'         // Tạm thời
 }
 
@@ -70,7 +71,7 @@ export interface Contract {
   updatedAt: Date;
 }
 
-// Nhân viên
+// Nhân viên (Frontend model)
 export interface Employee {
   id: string;
   code: string;                  // Mã NV
@@ -79,15 +80,49 @@ export interface Employee {
   address: string;
   phone: string;
   email?: string;
+  username?: string;             // Tên đăng nhập
+  password?: string;             // Mật khẩu
   bankAccount?: string;          // Số tài khoản
+  bankName?: string;             // Tên ngân hàng
   idCard: string;                // CCCD
   employeeType: EmployeeType;
   monthlySalary?: number;        // Lương tháng (NV chính thức)
   dailySalary?: number;          // Lương ngày (NV tạm thời)
+  socialInsurance?: number;      // Bảo hiểm xã hội
+  healthInsurance?: number;      // Bảo hiểm y tế
+  roleId?: number;               // ID vai trò
+  status?: string;               // Trạng thái
+  description?: string;          // Mô tả
   regionalManagerId?: string;    // Thuộc QLV nào
   joinDate: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// API Employee Response (Backend model)
+export interface ApiEmployee {
+  id: number;
+  employeeCode: string;
+  username: string;
+  phone: string;
+  email: string;
+  roleId: number;
+  roleName: string;
+  status: string;
+  cccd: string;
+  address: string;
+  name: string;
+  bankAccount: string;
+  bankName: string;
+  employmentType: string;        // FIXED_BY_CONTRACT, TEMPORARY, etc.
+  baseSalary: number;
+  dailySalary: number;
+  socialInsurance: number;
+  healthInsurance: number;
+  allowance: number | null;
+  description: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 // Điều động nhân viên
@@ -178,4 +213,18 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: Date;
+}
+
+// Dịch vụ
+export interface Service {
+  id: string;
+  code: string;                  // Mã dịch vụ
+  name: string;
+  description?: string;
+  unit: string;                  // Đơn vị tính (giờ, ngày, tháng, lần)
+  basePrice: number;             // Giá cơ bản
+  isActive: boolean;             // Đang hoạt động
+  category?: string;             // Loại dịch vụ (vệ sinh văn phòng, công nghiệp, ...)
+  createdAt: Date;
+  updatedAt: Date;
 }

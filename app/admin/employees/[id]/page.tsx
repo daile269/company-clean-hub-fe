@@ -1,14 +1,15 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import toast, { Toaster } from "react-hot-toast";
 import {
-  mockEmployees,
   mockPayrolls,
   mockAssignments,
   mockRatings,
   mockCustomers,
 } from "@/lib/mockData";
 import { Employee, EmployeeType } from "@/types";
+import { employeeService } from "@/services/employeeService";
 
 export default function EmployeeDetail() {
   const params = useParams();
@@ -16,29 +17,59 @@ export default function EmployeeDetail() {
 
   const router = useRouter();
 
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Employee | null>(null);
 
-  const employee: Employee | undefined = useMemo(
-    () =>
-      mockEmployees.find((e) => {
-        return e.id === id || e.id.toString() === id || e.code === id;
-      }),
-    [id]
-  );
+  // Load employee data from API
+  useEffect(() => {
+    if (id) {
+      loadEmployee();
+    }
+  }, [id]);
 
-  const assignments = useMemo(
-    () => mockAssignments.filter((a) => a.employeeId === id),
-    [id]
-  );
-  const payrolls = useMemo(
-    () => mockPayrolls.filter((p) => p.employeeId === id).slice(0, 6),
-    [id]
-  );
-  const ratings = useMemo(
-    () => mockRatings.filter((r) => r.employeeId === id).slice(0, 6),
-    [id]
-  );
+  const loadEmployee = async () => {
+    try {
+      setLoading(true);
+      const data = await employeeService.getById(id!);
+      setEmployee(data);
+    } catch (error) {
+      console.error("Error loading employee:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const assignments = mockAssignments.filter((a) => a.employeeId === id);
+  const payrolls = mockPayrolls.filter((p) => p.employeeId === id).slice(0, 6);
+  const ratings = mockRatings.filter((r) => r.employeeId === id).slice(0, 6);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <svg
+          className="animate-spin h-10 w-10 text-blue-600"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      </div>
+    );
+  }
 
   if (!employee) {
     return (
@@ -63,17 +94,37 @@ export default function EmployeeDetail() {
   };
 
   const handleEdit = () => {
-    setEditForm({ ...employee });
+    // include username and an empty password field so hidden inputs exist
+    setEditForm({
+      ...(employee as Employee),
+      username: (employee as any).username || "",
+      password: (employee as any).password || "",
+    });
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
-    alert("Đã lưu thay đổi (mock)");
-    setShowEditModal(false);
+  const handleSaveEdit = async () => {
+    if (!editForm) return;
+
+    try {
+      const response = await employeeService.update(editForm.id, editForm);
+      if (response.success) {
+        toast.success("Đã cập nhật thông tin nhân viên thành công");
+        setShowEditModal(false);
+        // Reload employee data
+        loadEmployee();
+      } else {
+        toast.error(response.message || "Cập nhật thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error updating employee:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+    }
   };
 
   return (
     <div className="p-6">
+      <Toaster position="top-right" />
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Chi tiết nhân viên</h1>
         {employee && (
@@ -142,8 +193,10 @@ export default function EmployeeDetail() {
           <div>
             <p className="text-sm text-gray-600">Loại nhân viên</p>
             <p className="text-sm text-gray-900">
-              {employee.employeeType === EmployeeType.PERMANENT
-                ? "Chính thức"
+              {employee.employeeType === EmployeeType.FIXED_BY_CONTRACT
+                ? "Hợp đồng cố định"
+                : employee.employeeType === EmployeeType.FIXED_BY_DAY
+                ? "Cố định theo ngày"
                 : "Tạm thời"}
             </p>
           </div>
@@ -158,9 +211,9 @@ export default function EmployeeDetail() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Ngày vào làm</p>
+            <p className="text-sm text-gray-600">Số tài khoản</p>
             <p className="text-sm text-gray-900">
-              {formatDate(employee.joinDate)}
+              {employee.bankAccount || "N/A"}
             </p>
           </div>
           <div>
@@ -347,16 +400,14 @@ export default function EmployeeDetail() {
                 <input
                   type="text"
                   value={editForm.code}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, code: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Họ và tên
+                  Họ và tên *
                 </label>
                 <input
                   type="text"
@@ -370,7 +421,7 @@ export default function EmployeeDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số điện thoại
+                  Số điện thoại *
                 </label>
                 <input
                   type="tel"
@@ -384,7 +435,7 @@ export default function EmployeeDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                  Email *
                 </label>
                 <input
                   type="email"
@@ -396,15 +447,15 @@ export default function EmployeeDetail() {
                 />
               </div>
 
-              <div className="col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ
+                  CCCD *
                 </label>
                 <input
                   type="text"
-                  value={editForm.address}
+                  value={editForm.idCard}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, address: e.target.value })
+                    setEditForm({ ...editForm, idCard: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -412,13 +463,29 @@ export default function EmployeeDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CCCD
+                  Trạng thái
+                </label>
+                <select
+                  value={editForm.status || "ACTIVE"}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, status: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Không hoạt động</option>
+                </select>
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Địa chỉ *
                 </label>
                 <input
                   type="text"
-                  value={editForm.idCard}
+                  value={editForm.address}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, idCard: e.target.value })
+                    setEditForm({ ...editForm, address: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -440,7 +507,22 @@ export default function EmployeeDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại nhân viên
+                  Ngân hàng
+                </label>
+                <input
+                  type="text"
+                  value={editForm.bankName || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, bankName: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: VietBank"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại nhân viên *
                 </label>
                 <select
                   value={editForm.employeeType}
@@ -452,65 +534,104 @@ export default function EmployeeDetail() {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value={EmployeeType.PERMANENT}>Chính thức</option>
+                  <option value={EmployeeType.FIXED_BY_CONTRACT}>
+                    Hợp đồng cố định
+                  </option>
+                  <option value={EmployeeType.FIXED_BY_DAY}>
+                    Cố định theo ngày
+                  </option>
                   <option value={EmployeeType.TEMPORARY}>Tạm thời</option>
                 </select>
               </div>
 
-              {editForm.employeeType === EmployeeType.PERMANENT ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lương tháng
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.monthlySalary || ""}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        monthlySalary: Number(e.target.value),
-                        dailySalary: undefined,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lương ngày
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.dailySalary || ""}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        dailySalary: Number(e.target.value),
-                        monthlySalary: undefined,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày vào làm
+                  Lương cơ bản (tháng) - VNĐ
                 </label>
                 <input
-                  type="date"
-                  value={formatDateInput(editForm.joinDate)}
+                  type="number"
+                  value={editForm.monthlySalary || ""}
                   onChange={(e) =>
                     setEditForm({
                       ...editForm,
-                      joinDate: new Date(e.target.value),
+                      monthlySalary: Number(e.target.value),
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VND"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lương ngày - VNĐ
+                </label>
+                <input
+                  type="number"
+                  value={editForm.dailySalary || ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      dailySalary: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VND"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bảo hiểm xã hội - VNĐ
+                </label>
+                <input
+                  type="number"
+                  value={editForm.socialInsurance || ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      socialInsurance: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VND"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bảo hiểm y tế - VNĐ
+                </label>
+                <input
+                  type="number"
+                  value={editForm.healthInsurance || ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      healthInsurance: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VND"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả
+                </label>
+                <textarea
+                  value={editForm.description || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, description: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ghi chú thêm về nhân viên..."
+                />
+              </div>
+              <input type="hidden" value={editForm.username || ""} />
+              <input type="hidden" value={editForm.password || ""} />
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

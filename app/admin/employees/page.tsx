@@ -302,12 +302,12 @@ export default function EmployeesPage() {
                 >
                   <option value="all">Tất cả</option>
                   <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                    Hợp đồng cố định
+                    Nhân viên chính tại chỗ 
                   </option>
                   <option value={EmployeeType.FIXED_BY_DAY}>
-                    Cố định theo ngày
+                    Nhân viên chính điều động
                   </option>
-                  <option value={EmployeeType.TEMPORARY}>Tạm thời</option>
+                  <option value={EmployeeType.TEMPORARY}>Nhân viên thời vụ</option>
                 </select>
               </div>
 
@@ -350,7 +350,7 @@ export default function EmployeesPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Hợp đồng cố định</p>
+                  <p className="text-sm text-gray-600">Nhân viên chính tại chỗ  </p>
                   <p className="text-2xl font-bold text-green-600">
                     {
                       employees.filter(
@@ -380,7 +380,7 @@ export default function EmployeesPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Cố định theo ngày</p>
+                  <p className="text-sm text-gray-600">Nhân viên chính điều động</p>
                   <p className="text-2xl font-bold text-blue-600">
                     {
                       employees.filter(
@@ -409,7 +409,7 @@ export default function EmployeesPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Nhân viên tạm thời</p>
+                  <p className="text-sm text-gray-600">Nhân viên thời vụ</p>
                   <p className="text-2xl font-bold text-yellow-600">
                     {
                       employees.filter(
@@ -456,7 +456,13 @@ export default function EmployeesPage() {
                       Loại NV
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Lương
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ngày cập nhật
                     </th>
                   </tr>
                 </thead>
@@ -506,11 +512,22 @@ export default function EmployeesPage() {
                         >
                           {employee.employeeType ===
                           EmployeeType.FIXED_BY_CONTRACT
-                            ? "Hợp đồng cố định"
+                            ? "Nhân viên chính tại chỗ  "
                             : employee.employeeType ===
                               EmployeeType.FIXED_BY_DAY
-                            ? "Cố định theo ngày"
-                            : "Tạm thời"}
+                            ? "Nhân viên chính điều động"
+                            : "Nhân viên thời vụ"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            employee.status === "ACTIVE"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -519,6 +536,9 @@ export default function EmployeesPage() {
                           : employee.dailySalary
                           ? formatCurrency(employee.dailySalary) + "/ngày"
                           : "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {employee.updatedAt ? formatDate(employee.updatedAt) : "N/A"}
                       </td>
                     </tr>
                   ))}
@@ -865,12 +885,12 @@ export default function EmployeesPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                        Hợp đồng cố định
+                        Nhân viên chính tại chỗ 
                       </option>
                       <option value={EmployeeType.FIXED_BY_DAY}>
-                        Cố định theo ngày
+                        Nhân viên chính điều động
                       </option>
-                      <option value={EmployeeType.TEMPORARY}>Tạm thời</option>
+                      <option value={EmployeeType.TEMPORARY}>Nhân viên thời vụ</option>
                     </select>
                   </div>
 
@@ -1103,11 +1123,11 @@ export default function EmployeesPage() {
                       <p className="mt-1 text-sm text-gray-900">
                         {selectedEmployee.employeeType ===
                         EmployeeType.FIXED_BY_CONTRACT
-                          ? "Hợp đồng cố định"
+                          ? "Nhân viên chính tại chỗ  "
                           : selectedEmployee.employeeType ===
                             EmployeeType.FIXED_BY_DAY
-                          ? "Cố định theo ngày"
-                          : "Tạm thời"}
+                          ? "Nhân viên chính điều động"
+                          : "Nhân viên thời vụ"}
                       </p>
                     </div>
                     <div>

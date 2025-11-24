@@ -172,53 +172,198 @@ export default function EmployeeDetail() {
           </div>
         )}
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600">Mã nhân viên</p>
-            <p className="text-sm text-gray-900">{employee.code}</p>
+
+      {/* Main Information Grid - 2 Cards Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Card 1: Thông tin cá nhân */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            Thông tin cá nhân
+          </h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 mb-1">Mã nhân viên</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee.code}
+                </p>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+                <span
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                    employee.status === "ACTIVE"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {employee.status === "ACTIVE"
+                    ? "Hoạt động"
+                    : "Không hoạt động"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Họ và tên</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee.name}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">CCCD</p>
+                <p className="text-sm text-gray-900">
+                  {employee.idCard || "N/A"}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Tên đăng nhập</p>
+                <p className="text-sm text-gray-900">
+                  {(employee as any).username || "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Vai trò</p>
+                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  {(employee as any).roleName || "N/A"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Số điện thoại</p>
+                <p className="text-sm text-gray-900">{employee.phone}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Email</p>
+                <p className="text-sm text-gray-900">
+                  {employee.email || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Địa chỉ</p>
+              <p className="text-sm text-gray-900">{employee.address}</p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Loại nhân viên</p>
+              <p className="text-sm font-medium text-blue-700">
+                {employee.employeeType === EmployeeType.FIXED_BY_CONTRACT
+                  ? "Nhân viên chính tại chỗ"
+                  : employee.employeeType === EmployeeType.FIXED_BY_DAY
+                  ? "Nhân viên chính điều động"
+                  : "Nhân viên thời vụ"}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
+                <p className="text-sm text-gray-900">
+                  {employee.createdAt ? formatDate(employee.createdAt) : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
+                <p className="text-sm text-gray-900">
+                  {employee.updatedAt ? formatDate(employee.updatedAt) : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {employee.description && (
+              <div className="pt-2 border-t">
+                <p className="text-xs text-gray-500 mb-1">Mô tả</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {employee.description}
+                </p>
+              </div>
+            )}
           </div>
-          <div>
-            <p className="text-sm text-gray-600">Họ và tên</p>
-            <p className="text-sm text-gray-900">{employee.name}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Số điện thoại</p>
-            <p className="text-sm text-gray-900">{employee.phone}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Email</p>
-            <p className="text-sm text-gray-900">{employee.email || "N/A"}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Loại nhân viên</p>
-            <p className="text-sm text-gray-900">
-              {employee.employeeType === EmployeeType.FIXED_BY_CONTRACT
-                ? "Hợp đồng cố định"
-                : employee.employeeType === EmployeeType.FIXED_BY_DAY
-                ? "Cố định theo ngày"
-                : "Tạm thời"}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Lương</p>
-            <p className="text-sm text-gray-900">
-              {employee.monthlySalary
-                ? formatCurrency(employee.monthlySalary) + "/tháng"
-                : employee.dailySalary
-                ? formatCurrency(employee.dailySalary) + "/ngày"
-                : "N/A"}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Số tài khoản</p>
-            <p className="text-sm text-gray-900">
-              {employee.bankAccount || "N/A"}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Địa chỉ</p>
-            <p className="text-sm text-gray-900">{employee.address}</p>
+        </div>
+
+        {/* Card 2: Thông tin lương & phúc lợi */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            Thông tin lương & phúc lợi
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Lương cơ bản (tháng)</p>
+              <p className="text-lg font-bold text-green-600">
+                {employee.monthlySalary
+                  ? formatCurrency(employee.monthlySalary)
+                  : "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Lương ngày</p>
+              <p className="text-lg font-bold text-green-600">
+                {employee.dailySalary
+                  ? formatCurrency(employee.dailySalary)
+                  : "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Phụ cấp</p>
+              <p className="text-base font-semibold text-blue-600">
+                {(employee as any).allowance
+                  ? formatCurrency((employee as any).allowance)
+                  : "N/A"}
+              </p>
+            </div>
+
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                Bảo hiểm
+              </h4>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <p className="text-xs text-gray-600">Bảo hiểm xã hội</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {employee.socialInsurance
+                      ? formatCurrency(employee.socialInsurance)
+                      : "N/A"}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-xs text-gray-600">Bảo hiểm y tế</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {employee.healthInsurance
+                      ? formatCurrency(employee.healthInsurance)
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                Thông tin ngân hàng
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Số tài khoản</p>
+                  <p className="text-sm font-mono font-medium text-gray-900">
+                    {employee.bankAccount || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Ngân hàng</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {employee.bankName || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -535,12 +680,14 @@ export default function EmployeeDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                    Hợp đồng cố định
+                    Nhân viên chính tại chỗ
                   </option>
                   <option value={EmployeeType.FIXED_BY_DAY}>
-                    Cố định theo ngày
+                    Nhân viên chính điều động
                   </option>
-                  <option value={EmployeeType.TEMPORARY}>Tạm thời</option>
+                  <option value={EmployeeType.TEMPORARY}>
+                    Nhân viên thời vụ
+                  </option>
                 </select>
               </div>
 

@@ -37,6 +37,8 @@ class EmployeeService {
       bankAccount: apiEmployee.bankAccount,
       idCard: apiEmployee.cccd,
       employeeType,
+      status: apiEmployee.status,
+      roleName: apiEmployee.roleName,
       monthlySalary: apiEmployee.baseSalary,
       dailySalary: apiEmployee.dailySalary,
       socialInsurance: apiEmployee.socialInsurance,

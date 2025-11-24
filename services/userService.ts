@@ -30,18 +30,24 @@ export interface UserPaginationResponse {
 }
 
 // Lấy danh sách user với phân trang và tìm kiếm
-export const getAll = async (params: UserPaginationParams): Promise<ApiUser[]> => {
+export const getAll = async (params: UserPaginationParams): Promise<UserPaginationResponse> => {
   try {
     const { keyword = '', page, pageSize } = params;
     
     const response = await apiService.get<any>(`/users/filter?keyword=${encodeURIComponent(keyword)}&page=${page}&pageSize=${pageSize}`);
 
-    if (!response.success || !response.data.content) {
+    if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to fetch users');
     }
 
-    // API trả về mảng trực tiếp trong data
-    return Array.isArray(response.data.content) ? response.data.content : [];
+    // Return full pagination response
+    return {
+      content: Array.isArray(response.data.content) ? response.data.content : [],
+      totalElements: response.data.totalElements || 0,
+      totalPages: response.data.totalPages || 0,
+      currentPage: response.data.currentPage || page,
+      pageSize: response.data.pageSize || pageSize,
+    };
   } catch (error) {
     console.error('Error fetching users:', error);
     throw error;

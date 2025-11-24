@@ -12,6 +12,8 @@ export default function UsersPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,11 +50,15 @@ export default function UsersPage() {
           pageSize: pageSize,
         });
         
-        setUsers(Array.isArray(data) ? data : []);
+        setUsers(Array.isArray(data.content) ? data.content : []);
+        setTotalElements(data.totalElements);
+        setTotalPages(data.totalPages);
       } catch (error) {
         console.error("Error loading users:", error);
         toast.error("Không thể tải danh sách người dùng");
-        setUsers([]); // Set empty array on error
+        setUsers([]);
+        setTotalElements(0);
+        setTotalPages(0);
       } finally {
         setLoading(false);
       }
@@ -137,7 +143,9 @@ export default function UsersPage() {
         page: currentPage,
         pageSize: pageSize,
       });
-      setUsers(Array.isArray(data) ? data : []);
+      setUsers(Array.isArray(data.content) ? data.content : []);
+      setTotalElements(data.totalElements);
+      setTotalPages(data.totalPages);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
       toast.error(`Lỗi: ${errorMessage}`);
@@ -474,6 +482,69 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && totalPages > 0 && (
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Hiển thị <span className="font-medium">{currentPage * pageSize + 1}</span> -{" "}
+                <span className="font-medium">
+                  {Math.min((currentPage + 1) * pageSize, totalElements)}
+                </span>{" "}
+                trong tổng số <span className="font-medium">{totalElements}</span> người dùng
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Trước
+                </button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i;
+                    } else if (currentPage < 3) {
+                      pageNum = i;
+                    } else if (currentPage > totalPages - 4) {
+                      pageNum = totalPages - 5 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                          currentPage === pageNum
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                  disabled={currentPage === totalPages - 1}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Modal */}

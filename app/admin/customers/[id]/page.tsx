@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
-import { Customer } from "@/types";
+import { employeeService } from "@/services/employeeService";
+import { assignmentService, AssignmentCreateRequest } from "@/services/assignmentService";
+import { Customer, Employee } from "@/types";
 
 export default function CustomerDetail() {
   const params = useParams();
@@ -15,6 +17,19 @@ export default function CustomerDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editForm, setEditForm] = useState<Customer | null>(null);
+  
+  // Assignment states
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [searchEmployee, setSearchEmployee] = useState("");
+  const [assignmentForm, setAssignmentForm] = useState<Partial<AssignmentCreateRequest>>({
+    startDate: new Date().toISOString().split('T')[0],
+    status: "ACTIVE",
+    workDays: 20,
+    salaryAtTime: 0,
+    description: "",
+  });
 
   // Load customer data from API
   useEffect(() => {
@@ -79,10 +94,10 @@ export default function CustomerDetail() {
   };
 
   const handleEdit = () => {
-    setEditForm({ 
+    setEditForm({
       ...customer!,
       username: customer?.username || "",
-      password: customer?.password || ""
+      password: customer?.password || "",
     });
     setShowEditModal(true);
   };
@@ -125,6 +140,71 @@ export default function CustomerDetail() {
     }
   };
 
+  // Load employees for assignment
+  const loadEmployees = async () => {
+    try {
+      setLoadingEmployees(true);
+      const response = await employeeService.getAll({
+        keyword: searchEmployee,
+        page: 0,
+        pageSize: 100,
+      });
+      setEmployees(response.content);
+    } catch (error) {
+      console.error("Error loading employees:", error);
+      toast.error("Không thể tải danh sách nhân viên");
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  const handleOpenAssignmentModal = () => {
+    setShowAssignmentModal(true);
+    loadEmployees();
+  };
+
+  const handleAssignEmployee = async (employee: Employee) => {
+    if (!customer) return;
+
+    try {
+      const assignmentData: AssignmentCreateRequest = {
+        employeeId: Number(employee.id),
+        customerId: Number(customer.id),
+        startDate: assignmentForm.startDate || new Date().toISOString().split('T')[0],
+        status: assignmentForm.status || "ACTIVE",
+        salaryAtTime: assignmentForm.salaryAtTime || employee.monthlySalary || employee.dailySalary || 0,
+        workDays: assignmentForm.workDays || 20,
+        description: assignmentForm.description || `Điều động ${employee.name} đến ${customer.name}`,
+      };
+
+      const response = await assignmentService.create(assignmentData);
+      
+      if (response.success) {
+        toast.success(`Đã điều động nhân viên ${employee.name} thành công`);
+        setShowAssignmentModal(false);
+        // Reset form
+        setAssignmentForm({
+          startDate: new Date().toISOString().split('T')[0],
+          status: "ACTIVE",
+          workDays: 20,
+          salaryAtTime: 0,
+          description: "",
+        });
+      } else {
+        toast.error(response.message || "Điều động thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error assigning employee:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi điều động");
+    }
+  };
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+
   return (
     <div className="p-6">
       <Toaster position="top-right" />
@@ -152,6 +232,26 @@ export default function CustomerDetail() {
               />
             </svg>
             Quay lại
+          </button>
+          <button
+            onClick={handleOpenAssignmentModal}
+            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Điều động
           </button>
           <button
             onClick={handleEdit}
@@ -195,46 +295,301 @@ export default function CustomerDetail() {
           </button> */}
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600">Mã khách hàng</p>
-            <p className="text-sm text-gray-900">{customer.code}</p>
+
+      {/* Main Information Grid - 2 Cards Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Card 1: Thông tin cơ bản */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            Thông tin cơ bản
+          </h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 mb-1">Mã khách hàng</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {customer.code}
+                </p>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+                <span
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                    customer.status === "ACTIVE"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {customer.status === "ACTIVE"
+                    ? "Hoạt động"
+                    : "Không hoạt động"}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Tên khách hàng</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {customer.name}
+                </p>
+              </div>
+              {customer.username && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Tên đăng nhập</p>
+                  <p className="text-sm text-gray-900">{customer.username}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Số điện thoại</p>
+                <p className="text-sm text-gray-900">{customer.phone}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Email</p>
+                <p className="text-sm text-gray-900">
+                  {customer.email || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Địa chỉ</p>
+              <p className="text-sm text-gray-900">{customer.address}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
+                <p className="text-sm text-gray-900">
+                  {customer.createdAt ? formatDate(customer.createdAt) : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
+                <p className="text-sm text-gray-900">
+                  {customer.updatedAt ? formatDate(customer.updatedAt) : "N/A"}
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-gray-600">Tên khách hàng</p>
-            <p className="text-sm text-gray-900">{customer.name}</p>
+        </div>
+
+        {/* Card 2: Thông tin doanh nghiệp */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            Thông tin doanh nghiệp
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Tên công ty</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {customer.company || "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Mã số thuế</p>
+              <p className="text-sm font-mono font-medium text-gray-900">
+                {customer.taxCode || "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Người liên hệ</p>
+              <p className="text-sm text-gray-900">
+                {customer.contactPerson || "N/A"}
+              </p>
+            </div>
+
+            {customer.description && (
+              <div className="pt-3 border-t">
+                <p className="text-xs text-gray-500 mb-1">Mô tả</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {customer.description}
+                </p>
+              </div>
+            )}
           </div>
-          <div>
-            <p className="text-sm text-gray-600">Mã số thuế</p>
-            <p className="text-sm text-gray-900">{customer.taxCode || "N/A"}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Người liên hệ</p>
-            <p className="text-sm text-gray-900">
-              {customer.contactPerson || "N/A"}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Số điện thoại</p>
-            <p className="text-sm text-gray-900">{customer.phone}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Email</p>
-            <p className="text-sm text-gray-900">{customer.email || "N/A"}</p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-sm text-gray-600">Địa chỉ</p>
-            <p className="text-sm text-gray-900">{customer.address}</p>
-          </div>
-          {/* <div>
-            <p className="text-sm text-gray-600">Ngày tạo</p>
-            <p className="text-sm text-gray-900">
-              {formatDate(customer.createdAt)}
-            </p>
-          </div> */}
         </div>
       </div>
+
+      {/* Assignment Modal */}
+      {showAssignmentModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Điều động nhân viên cho {customer.name}
+              </h2>
+              <button
+                onClick={() => setShowAssignmentModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Assignment Form */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Thông tin điều động</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Ngày bắt đầu *
+                  </label>
+                  <input
+                    type="date"
+                    value={assignmentForm.startDate}
+                    onChange={(e) =>
+                      setAssignmentForm({ ...assignmentForm, startDate: e.target.value })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Số ngày làm việc *
+                  </label>
+                  <input
+                    type="number"
+                    value={assignmentForm.workDays}
+                    onChange={(e) =>
+                      setAssignmentForm({ ...assignmentForm, workDays: Number(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Lương tại thời điểm (VND)
+                  </label>
+                  <input
+                    type="number"
+                    value={assignmentForm.salaryAtTime}
+                    onChange={(e) =>
+                      setAssignmentForm({ ...assignmentForm, salaryAtTime: Number(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Sẽ lấy từ lương nhân viên"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={assignmentForm.status}
+                    onChange={(e) =>
+                      setAssignmentForm({ ...assignmentForm, status: e.target.value })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="INACTIVE">Không hoạt động</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Mô tả
+                  </label>
+                  <textarea
+                    value={assignmentForm.description}
+                    onChange={(e) =>
+                      setAssignmentForm({ ...assignmentForm, description: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ghi chú về điều động..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Tìm kiếm nhân viên..."
+                value={searchEmployee}
+                onChange={(e) => {
+                  setSearchEmployee(e.target.value);
+                  loadEmployees();
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Employee List */}
+            {loadingEmployees ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {employees.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">Không tìm thấy nhân viên</p>
+                ) : (
+                  employees.map((employee) => (
+                    <div
+                      key={employee.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-lg font-semibold text-blue-600">
+                            {employee.name.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{employee.name}</p>
+                          <p className="text-sm text-gray-500">{employee.code} • {employee.phone}</p>
+                          <p className="text-xs text-gray-400">
+                            {employee.employeeType === "FIXED_BY_CONTRACT"
+                              ? "Nhân viên chính tại chỗ"
+                              : employee.employeeType === "FIXED_BY_DAY"
+                              ? "Nhân viên chính điều động"
+                              : "Nhân viên thời vụ"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {employee.monthlySalary
+                            ? formatCurrency(employee.monthlySalary) + "/tháng"
+                            : employee.dailySalary
+                            ? formatCurrency(employee.dailySalary) + "/ngày"
+                            : "N/A"}
+                        </p>
+                        <button
+                          onClick={() => handleAssignEmployee(employee)}
+                          className="mt-2 px-4 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                        >
+                          Chọn
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {showEditModal && editForm && (
@@ -267,13 +622,25 @@ export default function CustomerDetail() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã khách hàng
+                  Mã khách hàng *
                 </label>
                 <input
                   type="text"
                   value={editForm.code}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên khách hàng *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, code: e.target.value })
+                    setEditForm({ ...editForm, name: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -281,13 +648,55 @@ export default function CustomerDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên khách hàng
+                  Số điện thoại *
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Địa chỉ *
                 </label>
                 <input
                   type="text"
-                  value={editForm.name}
+                  value={editForm.address}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, name: e.target.value })
+                    setEditForm({ ...editForm, address: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên công ty
+                </label>
+                <input
+                  type="text"
+                  value={editForm.company || ""}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, company: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -323,62 +732,34 @@ export default function CustomerDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số điện thoại
+                  Trạng thái
                 </label>
-                <input
-                  type="tel"
-                  value={editForm.phone}
+                <select
+                  value={editForm.status || "ACTIVE"}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
+                    setEditForm({ ...editForm, status: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editForm.email || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                >
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="INACTIVE">Không hoạt động</option>
+                </select>
               </div>
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ
+                  Mô tả
                 </label>
-                <input
-                  type="text"
-                  value={editForm.address}
+                <textarea
+                  value={editForm.description || ""}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, address: e.target.value })
+                    setEditForm({ ...editForm, description: e.target.value })
                   }
+                  rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ghi chú thêm về khách hàng..."
                 />
               </div>
-
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày tạo
-                </label>
-                <input
-                  type="date"
-                  value={formatDateInput(editForm.createdAt)}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      createdAt: new Date(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div> */}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

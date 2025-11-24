@@ -244,151 +244,22 @@ export default function ContractDetailPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow">
-          {/* Header Section */}
-          <div className="px-8 py-6 border-b border-gray-200">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Hợp đồng #{contract.id}
-                </h1>
-                <p className="text-gray-600">
-                  Khách hàng: {getCustomerName(contract.customerName)}
-                </p>
-              </div>
-              <span
-                className={`px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full ${
-                  status.color === "green"
-                    ? "bg-green-100 text-green-800"
-                    : status.color === "yellow"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : status.color === "red"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {status.status}
-              </span>
-            </div>
-          </div>
-
-          {/* Details Section */}
-          <div className="px-8 py-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Card 1: Thông tin hợp đồng */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
               Thông tin hợp đồng
-            </h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Mã hợp đồng
-                </label>
-                <p className="text-gray-900">#{contract.id}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Khách hàng
-                </label>
-                <p className="text-gray-900">
-                  {getCustomerName(contract.customerName)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giá cơ bản
-                </label>
-                <p className="text-gray-900 font-semibold">
-                  {formatCurrency(contract.basePrice)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  VAT
-                </label>
-                <p className="text-gray-900">{formatCurrency(contract.vat)}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Tổng (Base + VAT)
-                </label>
-                <p className="text-gray-900 font-semibold">
-                  {formatCurrency(contract.total)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Chi phí phát sinh
-                </label>
-                <p className="text-gray-900">
-                  {formatCurrency(contract.extraCost)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giảm giá
-                </label>
-                <p className="text-gray-900">
-                  {formatCurrency(contract.discountCost)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giá cuối cùng
-                </label>
-                <p className="text-blue-600 font-bold text-lg">
-                  {formatCurrency(contract.finalPrice)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Trạng thái thanh toán
-                </label>
-                <p>
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      contract.paymentStatus === "PAID"
-                        ? "bg-green-100 text-green-800"
-                        : contract.paymentStatus === "PARTIAL"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {paymentStatusLabel}
-                  </span>
-                </p>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Dịch vụ
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {contract.serviceNames && contract.serviceNames.length > 0 ? (
-                    contract.serviceNames.map((serviceName, idx) => (
-                      <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                        {serviceName}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-gray-400">Chưa có dịch vụ</span>
-                  )}
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 mb-1">Mã hợp đồng</p>
+                  <p className="text-sm font-semibold text-gray-900">#{contract.id}</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Trạng thái hợp đồng
-                </label>
-                <p>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 mb-1">Trạng thái hợp đồng</p>
                   <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
                       status.color === "green"
                         ? "bg-green-100 text-green-800"
                         : status.color === "yellow"
@@ -400,31 +271,146 @@ export default function ContractDetailPage() {
                   >
                     {status.status}
                   </span>
+                </div>
+              </div>
+
+              {contract.contractNumber && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Số hợp đồng</p>
+                  <p className="text-sm font-mono font-medium text-gray-900">{contract.contractNumber}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {getCustomerName(contract.customerName)}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Ngày bắt đầu</p>
+                  <p className="text-sm text-gray-900">{formatDate(contract.startDate)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Ngày kết thúc</p>
+                  <p className="text-sm text-gray-900">{formatDate(contract.endDate)}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Trạng thái thanh toán</p>
+                <span
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                    contract.paymentStatus === "PAID"
+                      ? "bg-green-100 text-green-800"
+                      : contract.paymentStatus === "PARTIAL"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {paymentStatusLabel}
+                </span>
+              </div>
+
+              <div className="pt-2 border-t">
+                <p className="text-xs text-gray-500 mb-2">Dịch vụ</p>
+                <div className="flex flex-wrap gap-2">
+                  {contract.serviceNames && contract.serviceNames.length > 0 ? (
+                    contract.serviceNames.map((serviceName, idx) => (
+                      <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {serviceName}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-400">Chưa có dịch vụ</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
+                  <p className="text-sm text-gray-900">
+                    {contract.createdAt ? formatDate(contract.createdAt) : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
+                  <p className="text-sm text-gray-900">
+                    {contract.updatedAt ? formatDate(contract.updatedAt) : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {contract.description && (
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 mb-1">Mô tả</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{contract.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card 2: Thông tin tài chính */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+              Thông tin tài chính
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Giá cơ bản</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {formatCurrency(contract.basePrice)}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Ngày bắt đầu
-                </label>
-                <p className="text-gray-900">{formatDate(contract.startDate)}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Ngày kết thúc
-                </label>
-                <p className="text-gray-900">{formatDate(contract.endDate)}</p>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Mô tả
-                </label>
-                <p className="text-gray-900">
-                  {contract.description || "Không có mô tả"}
+                <p className="text-xs text-gray-500 mb-1">VAT</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {formatCurrency(contract.vat)}
                 </p>
               </div>
+
+              <div className="pt-2 border-t">
+                <p className="text-xs text-gray-500 mb-1">Tổng (Base + VAT)</p>
+                <p className="text-lg font-bold text-blue-600">
+                  {formatCurrency(contract.total)}
+                </p>
+              </div>
+
+              <div className="pt-3 border-t">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Điều chỉnh</h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-gray-600">Chi phí phát sinh</p>
+                    <p className="text-sm font-medium text-orange-600">
+                      +{formatCurrency(contract.extraCost)}
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-gray-600">Giảm giá</p>
+                    <p className="text-sm font-medium text-green-600">
+                      -{formatCurrency(contract.discountCost)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t">
+                <p className="text-xs text-gray-500 mb-1">Giá cuối cùng</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(contract.finalPrice)}
+                </p>
+              </div>
+
+              {contract.notes && (
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{contract.notes}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

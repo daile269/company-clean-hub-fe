@@ -10,9 +10,9 @@ export enum UserRole {
 
 // Enum cho loại nhân viên
 export enum EmployeeType {
-  FIXED_BY_CONTRACT = 'FIXED_BY_CONTRACT',        // Chính thức (Hợp đồng cố định)
-  FIXED_BY_DAY = 'FIXED_BY_DAY',        // Bán thời gian (Cố định theo ngày)
-  TEMPORARY = 'TEMPORARY'         // Tạm thời
+  FIXED_BY_CONTRACT = 'FIXED_BY_CONTRACT',        // nhân viên chính tại chỗ
+  FIXED_BY_DAY = 'FIXED_BY_DAY',        // nhân viên chính điều động
+  TEMPORARY = 'TEMPORARY'         // nhân viên thời vụ
 }
 
 // Enum cho loại lịch làm việc
@@ -104,7 +104,8 @@ export interface Employee {
   dailySalary?: number;          // Lương ngày (NV tạm thời)
   socialInsurance?: number;      // Bảo hiểm xã hội
   healthInsurance?: number;      // Bảo hiểm y tế
-  roleId?: number;               // ID vai trò
+  roleId?: number;
+  roleName?: string;               // Tên vai trò
   status?: string;               // Trạng thái
   description?: string;          // Mô tả
   regionalManagerId?: string;    // Thuộc QLV nào

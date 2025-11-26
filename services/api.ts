@@ -44,9 +44,12 @@ class ApiService {
     // Always get the latest token from localStorage or instance
     const token = this.getToken();
     
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const headers: Record<string, string> = {};
+
+    // Only add Content-Type if not FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -99,6 +102,38 @@ class ApiService {
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
+
+  async postFormData<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+  const token = this.getToken();
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  // Không thêm Content-Type, fetch sẽ tự set boundary cho multipart/form-data
+
+  const response = await fetch(`${this.baseURL}${endpoint}`, {
+    method: 'POST',
+    body: formData,
+    headers,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.clear();
+      this.setToken(null);
+      window.location.href = '/login';
+    }
+    const error = await response.json().catch(() => ({
+      success: false,
+      message: 'Có lỗi xảy ra',
+      code: response.status,
+    }));
+    throw error;
+  }
+
+  return response.json();
+}
 }
 
 export const apiService = new ApiService();

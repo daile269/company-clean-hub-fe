@@ -1,6 +1,8 @@
 import { apiService, ApiResponse } from './api';
 import { ApiEmployee, Employee, EmployeeType } from '@/types';
 
+const CLOUDINARY_CLOUD_NAME = 'dcewns7zp';
+
 export interface EmployeePaginationParams {
   keyword?: string;
   page?: number;
@@ -173,6 +175,47 @@ class EmployeeService {
   async delete(id: string): Promise<ApiResponse<void>> {
     return await apiService.delete<void>(`/employees/${id}`);
   }
+
+  async getEmployeeImages(id: string): Promise<EmployeeImage[]> {
+    try {
+      const response = await apiService.get<EmployeeImage[]>(`/employees/${id}/images`);
+      
+      if (response.success && response.data) {
+        console.log('Fetched employee images:', response.data);
+        return response.data;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error fetching employee images:', error);
+      return [];
+    }
+  }
+
+  async deleteImage(employeeId: string, imageId: string): Promise<ApiResponse<void>> {
+    return await apiService.delete<void>(`/employees/${employeeId}/images/${imageId}`);
+  }
+
+  async uploadImages(employeeId: string, formData: FormData): Promise<ApiResponse<EmployeeImage[]>> {
+
+
+    return apiService.postFormData<EmployeeImage[]>(`/employees/${employeeId}/images`, formData);
+  }
 }
+
+export interface EmployeeImage {
+  id: number;
+  cloudinaryPublicId: string;
+  uploadedAt: string;
+}
+
+// Helper functions for Cloudinary image URLs
+export const buildCloudinaryUrl = (publicId: string): string => {
+  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${publicId}`;
+};
+
+export const getCloudinaryCloudName = (): string => {
+  return CLOUDINARY_CLOUD_NAME;
+};
 
 export const employeeService = new EmployeeService();

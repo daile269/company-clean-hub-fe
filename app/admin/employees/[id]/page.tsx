@@ -9,7 +9,7 @@ import {
   mockCustomers,
 } from "@/lib/mockData";
 import { Employee, EmployeeType } from "@/types";
-import { employeeService } from "@/services/employeeService";
+import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
 
 export default function EmployeeDetail() {
   const params = useParams();
@@ -21,6 +21,11 @@ export default function EmployeeDetail() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Employee | null>(null);
+  const [employeeImages, setEmployeeImages] = useState<EmployeeImage[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showImageManageModal, setShowImageManageModal] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Load employee data from API
   useEffect(() => {
@@ -34,6 +39,11 @@ export default function EmployeeDetail() {
       setLoading(true);
       const data = await employeeService.getById(id!);
       setEmployee(data);
+      
+      // Load employee images
+      const images = await employeeService.getEmployeeImages(id!);
+      setEmployeeImages(images);
+      setSelectedImageIndex(0);
     } catch (error) {
       console.error("Error loading employee:", error);
     } finally {
@@ -119,6 +129,50 @@ export default function EmployeeDetail() {
     } catch (error: any) {
       console.error("Error updating employee:", error);
       toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+    }
+  };
+
+  const handleDeleteImage = async (imageId: string) => {
+    try {
+      await employeeService.deleteImage(id!, imageId);
+      toast.success("Đã xóa ảnh thành công");
+      // Reload images
+      const images = await employeeService.getEmployeeImages(id!);
+      setEmployeeImages(images);
+      setImageToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting image:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi xóa ảnh");
+    }
+  };
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !id) return;
+
+    try {
+      setIsUploadingImage(true);
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("file", files[i]);
+      }
+
+      const response = await employeeService.uploadImages(id, formData);
+      if (response.success) {
+        toast.success("Đã tải lên ảnh thành công");
+        // Reload images
+        const images = await employeeService.getEmployeeImages(id!);
+        setEmployeeImages(images);
+      } else {
+        toast.error(response.message || "Tải lên thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi tải lên");
+    } finally {
+      setIsUploadingImage(false);
+      // Reset input
+      if (e.target) e.target.value = "";
     }
   };
 
@@ -367,6 +421,112 @@ export default function EmployeeDetail() {
           </div>
         </div>
       </div>
+
+      {/* Employee Images Section */}
+      {employeeImages.length > 0 && (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Hình ảnh nhân viên
+            </h3>
+            <button
+              onClick={() => setShowImageManageModal(true)}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                />
+              </svg>
+              Sửa
+            </button>
+          </div>
+          
+          <div className="space-y-4 flex gap-3">
+            {/* Main Image - Fixed size container */}
+            <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
+              {employeeImages[selectedImageIndex] ? (
+                <img
+                  src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                  alt={`Employee image ${selectedImageIndex + 1}`}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="flex items-center justify-center text-gray-400">
+                  <svg
+                    className="w-16 h-16"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnail Images - Square grid */}
+            {employeeImages.length > 1 && (
+              <div className="w-3/12 grid grid-cols-3 gap-2">
+                {employeeImages.map((image, index) => (
+                  <div
+                    key={image.id}
+                    className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                      selectedImageIndex === index
+                        ? "border-blue-500 ring-2 ring-blue-300"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                    onClick={() => setSelectedImageIndex(index)}
+                    onMouseEnter={() => setSelectedImageIndex(index)}
+                  >
+                    <img
+                      src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                      alt={`Thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Image Info */}
+          {employeeImages[selectedImageIndex] && (
+            <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+              <p>
+                Ảnh {selectedImageIndex + 1} / {employeeImages.length}
+              </p>
+              {employeeImages[selectedImageIndex].uploadedAt && (
+                <p>
+                  Ngày tải lên:{" "}
+                  {new Intl.DateTimeFormat("vi-VN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Assignments */}
       <div className="mt-6">
         <h2 className="text-xl font-semibold mb-3">
@@ -807,6 +967,143 @@ export default function EmployeeDetail() {
                   />
                 </svg>
                 Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Management Modal */}
+      {showImageManageModal && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Quản lý hình ảnh nhân viên
+              </h2>
+              <button
+                onClick={() => setShowImageManageModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Confirm Delete Toast */}
+            {imageToDelete && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-800">
+                    Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn tác.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setImageToDelete(null)}
+                    className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => handleDeleteImage(imageToDelete)}
+                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Images Grid */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-800 mb-4">
+                Hình ảnh hiện tại ({employeeImages.length})
+              </label>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {employeeImages.map((image) => (
+                  <div
+                    key={image.id}
+                    className="relative aspect-square group"
+                  >
+                    <img
+                      src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                      alt={`Employee image ${image.id}`}
+                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                    />
+                    {/* Delete button */}
+                    <button
+                      onClick={() => setImageToDelete(image.id.toString())}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Xóa ảnh"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+
+                {/* Upload area */}
+                <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleUploadImage}
+                    disabled={isUploadingImage}
+                    className="hidden"
+                  />
+                  <div className="text-center">
+                    <svg
+                      className="w-8 h-8 mx-auto text-gray-400 mb-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <p className="text-xs font-medium text-gray-600">
+                      {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => setShowImageManageModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Đóng
               </button>
             </div>
           </div>

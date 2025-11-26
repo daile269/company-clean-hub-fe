@@ -1,71 +1,63 @@
-import Intro from "../components/Intro";
-import FadeInSection from "../components/FadeInSection";
-import ClientsSlider from "../components/ClientsSlider";
+import ClientsSlider from "@/components/ClientsSlider";
+import FadeInSection from "@/components/FadeInSection";
 import Link from "next/link";
 
-export default function Home() {
+export default function VeSinhTruongHoc() {
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <section
-        className="relative text-white w-full h-[20vh] md:h-[80vh] bg-cover bg-center bg-no-repeat"
+        className="relative text-white py-32 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('/banner-hd.jpg')`,
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/vs-sc.jpg')`,
         }}
-      ></section>
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-5xl font-bold mb-4">Vệ Sinh Trường Học</h1>
+          <p className="text-xl text-gray-200">
+            Dịch vụ vệ sinh chuyên biệt cho trường học, đảm bảo môi trường học
+            tập an toàn
+          </p>
+        </div>
+      </section>
 
-      {/* Animated Intro (image + text) */}
-      <Intro />
-
-      {/* Lời Cảm Ơn Chân Thành */}
+      {/* Giới thiệu dịch vụ */}
       <FadeInSection>
-        <section id="about" className="py-10 bg-white">
+        <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-12 items-center">
-              {/* Left side - Text content */}
-              <div className="space-y-6">
+              <div>
                 <h2 className="text-3xl font-bold text-[#4CCF96] mb-6">
-                  Giới Thiệu Opti Clean
+                  Dịch Vụ Vệ Sinh Trường Học
                 </h2>
-
-                <div className="space-y-4 text-gray-700">
-                  <p className="italic font-semibold">
-                    PANPACIFIC chân thành cảm ơn quý khách hàng đã quan tâm tới
-                    sản phẩm và dịch vụ Opti Clean của chúng tôi.
-                  </p>
-
+                <div className="space-y-4 text-gray-700 leading-relaxed">
                   <p>
-                    Opti Clean kết hợp đội ngũ chuyên viên kỹ thuật nhiều năm
-                    kinh nghiệm và nhân viên được đào tạo bài bản, vận hành theo
-                    quy trình chuẩn.
+                    Môi trường học tập sạch sẽ, an toàn là điều kiện tiên quyết
+                    để các em học sinh có thể phát triển toàn diện. Dịch vụ vệ
+                    sinh trường học của Opti Clean được thiết kế đặc biệt để đáp
+                    ứng các tiêu chuẩn vệ sinh nghiêm ngặt trong môi trường giáo
+                    dục.
                   </p>
-
                   <p>
-                    Bên cạnh đó, Opti Clean sử dụng máy móc, dụng cụ và hóa chất
-                    hiện đại, liên tục cải tiến để đảm bảo hiệu quả và an toàn
-                    cho khách hàng.
+                    Chúng tôi sử dụng hóa chất thân thiện với trẻ em, an toàn
+                    tuyệt đối, không gây kích ứng da hay đường hô hấp. Đội ngũ
+                    nhân viên được đào tạo chuyên sâu về vệ sinh môi trường
+                    trường học, hiểu rõ các yêu cầu đặc thù của từng khu vực.
                   </p>
-
-                  <p className="text-center text-[#FF6B6B] font-bold text-xl italic py-4">
-                    "Tận Tâm Trong Công Việc - Tận Tình Với Khách Hàng"
-                  </p>
-
                   <p>
-                    Chúng tôi tự tin mang lại giải pháp tối ưu với sản phẩm Opti
-                    Clean, giúp tiết kiệm chi phí và nâng cao chất lượng cuộc
-                    sống cho khách hàng.
+                    Chúng tôi phục vụ đa dạng các loại hình: mầm non, tiểu học,
+                    trung học, đại học, trung tâm ngoại ngữ, dạy nghề với quy
+                    trình vệ sinh phù hợp cho từng độ tuổi.
                   </p>
                 </div>
               </div>
-
-              {/* Right side - Image */}
-              <div className="relative">
+              <div>
                 <img
-                  src="/thank.png"
-                  alt="Opti Clean - PANPACIFIC"
-                  className="rounded-lg shadow-2xl w-[90%] h-[400px] object-cover"
-                  width="800"
-                  height="600"
+                  src="/vs-sc.jpg"
+                  alt="Vệ sinh trường học"
+                  className="rounded-lg shadow-xl w-full h-auto object-cover"
+                  width={800}
+                  height={600}
                 />
               </div>
             </div>
@@ -73,16 +65,13 @@ export default function Home() {
         </section>
       </FadeInSection>
 
-      {/* Services Section */}
+      {/* Dịch vụ khác */}
       <FadeInSection>
-        <section id="services" className="py-8 bg-gray-50">
+        <section className="py-8 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Giải pháp & dịch vụ Opti Clean
-              </h2>
-            </div>
-
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-6">
+              CÁC DỊCH VỤ KHÁC
+            </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Vệ sinh kính-alu */}
               <Link href="/services/ve-sinh-kinh-alu" className="block">
@@ -145,30 +134,7 @@ export default function Home() {
                   </h3>
                   <p className="text-gray-600 mb-4">
                     Dịch vụ vệ sinh linh hoạt theo giờ, phù hợp với mọi nhu cầu
-                    và thời gian của quý khách hàng, nhanh chóng – tiện lợi.
-                  </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
-                    Xem Thêm →
-                  </span>
-                </div>
-              </Link>
-
-              {/* Vệ sinh trường học */}
-              <Link href="/services/ve-sinh-truong-hoc" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
-                  <img
-                    src="/vs-sc.jpg"
-                    alt="Vệ sinh trường học"
-                    className="w-full h-40 object-cover rounded-md mb-4"
-                    width={640}
-                    height={240}
-                  />
-                  <h3 className="text-xl font-bold mb-3 text-[#4CCF96]">
-                    Vệ sinh trường học
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Dịch vụ vệ sinh chuyên biệt cho trường học, đảm bảo môi
-                    trường học tập an toàn và sạch sẽ cho học sinh.
+                    và thời gian của quý khách hàng,nhanh chóng – tiện lợi.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -260,7 +226,7 @@ export default function Home() {
                   </h3>
                   <p className="text-gray-600 mb-4">
                     Vệ sinh nhà máy, xưởng sản xuất theo tiêu chuẩn công nghiệp,
-                    đảm bảo sạch sẽ,an toàn và vệ sinh lao động.
+                    đảm bảo sạch sẽ, an toàn và vệ sinh lao động.
                   </p>
                   <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
@@ -271,7 +237,6 @@ export default function Home() {
           </div>
         </section>
       </FadeInSection>
-
       {/* Khách Hàng Tiêu Biểu */}
       <FadeInSection>
         <section id="customers" className="py-8 bg-white">
@@ -287,107 +252,6 @@ export default function Home() {
           </div>
         </section>
       </FadeInSection>
-
-      {/* Tin Tức Mới Nhất */}
-      <FadeInSection>
-        <section id="news" className="py-8 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">Tin Tức</h2>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Article 1 */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-                <img
-                  src="/rb.png"
-                  alt="News 1"
-                  className="w-full h-48 object-cover"
-                  width="400"
-                  height="192"
-                />
-                <div className="p-6">
-                  <span className="text-sm text-[#4CCF96] font-semibold">
-                    Công nghệ
-                  </span>
-                  <h3 className="text-xl font-bold mt-2 mb-3 text-[#4CCF96]">
-                    Robot vệ sinh thông minh - Xu hướng mới trong ngành
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Công nghệ robot vệ sinh đang dần thay đổi cách thức quản lý
-                    vệ sinh tại các tòa nhà lớn...
-                  </p>
-                  <a
-                    href="/news/robot-ve-sinh"
-                    className="text-blue-600 font-medium hover:text-blue-800"
-                  >
-                    Đọc thêm →
-                  </a>
-                </div>
-              </div>
-
-              {/* Article 2 */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-                <img
-                  src="/mt.png"
-                  alt="News 2"
-                  className="w-full h-48 object-cover"
-                  width="400"
-                  height="192"
-                />
-                <div className="p-6">
-                  <span className="text-sm text-[#4CCF96] font-semibold">
-                    Môi trường
-                  </span>
-                  <h3 className="text-xl font-bold mt-2 mb-3 text-[#4CCF96]">
-                    Sử dụng hóa chất thân thiện với môi trường
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    PANPACIFIC cam kết sử dụng các sản phẩm vệ sinh không gây
-                    hại cho môi trường và sức khỏe...
-                  </p>
-                  <a
-                    href="/news/hoa-chat-xanh"
-                    className="text-blue-600 font-medium hover:text-blue-800"
-                  >
-                    Đọc thêm →
-                  </a>
-                </div>
-              </div>
-
-              {/* Article 3 */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-                <img
-                  src="/dd.png"
-                  alt="News 3"
-                  className="w-full h-48 object-cover"
-                  width="400"
-                  height="192"
-                />
-                <div className="p-6">
-                  <span className="text-sm text-[#4CCF96] font-semibold">
-                    Dự án
-                  </span>
-                  <h3 className="text-xl font-bold mt-2 mb-3 text-[#4CCF96]">
-                    Ký kết hợp đồng với tập đoàn Samsung
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    PANPACIFIC vinh dự trở thành đối tác vệ sinh công nghiệp cho
-                    các nhà máy Samsung tại Việt Nam...
-                  </p>
-                  <a
-                    href="/news/hop-tac-samsung"
-                    className="text-blue-600 font-medium hover:text-blue-800"
-                  >
-                    Đọc thêm →
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </FadeInSection>
-
       {/* Liên Hệ */}
       <FadeInSection>
         <section id="contact" className="py-6 bg-white">

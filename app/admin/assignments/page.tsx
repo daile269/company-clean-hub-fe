@@ -44,7 +44,7 @@ export default function AssignmentsPage() {
       setTotalElements(response.totalElements);
     } catch (error) {
       console.error("Error loading assignments:", error);
-      toast.error("Không thể tải danh sách điều động");
+      toast.error("Không thể tải danh sách phân công");
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ export default function AssignmentsPage() {
     <div>
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý điều động</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý phân công</h1>
       </div>
 
       {/* Loading State */}
@@ -133,7 +133,7 @@ export default function AssignmentsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Tên nhân viên, khách hàng..."
+                  placeholder="Mã phân công,tên nhân viên, khách hàng..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -147,7 +147,7 @@ export default function AssignmentsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Tổng điều động</p>
+                  <p className="text-sm text-gray-600">Tổng phân công</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {totalElements}
                   </p>
@@ -256,6 +256,9 @@ export default function AssignmentsPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mã phân công
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nhân viên
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -274,6 +277,9 @@ export default function AssignmentsPage() {
                       Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loại phân công
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ngày cập nhật
                     </th>
                   </tr>
@@ -288,6 +294,11 @@ export default function AssignmentsPage() {
                       }
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {assignment.id || `ID: ${assignment.customerId}`}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0">
                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
@@ -296,14 +307,16 @@ export default function AssignmentsPage() {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {assignment.employeeName || `ID: ${assignment.employeeId}`}
+                              {assignment.employeeName ||
+                                `ID: ${assignment.employeeId}`}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {assignment.customerName || `ID: ${assignment.customerId}`}
+                          {assignment.customerName ||
+                            `ID: ${assignment.customerId}`}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -319,7 +332,16 @@ export default function AssignmentsPage() {
                         {getStatusBadge(assignment.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {assignment.updatedAt ? formatDate(assignment.updatedAt) : "N/A"}
+                        {assignment.assignmentType === "TEMPORARY"
+                          ? "Thay thế tạm thời"
+                          : assignment.assignmentType === "REGULAR"
+                          ? "Cố định"
+                          : "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {assignment.updatedAt
+                          ? formatDate(assignment.updatedAt)
+                          : "N/A"}
                       </td>
                     </tr>
                   ))}
@@ -343,7 +365,7 @@ export default function AssignmentsPage() {
                   />
                 </svg>
                 <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  Không tìm thấy điều động
+                  Không tìm thấy phân công
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Thử thay đổi từ khóa tìm kiếm

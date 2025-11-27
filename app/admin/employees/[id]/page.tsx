@@ -9,8 +9,11 @@ import {
   mockCustomers,
 } from "@/lib/mockData";
 import { Employee, EmployeeType } from "@/types";
+
 import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
+import { assignmentService, Assignment } from "@/services/assignmentService";
+
 
 export default function EmployeeDetail() {
   const params = useParams();
@@ -29,6 +32,8 @@ export default function EmployeeDetail() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingEmployeeImage, setIsUploadingEmployeeImage] = useState(false);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
   useEffect(() => {
     if (id) {
       loadEmployee();
@@ -52,9 +57,27 @@ export default function EmployeeDetail() {
     }
   };
 
-  const assignments = mockAssignments.filter((a) => a.employeeId === id);
+  // keep payrolls/ratings from mock for now
   const payrolls = mockPayrolls.filter((p) => p.employeeId === id).slice(0, 6);
   const ratings = mockRatings.filter((r) => r.employeeId === id).slice(0, 6);
+
+  useEffect(() => {
+    if (id) loadAssignments();
+  }, [id]);
+
+  const loadAssignments = async () => {
+    try {
+      setLoadingAssignments(true);
+      const data = await assignmentService.getByEmployeeId(id!);
+      setAssignments(data || []);
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+      setAssignments([]);
+    } finally {
+      setLoadingAssignments(false);
+    }
+  };
+  // previous mockAssignments removed in favor of real API
 
   if (loading) {
     return (
@@ -581,35 +604,46 @@ export default function EmployeeDetail() {
       {/* Assignments */}
       <div className="mt-6">
         <h2 className="text-xl font-semibold mb-3">
-          Phân công/Đơn vị phụ trách
+          Phân công
         </h2>
-        {assignments.length === 0 ? (
+        {loadingAssignments ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : assignments.length === 0 ? (
           <p className="text-sm text-gray-500">Chưa có phân công nào</p>
         ) : (
           <div className="grid gap-4">
             {assignments.map((a) => {
-              const customer = mockCustomers.find((c) => c.id === a.customerId);
+              // prefer customerName returned by API, fallback to mockCustomers
+              const customer = (a.customerName && { name: a.customerName }) || mockCustomers.find((c) => c.id === String(a.customerId));
               return (
                 <div
                   key={a.id}
-                  className="p-4 bg-white rounded shadow-sm border"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/admin/assignments/${a.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") router.push(`/admin/assignments/${a.id}`);
+                  }}
+                  className="p-4 bg-white rounded shadow-sm border cursor-pointer hover:bg-gray-50"
                 >
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-sm font-medium">
                         {customer?.name || a.customerId}
                       </p>
-                      <p className="text-sm text-gray-500">{a.workSchedule}</p>
+                      <p className="text-sm text-gray-500">
+                        { (a as any).workSchedule || a.description || (a.workDays ? `${a.workDays} ngày` : "") }
+                      </p>
                     </div>
                     <div className="text-sm text-gray-400">
-                      {new Intl.DateTimeFormat("vi-VN").format(
-                        new Date(a.startDate)
-                      )}
+                      {a.startDate ? new Intl.DateTimeFormat("vi-VN").format(new Date(a.startDate)) : ""}
                     </div>
                   </div>
-                  {a.notes && (
+                  {a.description && (
                     <p className="mt-2 text-sm text-gray-600">
-                      Ghi chú: {a.notes}
+                      Ghi chú: {a.description}
                     </p>
                   )}
                 </div>
@@ -619,71 +653,6 @@ export default function EmployeeDetail() {
         )}
       </div>
 
-      {/* Recent Payrolls */}
-      <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-3">Bảng lương gần đây</h2>
-        {payrolls.length === 0 ? (
-          <p className="text-sm text-gray-500">Chưa có dữ liệu bảng lương</p>
-        ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tháng
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Lương cơ bản
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày trả
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {payrolls.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-4 py-2 text-sm text-gray-700">
-                        {p.month}/{p.year}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-700">
-                        {new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        }).format(p.baseSalary)}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-500">
-                        {p.paidDate
-                          ? new Intl.DateTimeFormat("vi-VN").format(
-                              new Date(p.paidDate)
-                            )
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-2 text-sm">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            p.status === "PAID"
-                              ? "bg-green-100 text-green-800"
-                              : p.status === "ADVANCE"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {p.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Ratings */}
       <div className="mt-6">

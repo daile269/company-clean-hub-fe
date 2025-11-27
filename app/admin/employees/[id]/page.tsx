@@ -10,6 +10,7 @@ import {
 } from "@/lib/mockData";
 import { Employee, EmployeeType } from "@/types";
 import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
+import { ImageUploader } from "@/components/shared/ImageUploader";
 
 export default function EmployeeDetail() {
   const params = useParams();
@@ -26,8 +27,8 @@ export default function EmployeeDetail() {
   const [showImageManageModal, setShowImageManageModal] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-
-  // Load employee data from API
+  const [isUploadingEmployeeImage, setIsUploadingEmployeeImage] = useState(false);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
   useEffect(() => {
     if (id) {
       loadEmployee();
@@ -134,6 +135,7 @@ export default function EmployeeDetail() {
 
   const handleDeleteImage = async (imageId: string) => {
     try {
+      setIsDeletingImage(true);
       await employeeService.deleteImage(id!, imageId);
       toast.success("Đã xóa ảnh thành công");
       // Reload images
@@ -143,6 +145,8 @@ export default function EmployeeDetail() {
     } catch (error: any) {
       console.error("Error deleting image:", error);
       toast.error(error.message || "Có lỗi xảy ra khi xóa ảnh");
+    } finally {
+      setIsDeletingImage(false);
     }
   };
 
@@ -156,7 +160,7 @@ export default function EmployeeDetail() {
       for (let i = 0; i < files.length; i++) {
         formData.append("file", files[i]);
       }
-
+ 
       const response = await employeeService.uploadImages(id, formData);
       if (response.success) {
         toast.success("Đã tải lên ảnh thành công");
@@ -171,6 +175,37 @@ export default function EmployeeDetail() {
       toast.error(error.message || "Có lỗi xảy ra khi tải lên");
     } finally {
       setIsUploadingImage(false);
+      // Reset input
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleUploadEmployeeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !id) return;
+
+    try {
+      setIsUploadingEmployeeImage(true);
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("file", files[i]);
+      }
+
+      const response = await employeeService.uploadImages(id, formData);
+      if (response.success) {
+        toast.success("Đã tải lên ảnh thành công");
+        // Reload images
+        const images = await employeeService.getEmployeeImages(id!);
+        setEmployeeImages(images);
+        setSelectedImageIndex(0);
+      } else {
+        toast.error(response.message || "Tải lên thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi tải lên");
+    } finally {
+      setIsUploadingEmployeeImage(false);
       // Reset input
       if (e.target) e.target.value = "";
     }
@@ -423,12 +458,12 @@ export default function EmployeeDetail() {
       </div>
 
       {/* Employee Images Section */}
-      {employeeImages.length > 0 && (
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4 pb-2 border-b">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Hình ảnh nhân viên
-            </h3>
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex justify-between items-center mb-4 pb-2 border-b">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Hình ảnh nhân viên
+          </h3>
+          {employeeImages.length > 0 && (
             <button
               onClick={() => setShowImageManageModal(true)}
               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
@@ -449,83 +484,99 @@ export default function EmployeeDetail() {
               </svg>
               Sửa
             </button>
-          </div>
-          
-          <div className="space-y-4 flex gap-3">
-            {/* Main Image - Fixed size container */}
-            <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
-              {employeeImages[selectedImageIndex] ? (
-                <img
-                  src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
-                  alt={`Employee image ${selectedImageIndex + 1}`}
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="flex items-center justify-center text-gray-400">
-                  <svg
-                    className="w-16 h-16"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
+          )}
+        </div>
+        
+        {employeeImages.length > 0 ? (
+          <>
+            <div className="space-y-4 flex gap-3">
+              
+              {/* Main Image - Fixed size container */}
+              <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
+                {employeeImages[selectedImageIndex] ? (
+                  <img
+                    src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                    alt={`Employee image ${selectedImageIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center text-gray-400">
+                    <svg
+                      className="w-16 h-16"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail Images - Square grid */}
+              {employeeImages.length > 1 && (
+                <div className="w-3/12 grid grid-cols-3 gap-2">
+                  {employeeImages.map((image, index) => (
+                    <div
+                      key={image.id}
+                      className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                        selectedImageIndex === index
+                          ? "border-blue-500 ring-2 ring-blue-300"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
+                      onClick={() => setSelectedImageIndex(index)}
+                      onMouseEnter={() => setSelectedImageIndex(index)}
+                    >
+                      <img
+                        src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Thumbnail Images - Square grid */}
-            {employeeImages.length > 1 && (
-              <div className="w-3/12 grid grid-cols-3 gap-2">
-                {employeeImages.map((image, index) => (
-                  <div
-                    key={image.id}
-                    className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                      selectedImageIndex === index
-                        ? "border-blue-500 ring-2 ring-blue-300"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                    onClick={() => setSelectedImageIndex(index)}
-                    onMouseEnter={() => setSelectedImageIndex(index)}
-                  >
-                    <img
-                      src={buildCloudinaryUrl(image.cloudinaryPublicId)}
-                      alt={`Thumbnail ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
+            {/* Image Info */}
+            {employeeImages[selectedImageIndex] && (
+              <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+                <p>
+                  Ảnh {selectedImageIndex + 1} / {employeeImages.length}
+                </p>
+                {employeeImages[selectedImageIndex].uploadedAt && (
+                  <p>
+                    Ngày tải lên:{" "}
+                    {new Intl.DateTimeFormat("vi-VN", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                  </p>
+                )}
               </div>
             )}
-          </div>
-
-          {/* Image Info */}
-          {employeeImages[selectedImageIndex] && (
-            <div className="mt-4 pt-4 border-t text-sm text-gray-600">
-              <p>
-                Ảnh {selectedImageIndex + 1} / {employeeImages.length}
-              </p>
-              {employeeImages[selectedImageIndex].uploadedAt && (
-                <p>
-                  Ngày tải lên:{" "}
-                  {new Intl.DateTimeFormat("vi-VN", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+          </>
+        ) : (
+          <ImageUploader
+            onChange={handleUploadEmployeeImage}
+            isLoading={isUploadingEmployeeImage}
+            loadingText="Đang tải..."
+            emptyText="Chưa có hình ảnh"
+            helpText="Click để chọn hoặc kéo thả ảnh"
+            aspectRatio="video"
+            width="w-7/12"
+            multiple={true}
+          />
+        )}
+      </div>
 
       {/* Assignments */}
       <div className="mt-6">
@@ -976,7 +1027,35 @@ export default function EmployeeDetail() {
       {/* Image Management Modal */}
       {showImageManageModal && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            {/* Loading Overlay */}
+            {(isUploadingImage || isDeletingImage) && (
+              <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-40">
+                <div className="bg-white rounded-lg p-6 shadow-lg flex flex-col items-center gap-3">
+                  <svg
+                    className="animate-spin h-10 w-10 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <p className="text-sm font-medium text-gray-700">{isDeletingImage ? "Đang xóa..." : "Đang tải..."}</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
                 Quản lý hình ảnh nhân viên
@@ -1012,15 +1091,42 @@ export default function EmployeeDetail() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setImageToDelete(null)}
-                    className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50"
+                    disabled={isDeletingImage}
+                    className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Hủy
                   </button>
                   <button
                     onClick={() => handleDeleteImage(imageToDelete)}
-                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                    disabled={isDeletingImage}
+                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Xóa
+                    {isDeletingImage ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Đang xóa...
+                      </>
+                    ) : (
+                      "Xóa"
+                    )}
                   </button>
                 </div>
               </div>
@@ -1045,7 +1151,8 @@ export default function EmployeeDetail() {
                     {/* Delete button */}
                     <button
                       onClick={() => setImageToDelete(image.id.toString())}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      disabled={isDeletingImage}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Xóa ảnh"
                     >
                       <svg
@@ -1075,6 +1182,32 @@ export default function EmployeeDetail() {
                     disabled={isUploadingImage}
                     className="hidden"
                   />
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <svg
+                          className="animate-spin h-6 w-6 text-blue-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        <p className="text-xs font-medium text-gray-600">Đang tải...</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="text-center">
                     <svg
                       className="w-8 h-8 mx-auto text-gray-400 mb-2"

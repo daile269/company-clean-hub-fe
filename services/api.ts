@@ -110,8 +110,6 @@ class ApiService {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  // Không thêm Content-Type, fetch sẽ tự set boundary cho multipart/form-data
-
   const response = await fetch(`${this.baseURL}${endpoint}`, {
     method: 'POST',
     body: formData,

@@ -2,7 +2,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-import { assignmentService, Assignment, AssignmentCreateRequest } from "@/services/assignmentService";
+import {
+  assignmentService,
+  Assignment,
+  AssignmentCreateRequest,
+} from "@/services/assignmentService";
 
 export default function AssignmentDetail() {
   const params = useParams();
@@ -28,7 +32,7 @@ export default function AssignmentDetail() {
       setAssignment(data);
     } catch (error) {
       console.error("Error loading assignment:", error);
-      toast.error("Không thể tải thông tin điều động");
+      toast.error("Không thể tải thông tin phân công");
     } finally {
       setLoading(false);
     }
@@ -65,7 +69,9 @@ export default function AssignmentDetail() {
   if (!assignment) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-bold">Không tìm thấy thông tin điều động</h1>
+        <h1 className="text-xl font-bold">
+          Không tìm thấy thông tin phân công
+        </h1>
       </div>
     );
   }
@@ -101,10 +107,13 @@ export default function AssignmentDetail() {
         description: editForm.description,
       };
 
-      const response = await assignmentService.update(assignment.id, updateData);
-      
+      const response = await assignmentService.update(
+        assignment.id,
+        updateData
+      );
+
       if (response.success) {
-        toast.success("Đã cập nhật thông tin điều động thành công");
+        toast.success("Đã cập nhật thông tin phân công thành công");
         setShowEditModal(false);
         loadAssignment();
       } else {
@@ -119,11 +128,11 @@ export default function AssignmentDetail() {
   const handleDelete = async () => {
     if (!assignment) return;
 
-    if (confirm("Bạn có chắc chắn muốn xóa điều động này?")) {
+    if (confirm("Bạn có chắc chắn muốn xóa phân công này?")) {
       try {
         const response = await assignmentService.delete(assignment.id);
         if (response.success) {
-          toast.success("Đã xóa điều động thành công");
+          toast.success("Đã xóa phân công thành công");
           router.push("/admin/assignments");
         } else {
           toast.error(response.message || "Xóa thất bại");
@@ -165,7 +174,7 @@ export default function AssignmentDetail() {
     <div className="p-6">
       <Toaster position="top-right" />
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Chi tiết điều động</h1>
+        <h1 className="text-2xl font-bold">Chi tiết phân công</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => router.back()}
@@ -232,48 +241,69 @@ export default function AssignmentDetail() {
 
       {/* Main Information Grid - 2 Cards Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Thông tin điều động */}
+        {/* Card 1: Thông tin phân công */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
-            Thông tin điều động
+            Thông tin phân công
           </h3>
           <div className="space-y-4">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <p className="text-xs text-gray-500 mb-1">Mã điều động</p>
-                <p className="text-sm font-semibold text-gray-900">#{assignment.id}</p>
+                <p className="text-xs text-gray-500 mb-1">Mã phân công</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  #{assignment.id}
+                </p>
               </div>
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
-                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(assignment.status)}`}>
+                <span
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                    assignment.status
+                  )}`}
+                >
                   {getStatusLabel(assignment.status)}
                 </span>
               </div>
             </div>
 
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Nhân viên</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {assignment.employeeName || `ID: ${assignment.employeeId}`}
-              </p>
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Nhân viên</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {assignment.employeeName || `ID: ${assignment.employeeId}`}
+                </p>
+              </div>
 
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {assignment.customerName || `ID: ${assignment.customerId}`}
-              </p>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {assignment.customerName || `ID: ${assignment.customerId}`}
+                </p>
+              </div>
             </div>
-
+            <div>
+                <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+                <p className="text-sm text-gray-900">
+                  {assignment.assignmentType === "TEMPORARY"
+                          ? "Thay thế tạm thời"
+                          : assignment.assignmentType === "REGULAR"
+                          ? "Cố định"
+                          : "N/A"}
+                </p>
+              </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày bắt đầu</p>
-                <p className="text-sm text-gray-900">{formatDate(assignment.startDate)}</p>
+                <p className="text-sm text-gray-900">
+                  {formatDate(assignment.startDate)}
+                </p>
               </div>
               {assignment.endDate && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Ngày kết thúc</p>
-                  <p className="text-sm text-gray-900">{formatDate(assignment.endDate)}</p>
+                  <p className="text-sm text-gray-900">
+                    {formatDate(assignment.endDate)}
+                  </p>
                 </div>
               )}
             </div>
@@ -282,13 +312,17 @@ export default function AssignmentDetail() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
                 <p className="text-sm text-gray-900">
-                  {assignment.createdAt ? formatDate(assignment.createdAt) : "N/A"}
+                  {assignment.createdAt
+                    ? formatDate(assignment.createdAt)
+                    : "N/A"}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
                 <p className="text-sm text-gray-900">
-                  {assignment.updatedAt ? formatDate(assignment.updatedAt) : "N/A"}
+                  {assignment.updatedAt
+                    ? formatDate(assignment.updatedAt)
+                    : "N/A"}
                 </p>
               </div>
             </div>
@@ -296,7 +330,9 @@ export default function AssignmentDetail() {
             {assignment.description && (
               <div className="pt-3 border-t">
                 <p className="text-xs text-gray-500 mb-1">Mô tả</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{assignment.description}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {assignment.description}
+                </p>
               </div>
             )}
           </div>
@@ -316,16 +352,22 @@ export default function AssignmentDetail() {
             </div>
 
             <div className="pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-1">Lương tại thời điểm điều động</p>
+              <p className="text-xs text-gray-500 mb-1">
+                Lương tại thời điểm phân công
+              </p>
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(assignment.salaryAtTime)}
               </p>
             </div>
 
             <div className="pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-1">Tổng thu nhập dự kiến</p>
+              <p className="text-xs text-gray-500 mb-1">
+                Tổng thu nhập dự kiến
+              </p>
               <p className="text-lg font-semibold text-gray-900">
-                {formatCurrency(assignment.salaryAtTime * (assignment.workDays / 30))}
+                {formatCurrency(
+                  assignment.salaryAtTime * (assignment.workDays / 30)
+                )}
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 (Tính theo: Lương × Số ngày / 30)
@@ -341,7 +383,7 @@ export default function AssignmentDetail() {
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Chỉnh sửa điều động
+                Chỉnh sửa phân công
               </h2>
               <button
                 onClick={() => setShowEditModal(false)}
@@ -394,7 +436,11 @@ export default function AssignmentDetail() {
                 </label>
                 <input
                   type="date"
-                  value={editForm.startDate ? formatDateInput(editForm.startDate) : ""}
+                  value={
+                    editForm.startDate
+                      ? formatDateInput(editForm.startDate)
+                      : ""
+                  }
                   onChange={(e) =>
                     setEditForm({ ...editForm, startDate: e.target.value })
                   }
@@ -427,7 +473,10 @@ export default function AssignmentDetail() {
                   type="number"
                   value={editForm.workDays || 0}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, workDays: Number(e.target.value) })
+                    setEditForm({
+                      ...editForm,
+                      workDays: Number(e.target.value),
+                    })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -441,7 +490,10 @@ export default function AssignmentDetail() {
                   type="number"
                   value={editForm.salaryAtTime || 0}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, salaryAtTime: Number(e.target.value) })
+                    setEditForm({
+                      ...editForm,
+                      salaryAtTime: Number(e.target.value),
+                    })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -458,7 +510,7 @@ export default function AssignmentDetail() {
                   }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ghi chú về điều động..."
+                  placeholder="Ghi chú về phân công..."
                 />
               </div>
             </div>

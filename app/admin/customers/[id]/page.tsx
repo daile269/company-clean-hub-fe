@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
 import { employeeService } from "@/services/employeeService";
-import { assignmentService, AssignmentCreateRequest } from "@/services/assignmentService";
+import { assignmentService, AssignmentCreateRequest, TemporaryReassignmentRequest, Assignment } from "@/services/assignmentService";
 import { Customer, Employee } from "@/types";
 
 export default function CustomerDetail() {
@@ -20,13 +20,31 @@ export default function CustomerDetail() {
   
   // Assignment states
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showReassignmentModal, setShowReassignmentModal] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [searchEmployee, setSearchEmployee] = useState("");
+  const [assignedEmployees, setAssignedEmployees] = useState<Assignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>([]);
+  const [loadingNotAssigned, setLoadingNotAssigned] = useState(false);
   const [assignmentForm, setAssignmentForm] = useState<Partial<AssignmentCreateRequest>>({
     startDate: new Date().toISOString().split('T')[0],
     status: "ACTIVE",
     workDays: 20,
+    salaryAtTime: 0,
+    description: "",
+  });
+  const [reassignmentForm, setReassignmentForm] = useState<{
+    replacementEmployeeId: number | null;
+    replacedEmployeeId: number | null;
+    date: string;
+    salaryAtTime?: number;
+    description: string;
+  }>({
+    replacementEmployeeId: null,
+    replacedEmployeeId: null,
+    date: new Date().toISOString().split('T')[0],
     salaryAtTime: 0,
     description: "",
   });
@@ -35,6 +53,7 @@ export default function CustomerDetail() {
   useEffect(() => {
     if (id) {
       loadCustomer();
+      loadAssignedEmployees();
     }
   }, [id]);
 
@@ -48,6 +67,18 @@ export default function CustomerDetail() {
       toast.error("Không thể tải thông tin khách hàng");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAssignedEmployees = async () => {
+    try {
+      setLoadingAssignments(true);
+      const data = await assignmentService.getByCustomerId(id!);
+      setAssignedEmployees(data);
+    } catch (error) {
+      console.error("Error loading assigned employees:", error);
+    } finally {
+      setLoadingAssignments(false);
     }
   };
 
@@ -85,7 +116,7 @@ export default function CustomerDetail() {
     );
   }
 
-  const formatDate = (date: Date) =>
+  const formatDate = (date: Date | string) =>
     new Intl.DateTimeFormat("vi-VN").format(new Date(date));
 
   const formatDateInput = (date: Date) => {
@@ -163,6 +194,66 @@ export default function CustomerDetail() {
     loadEmployees();
   };
 
+  const handleOpenReassignmentModal = async () => {
+    setShowReassignmentModal(true);
+    // Load assigned employees for "replaced" column
+    await loadAssignedEmployees();
+    // Load not-assigned employees for "replacement" column
+    await loadNotAssignedEmployees();
+  };
+
+  const loadNotAssignedEmployees = async () => {
+    try {
+      setLoadingNotAssigned(true);
+      const data = await assignmentService.getNotAssignedByCustomerId(id!, {
+        page: 0,
+        pageSize: 100,
+      });
+      console.log("Not assigned employees:", data);
+      setNotAssignedEmployees(data);
+    } catch (error) {
+      console.error("Error loading not-assigned employees:", error);
+      toast.error("Không thể tải danh sách nhân viên");
+    } finally {
+      setLoadingNotAssigned(false);
+    }
+  };
+
+  const handleTemporaryReassignment = async () => {
+    if (!reassignmentForm.replacementEmployeeId || !reassignmentForm.replacedEmployeeId) {
+      toast.error("Vui lòng chọn đầy đủ nhân viên thay thế và nhân viên bị thay");
+      return;
+    }
+
+    try {
+      const data: TemporaryReassignmentRequest = {
+        replacementEmployeeId: reassignmentForm.replacementEmployeeId,
+        replacedEmployeeId: reassignmentForm.replacedEmployeeId,
+        date: reassignmentForm.date,
+        salaryAtTime: reassignmentForm.salaryAtTime ?? 0,
+        description: reassignmentForm.description || "Điều động tạm thời",
+      };
+
+      const response = await assignmentService.temporaryReassignment(data);
+      
+      if (response.success) {
+        toast.success("Điều động tạm thời thành công");
+        setShowReassignmentModal(false);
+        setReassignmentForm({
+          replacementEmployeeId: null,
+          replacedEmployeeId: null,
+          date: new Date().toISOString().split('T')[0],
+          description: "",
+        });
+      } else {
+        toast.error(response.message || "Điều động thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error temporary reassignment:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi điều động");
+    }
+  };
+
   const handleAssignEmployee = async (employee: Employee) => {
     if (!customer) return;
 
@@ -174,13 +265,13 @@ export default function CustomerDetail() {
         status: assignmentForm.status || "ACTIVE",
         salaryAtTime: assignmentForm.salaryAtTime || employee.monthlySalary || employee.dailySalary || 0,
         workDays: assignmentForm.workDays || 20,
-        description: assignmentForm.description || `Điều động ${employee.name} đến ${customer.name}`,
+        description: assignmentForm.description || `Phân công ${employee.name} đến ${customer.name}`,
       };
 
       const response = await assignmentService.create(assignmentData);
       
       if (response.success) {
-        toast.success(`Đã điều động nhân viên ${employee.name} thành công`);
+        toast.success(`Đã phân công nhân viên ${employee.name} thành công`);
         setShowAssignmentModal(false);
         // Reset form
         setAssignmentForm({
@@ -190,12 +281,14 @@ export default function CustomerDetail() {
           salaryAtTime: 0,
           description: "",
         });
+        // Reload assigned employees list
+        loadAssignedEmployees();
       } else {
-        toast.error(response.message || "Điều động thất bại");
+        toast.error(response.message || "Phân công thất bại");
       }
     } catch (error: any) {
       console.error("Error assigning employee:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi điều động");
+      toast.error(error.message || "Có lỗi xảy ra khi phân công");
     }
   };
 
@@ -251,7 +344,27 @@ export default function CustomerDetail() {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Điều động
+            Phân công nhân viên
+          </button>
+          <button
+            onClick={handleOpenReassignmentModal}
+            className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 inline-flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            Điều động tạm thời
           </button>
           <button
             onClick={handleEdit}
@@ -415,13 +528,162 @@ export default function CustomerDetail() {
         </div>
       </div>
 
+      {/* Card 3: Nhân viên đang phụ trách */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Nhân viên đang phụ trách
+          </h3>
+          <button
+            onClick={loadAssignedEmployees}
+            className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Làm mới
+          </button>
+        </div>
+
+        {loadingAssignments ? (
+          <div className="flex justify-center items-center py-8">
+            <svg
+              className="animate-spin h-8 w-8 text-blue-600"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          </div>
+        ) : assignedEmployees.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-16 h-16 mx-auto mb-3 text-gray-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            <p className="text-sm">Chưa có nhân viên nào được phân công cho khách hàng này</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Mã phân công</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Mã NV</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Tên nhân viên</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Ngày bắt đầu</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Trạng thái</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Lương</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Ngày công</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Mô tả</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignedEmployees.map((assignment) => (
+                  <tr
+                    key={assignment.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/admin/assignments/${assignment.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") router.push(`/admin/assignments/${assignment.id}`);
+                      }}
+                    className="border-b hover:bg-gray-50 cursor-pointer"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-mono font-medium text-blue-600">
+                        {assignment.id}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-mono font-medium text-blue-600">
+                        {assignment.employeeCode}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {assignment.employeeName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-700">
+                        {formatDate(assignment.startDate)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                          assignment.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {assignment.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatCurrency(assignment.salaryAtTime)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-sm font-medium text-gray-700">
+                        {assignment.workDays} ngày
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 line-clamp-2">
+                        {assignment.description || "-"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Assignment Modal */}
       {showAssignmentModal && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Điều động nhân viên cho {customer.name}
+                Phân công nhân viên cho {customer.name}
               </h2>
               <button
                 onClick={() => setShowAssignmentModal(false)}
@@ -445,7 +707,7 @@ export default function CustomerDetail() {
 
             {/* Assignment Form */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Thông tin điều động</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Thông tin phân công</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -514,7 +776,7 @@ export default function CustomerDetail() {
                     }
                     rows={2}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ghi chú về điều động..."
+                    placeholder="Ghi chú về phân công..."
                   />
                 </div>
               </div>
@@ -788,6 +1050,247 @@ export default function CustomerDetail() {
                   />
                 </svg>
                 Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Temporary Reassignment Modal */}
+      {showReassignmentModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Điều động nhân viên tạm thời
+              </h2>
+              <button
+                onClick={() => setShowReassignmentModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Reassignment Form */}
+            <div className="mb-6 p-4 bg-purple-50 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Thông tin điều động</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Ngày điều động *
+                  </label>
+                  <input
+                    type="date"
+                    value={reassignmentForm.date}
+                    onChange={(e) =>
+                      setReassignmentForm({ ...reassignmentForm, date: e.target.value })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Lương tại thời điểm (VND)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={reassignmentForm.salaryAtTime ?? 0}
+                    onChange={(e) =>
+                      setReassignmentForm({ ...reassignmentForm, salaryAtTime: Number(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Lý do điều động
+                  </label>
+                  <textarea
+                    value={reassignmentForm.description}
+                    onChange={(e) =>
+                      setReassignmentForm({ ...reassignmentForm, description: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="VD: Nhân viên A nghỉ ốm, B thay thế..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Tìm kiếm nhân viên..."
+                value={searchEmployee}
+                onChange={(e) => {
+                  setSearchEmployee(e.target.value);
+                  loadEmployees();
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Two Columns for Selection */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* Column 1: Nhân viên bị thay (đang phụ trách) */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                  Nhân viên bị thay (đang phụ trách)
+                  {reassignmentForm.replacedEmployeeId && (
+                    <span className="ml-2 text-xs text-purple-600">
+                      ✓ Đã chọn
+                    </span>
+                  )}
+                </h3>
+                {loadingAssignments ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {assignedEmployees.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8 text-sm">
+                        Chưa có nhân viên phụ trách
+                      </p>
+                    ) : (
+                      assignedEmployees.map((assignment) => (
+                        <div
+                          key={`replaced-${assignment.employeeId}`}
+                          className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                            reassignmentForm.replacedEmployeeId === assignment.employeeId
+                              ? "border-purple-500 bg-purple-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                          onClick={() =>
+                            setReassignmentForm({
+                              ...reassignmentForm,
+                              replacedEmployeeId: assignment.employeeId,
+                            })
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-red-600">
+                                {assignment.employeeName?.charAt(0) || 'N'}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-gray-900 truncate">
+                                {assignment.employeeName}
+                              </p>
+                              <p className="text-xs text-gray-500">{assignment.employeeCode}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Column 2: Nhân viên thay thế (không phụ trách) */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                  Nhân viên thay thế (chưa phụ trách)
+                  {reassignmentForm.replacementEmployeeId && (
+                    <span className="ml-2 text-xs text-green-600">
+                      ✓ Đã chọn
+                    </span>
+                  )}
+                </h3>
+                {loadingNotAssigned ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {notAssignedEmployees.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8 text-sm">
+                        Không có nhân viên khả dụng
+                      </p>
+                    ) : (
+                      notAssignedEmployees.map((employee) => (
+                        <div
+                          key={`replacement-${employee.id}`}
+                          className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                            reassignmentForm.replacementEmployeeId === Number(employee.id)
+                              ? "border-green-500 bg-green-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                          onClick={() =>
+                            setReassignmentForm({
+                              ...reassignmentForm,
+                              replacementEmployeeId: Number(employee.id),
+                            })
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-green-600">
+                                {employee.name.charAt(0)}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-gray-900 truncate">
+                                {employee.name}
+                              </p>
+                              <p className="text-xs text-gray-500">{employee.code}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowReassignmentModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleTemporaryReassignment}
+                disabled={!reassignmentForm.replacedEmployeeId || !reassignmentForm.replacementEmployeeId}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Xác nhận điều động
               </button>
             </div>
           </div>

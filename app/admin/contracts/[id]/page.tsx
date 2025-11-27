@@ -1,8 +1,10 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Contract } from "@/types";
+import { Contract, ContractDocument } from "@/types";
 import contractService from "@/services/contractService";
+import contractDocumentService from "@/services/contractDocumentService";
+import ContractDocuments from "@/components/ContractDocuments";
 import toast from "react-hot-toast";
 
 export default function ContractDetailPage() {
@@ -11,7 +13,9 @@ export default function ContractDetailPage() {
   const contractId = params.id as string;
 
   const [contract, setContract] = useState<Contract | null>(null);
+  const [documents, setDocuments] = useState<ContractDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Contract>>({});
 
@@ -31,6 +35,23 @@ export default function ContractDetailPage() {
     };
 
     loadContract();
+  }, [contractId]);
+
+  // Load contract documents
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        setLoadingDocuments(true);
+        const docs = await contractDocumentService.getContractDocuments(contractId);
+        setDocuments(docs);
+      } catch (error) {
+        console.error("Error loading documents:", error);
+      } finally {
+        setLoadingDocuments(false);
+      }
+    };
+
+    loadDocuments();
   }, [contractId]);
 
   const getCustomerName = (customerName?: string) => {
@@ -413,6 +434,22 @@ export default function ContractDetailPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Documents Section */}
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <ContractDocuments
+            contractId={contractId}
+            documents={documents}
+            onRefresh={async () => {
+              try {
+                const docs = await contractDocumentService.getContractDocuments(contractId);
+                setDocuments(docs);
+              } catch (error) {
+                console.error("Error refreshing documents:", error);
+              }
+            }}
+          />
         </div>
       </div>
 

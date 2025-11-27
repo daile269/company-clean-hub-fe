@@ -85,6 +85,16 @@ export interface Contract {
   updatedAt: Date;
 }
 
+// Tài liệu hợp đồng
+export interface ContractDocument {
+  id: string;
+  contractId: string;
+  cloudinaryPublicId: string;
+  documentType: 'IMAGE' | 'PDF';
+  fileName: string;
+  uploadedAt: Date;
+}
+
 // Nhân viên (Frontend model)
 export interface Employee {
   id: string;

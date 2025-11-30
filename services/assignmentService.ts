@@ -7,7 +7,9 @@ export interface AssignmentCreateRequest {
   startDate: string;
   status: string;
   salaryAtTime: number;
-  workDays: number;
+  assignmentType: string;
+  workingDaysPerWeek: string[];
+  additionalAllowance: number;
   description?: string;
 }
 
@@ -24,6 +26,8 @@ export interface Assignment {
   status: string;
   salaryAtTime: number;
   workDays: number;
+  workingDaysPerWeek?: string[];
+  additionalAllowance?: number;
   description?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -112,8 +116,10 @@ class AssignmentService {
       customerId: data.customerId,
       startDate: data.startDate,
       status: data.status || "ACTIVE",
+      assignmentType: data.assignmentType,
       salaryAtTime: data.salaryAtTime,
-      workDays: data.workDays,
+      workingDaysPerWeek: data.workingDaysPerWeek,
+      additionalAllowance: data.additionalAllowance,
       description: data.description || "",
     };
 

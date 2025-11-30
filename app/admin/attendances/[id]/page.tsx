@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import toast, { Toaster } from "react-hot-toast";
@@ -7,9 +7,10 @@ import toast, { Toaster } from "react-hot-toast";
 export default function AttendanceDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const { id } = use(params);
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -17,12 +18,12 @@ export default function AttendanceDetailPage({
 
   useEffect(() => {
     loadAttendance();
-  }, [params.id]);
+  }, [id]);
 
   const loadAttendance = async () => {
     try {
       setLoading(true);
-      const data = await attendanceService.getById(params.id);
+      const data = await attendanceService.getById(id);
       setAttendance(data);
       setEditForm(data);
     } catch (error) {
@@ -37,7 +38,7 @@ export default function AttendanceDetailPage({
     if (!editForm) return;
 
     try {
-      await attendanceService.update(params.id, editForm);
+      await attendanceService.update(id, editForm);
       toast.success("Cập nhật chấm công thành công");
       setShowEditModal(false);
       loadAttendance();
@@ -51,7 +52,7 @@ export default function AttendanceDetailPage({
     if (!confirm("Bạn có chắc chắn muốn xóa bản ghi chấm công này?")) return;
 
     try {
-      await attendanceService.delete(params.id);
+      await attendanceService.delete(id);
       toast.success("Xóa chấm công thành công");
       router.push("/admin/attendances");
     } catch (error: any) {

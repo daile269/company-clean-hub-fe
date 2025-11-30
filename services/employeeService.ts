@@ -30,13 +30,14 @@ class EmployeeService {
 
     return {
       id: apiEmployee.id.toString(),
-      code: apiEmployee.employeeCode,
+      employeeCode: apiEmployee.employeeCode,
       username: apiEmployee.username, // map username from API
       name: apiEmployee.name,
       address: apiEmployee.address,
       phone: apiEmployee.phone,
       email: apiEmployee.email,
       bankAccount: apiEmployee.bankAccount,
+      bankName: apiEmployee.bankName,
       idCard: apiEmployee.cccd,
       employeeType,
       status: apiEmployee.status,
@@ -100,36 +101,19 @@ class EmployeeService {
   }
 
   async create(employee: Partial<Employee>): Promise<ApiResponse<ApiEmployee>> {
-    // Map frontend EmployeeType to backend employmentType
-    let employmentType = 'TEMPORARY';
-    if (employee.employeeType === EmployeeType.FIXED_BY_CONTRACT) {
-      employmentType = 'FIXED_BY_CONTRACT';
-    } else if (employee.employeeType === EmployeeType.FIXED_BY_DAY) {
-      employmentType = 'FIXED_BY_DAY';
-    }
-
-    const baseSalary = employee.monthlySalary || 0;
-    const dailySalary = employee.dailySalary || 0;
-
-    // Map frontend model to API model with all required fields
+    // Map frontend model to backend EmployeeRequest DTO
     const apiEmployee = {
       username: employee.username,
       password: employee.password,
-      employeeCode: employee.code,
+      employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,
       status: employee.status || 'ACTIVE',
       name: employee.name,
       phone: employee.phone,
-      email: employee.email,
       cccd: employee.idCard,
       address: employee.address,
       bankAccount: employee.bankAccount,
-      bankName: employee.bankName,  
-      employmentType,
-      baseSalary,
-      dailySalary,
-      socialInsurance: employee.socialInsurance || baseSalary * 0.08,
-      healthInsurance: employee.healthInsurance || baseSalary * 0.02,
+      bankName: employee.bankName,
       description: employee.description || '',
     };
 
@@ -137,35 +121,19 @@ class EmployeeService {
   }
 
   async update(id: string, employee: Partial<Employee>): Promise<ApiResponse<ApiEmployee>> {
-    // Map frontend EmployeeType to backend employmentType
-    let employmentType = 'TEMPORARY';
-    if (employee.employeeType === EmployeeType.FIXED_BY_CONTRACT) {
-      employmentType = 'FIXED_BY_CONTRACT';
-    } else if (employee.employeeType === EmployeeType.FIXED_BY_DAY) {
-      employmentType = 'FIXED_BY_DAY';
-    }
-
-    const baseSalary = employee.monthlySalary || 0;
-    const dailySalary = employee.dailySalary || 0;
-
+    // Map frontend model to backend EmployeeRequest DTO
     const apiEmployee = {
       username: employee.username,
-      password: employee.password|| '123456',
-      employeeCode: employee.code,
+      password: employee.password || '123456',
+      employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,
       status: employee.status || 'ACTIVE',
       name: employee.name,
       phone: employee.phone,
-      email: employee.email,
       cccd: employee.idCard,
       address: employee.address,
       bankAccount: employee.bankAccount,
       bankName: employee.bankName,
-      employmentType,
-      baseSalary,
-      dailySalary,
-      socialInsurance: employee.socialInsurance || baseSalary * 0.08,
-      healthInsurance: employee.healthInsurance || baseSalary * 0.02,
       description: employee.description || '',
     };
 

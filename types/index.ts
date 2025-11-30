@@ -98,7 +98,7 @@ export interface ContractDocument {
 // Nhân viên (Frontend model)
 export interface Employee {
   id: string;
-  code: string;                  // Mã NV
+  employeeCode: string;                  // Mã NV
   name: string;
   avatar?: string;
   address: string;

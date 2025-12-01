@@ -25,10 +25,7 @@ export default function ServicesPage() {
   const [addForm, setAddForm] = useState({
     title: "",
     description: "",
-    priceFrom: 0,
-    priceTo: 0,
-    mainImage: "",
-    status: "ACTIVE",
+    price: 0,
   });
 
   // Debounced search
@@ -66,14 +63,7 @@ export default function ServicesPage() {
     loadServices();
   }, [searchKeyword, currentPage, pageSize]);
 
-  const filteredServices = services.filter((service) => {
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "active" && service.status === "ACTIVE") ||
-      (filterStatus === "inactive" && service.status === "INACTIVE");
-
-    return matchesStatus;
-  });
+  const filteredServices = services;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -85,13 +75,8 @@ export default function ServicesPage() {
   const handleAddService = async () => {
     try {
       // Validate required fields
-      if (!addForm.title || addForm.priceFrom <= 0 || addForm.priceTo <= 0) {
+      if (!addForm.title || addForm.price <= 0) {
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
-        return;
-      }
-
-      if (addForm.priceFrom > addForm.priceTo) {
-        toast.error("Giá từ phải nhỏ hơn hoặc bằng giá đến");
         return;
       }
 
@@ -103,10 +88,7 @@ export default function ServicesPage() {
       setAddForm({
         title: "",
         description: "",
-        priceFrom: 0,
-        priceTo: 0,
-        mainImage: "",
-        status: "ACTIVE",
+        price: 0,
       });
       
       // Reload services list
@@ -165,21 +147,6 @@ export default function ServicesPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Trạng thái
-            </label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Tất cả</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="inactive">Ngừng hoạt động</option>
-            </select>
-          </div>
-
           <div className="flex items-end">
             <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
               Xuất Excel
@@ -189,7 +156,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -215,58 +182,6 @@ export default function ServicesPage() {
             </div>
           </div>
         </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Đang hoạt động</p>
-              <p className="text-2xl font-bold text-green-600">
-                {services.filter((s) => s.status === "ACTIVE").length}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Ngừng hoạt động</p>
-              <p className="text-2xl font-bold text-red-600">
-                {services.filter((s) => s.status === "INACTIVE").length}
-              </p>
-            </div>
-            <div className="bg-red-100 p-3 rounded-full">
-              <svg
-                className="w-6 h-6 text-red-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Table */}
@@ -282,17 +197,14 @@ export default function ServicesPage() {
                   Tên dịch vụ
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Khoảng giá
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
+                  Giá dịch vụ
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
+                  <td colSpan={3} className="px-6 py-12 text-center">
                     <div className="flex justify-center items-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
@@ -300,7 +212,7 @@ export default function ServicesPage() {
                 </tr>
               ) : filteredServices.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
+                  <td colSpan={3} className="px-6 py-12 text-center">
                     <svg
                       className="mx-auto h-12 w-12 text-gray-400"
                       fill="none"
@@ -341,19 +253,7 @@ export default function ServicesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">
-                      <div>{formatCurrency(service.priceFrom)}</div>
-                      <div className="text-xs text-gray-500">- {formatCurrency(service.priceTo)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          service.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {service.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
-                      </span>
+                      {formatCurrency(service.price)}
                     </td>
                   </tr>
                 ))
@@ -510,65 +410,19 @@ export default function ServicesPage() {
                 />
               </div>
 
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá từ (VND) *
+                  Giá dịch vụ (VND) *
                 </label>
                 <input
                   type="number"
-                  value={addForm.priceFrom}
+                  value={addForm.price}
                   onChange={(e) =>
-                    setAddForm({ ...addForm, priceFrom: Number(e.target.value) })
+                    setAddForm({ ...addForm, price: Number(e.target.value) })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="500000"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá đến (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={addForm.priceTo}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, priceTo: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="2000000"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ảnh chính (URL)
-                </label>
-                <input
-                  type="text"
-                  value={addForm.mainImage}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, mainImage: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái *
-                </label>
-                <select
-                  value={addForm.status}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, status: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="INACTIVE">Ngừng hoạt động</option>
-                </select>
               </div>
             </div>
 

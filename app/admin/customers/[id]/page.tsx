@@ -33,13 +33,18 @@ export default function CustomerDetail() {
   const [searchEmployee, setSearchEmployee] = useState("");
   const [assignedEmployees, setAssignedEmployees] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [loadingAllAssignments, setLoadingAllAssignments] = useState(false);
+  const [allAssignedEmployees, setAllAssignedEmployees] = useState<Assignment[]>([]);
   const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>(
     []
   );
   const [loadingNotAssigned, setLoadingNotAssigned] = useState(false);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [savingReassignment, setSavingReassignment] = useState(false);
 
   // Contract states
   const [showAddContractModal, setShowAddContractModal] = useState(false);
+  const [savingContract, setSavingContract] = useState(false);
   const [contracts, setContracts] = useState<any[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
   const [contractForm, setContractForm] = useState({
@@ -80,19 +85,17 @@ export default function CustomerDetail() {
   const [reassignmentForm, setReassignmentForm] = useState<{
     replacementEmployeeId: number | null;
     replacedEmployeeId: number | null;
-    assignmentType: string;
-    daysOfWeek: string[];
-    allowance: number;
-    date: string;
+    fromDate: string;
+    toDate: string;
+    selectedDates: string[];
     salaryAtTime?: number;
     description: string;
   }>({
     replacementEmployeeId: null,
     replacedEmployeeId: null,
-    assignmentType: "TEMPORARY",
-    daysOfWeek: [],
-    allowance: 0,
-    date: new Date().toISOString().split("T")[0],
+    fromDate: new Date().toISOString().split("T")[0],
+    toDate: new Date().toISOString().split("T")[0],
+    selectedDates: [],
     salaryAtTime: 0,
     description: "",
   });
@@ -117,6 +120,7 @@ export default function CustomerDetail() {
     if (id) {
       loadCustomer();
       loadAssignedEmployees();
+      loadAllAssignedEmployeesForCustomer();
       loadContracts();
     }
   }, [id]);
@@ -143,6 +147,18 @@ export default function CustomerDetail() {
       console.error("Error loading assigned employees:", error);
     } finally {
       setLoadingAssignments(false);
+    }
+  };
+  const loadAllAssignedEmployeesForCustomer = async () => {
+    try {
+      setLoadingAllAssignments(true);
+      const data = await assignmentService.getAllByCustomerId(id!);
+      console.log("All assigned employees:", data);
+      setAllAssignedEmployees(data);
+    } catch (error) {
+      console.error("Error loading assigned employees:", error);
+    } finally {
+      setLoadingAllAssignments(false);
     }
   };
 
@@ -283,49 +299,6 @@ export default function CustomerDetail() {
     }
   };
 
-  const handleTemporaryReassignment = async () => {
-    if (
-      !reassignmentForm.replacementEmployeeId ||
-      !reassignmentForm.replacedEmployeeId
-    ) {
-      toast.error(
-        "Vui lòng chọn đầy đủ nhân viên thay thế và nhân viên bị thay"
-      );
-      return;
-    }
-
-    try {
-      const data: TemporaryReassignmentRequest = {
-        replacementEmployeeId: reassignmentForm.replacementEmployeeId,
-        replacedEmployeeId: reassignmentForm.replacedEmployeeId,
-        date: reassignmentForm.date,
-        salaryAtTime: reassignmentForm.salaryAtTime ?? 0,
-        description: reassignmentForm.description || "Điều động tạm thời",
-      };
-
-      const response = await assignmentService.temporaryReassignment(data);
-
-      if (response.success) {
-        toast.success("Điều động tạm thời thành công");
-        setShowReassignmentModal(false);
-        setReassignmentForm({
-          replacementEmployeeId: null,
-          replacedEmployeeId: null,
-          assignmentType: "TEMPORARY",
-          daysOfWeek: [],
-          allowance: 0,
-          date: new Date().toISOString().split("T")[0],
-          salaryAtTime: 0,
-          description: "",
-        });
-      } else {
-        toast.error(response.message || "Điều động thất bại");
-      }
-    } catch (error: any) {
-      console.error("Error temporary reassignment:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi điều động");
-    }
-  };
 
   const handleAssignEmployee = async () => {
     if (!customer) return;
@@ -338,12 +311,13 @@ export default function CustomerDetail() {
       return;
     }
 
+    setSavingAssignment(true);
     try {
       const assignmentData: AssignmentCreateRequest = {
         employeeId: assignmentForm.employeeId,
         customerId: Number(customer.id),
         startDate: assignmentForm.startDate,
-        status: "ACTIVE",
+        status: "IN_PROGRESS",
         assignmentType: assignmentForm.assignmentType,
         salaryAtTime: assignmentForm.salaryAtTime,
         workingDaysPerWeek: assignmentForm.daysOfWeek,
@@ -374,10 +348,63 @@ export default function CustomerDetail() {
     } catch (error: any) {
       console.error("Error assigning employee:", error);
       toast.error(error.message || "Có lỗi xảy ra khi phân công");
+    } finally {
+      setSavingAssignment(false);
+    }
+  };
+
+  const handleTemporaryReassignment = async () => {
+    if (!customer) return;
+    if (!reassignmentForm.replacedEmployeeId || !reassignmentForm.replacementEmployeeId) {
+      toast.error("Vui lòng chọn nhân viên bị thay và nhân viên thay thế");
+      return;
+    }
+    if (!reassignmentForm.selectedDates || reassignmentForm.selectedDates.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một ngày điều động");
+      return;
+    }
+
+    setSavingReassignment(true);
+    try {
+      const reassignmentData: TemporaryReassignmentRequest = {
+        replacementEmployeeId: reassignmentForm.replacementEmployeeId,
+        replacedEmployeeId: reassignmentForm.replacedEmployeeId,
+        dates: reassignmentForm.selectedDates,
+        salaryAtTime: reassignmentForm.salaryAtTime,
+        description: reassignmentForm.description,
+      };
+
+      const response = await assignmentService.temporaryReassignment(
+        reassignmentData
+      );
+
+      if (response.success) {
+        toast.success("Đã điều động nhân viên tạm thời thành công");
+        setShowReassignmentModal(false);
+        // Reset form
+        setReassignmentForm({
+          replacementEmployeeId: null,
+          replacedEmployeeId: null,
+          fromDate: new Date().toISOString().split("T")[0],
+          toDate: new Date().toISOString().split("T")[0],
+          selectedDates: [],
+          salaryAtTime: 0,
+          description: "",
+        });
+        loadAssignedEmployees();
+      } else {
+        toast.error(response.message || "Điều động thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error creating temporary reassignment:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi điều động");
+    } finally {
+      setSavingReassignment(false);
     }
   };
 
   const handleAddContract = async () => {
+    setSavingContract(true);
     try {
       // Validate required fields
       if (
@@ -448,6 +475,8 @@ export default function CustomerDetail() {
     } catch (error) {
       console.error("Error creating contract:", error);
       toast.error("Không thể tạo hợp đồng");
+    } finally {
+      setSavingContract(false);
     }
   };
 
@@ -871,7 +900,7 @@ export default function CustomerDetail() {
             Nhân viên đang phụ trách
           </h3>
           <button
-            onClick={loadAssignedEmployees}
+            onClick={loadAllAssignedEmployeesForCustomer}
             className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
           >
             <svg
@@ -892,7 +921,7 @@ export default function CustomerDetail() {
           </button>
         </div>
 
-        {loadingAssignments ? (
+        {loadingAllAssignments ? (
           <div className="flex justify-center items-center py-8">
             <svg
               className="animate-spin h-8 w-8 text-blue-600"
@@ -914,7 +943,7 @@ export default function CustomerDetail() {
               />
             </svg>
           </div>
-        ) : assignedEmployees.length === 0 ? (
+        ) : allAssignedEmployees.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -949,6 +978,9 @@ export default function CustomerDetail() {
                     Tên nhân viên
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Loại phân công
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                     Ngày bắt đầu
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
@@ -966,7 +998,7 @@ export default function CustomerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {assignedEmployees.map((assignment) => (
+                {allAssignedEmployees.map((assignment) => (
                   <tr
                     key={assignment.id}
                     role="button"
@@ -996,6 +1028,15 @@ export default function CustomerDetail() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
+                      <span className="text-xs text-gray-700">
+                        {assignment.assignmentType === "FIXED_BY_CONTRACT"
+                          ? "Cố định theo HĐ"
+                          : assignment.assignmentType === "FIXED_BY_DAY"
+                          ? "Cố định theo ngày"
+                          : "Tạm thời"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
                       <span className="text-sm text-gray-700">
                         {formatDate(assignment.startDate)}
                       </span>
@@ -1003,14 +1044,14 @@ export default function CustomerDetail() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                          assignment.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
+                          assignment.status === "IN_PROGRESS"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
                         }`}
                       >
-                        {assignment.status === "ACTIVE"
-                          ? "Hoạt động"
-                          : "Không hoạt động"}
+                        {assignment.status === "IN_PROGRESS"
+                          ? "Đang thực hiện"
+                          : "Hoàn thành"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -1298,9 +1339,31 @@ export default function CustomerDetail() {
               </button>
               <button
                 onClick={handleAssignEmployee}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={savingAssignment}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                Lưu
+                {savingAssignment && (
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                )}
+                {savingAssignment ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
           </div>
@@ -1546,82 +1609,96 @@ export default function CustomerDetail() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Loại điều động *
-                  </label>
-                  <select
-                    value={reassignmentForm.assignmentType}
-                    onChange={(e) =>
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        assignmentType: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="FIXED_BY_CONTRACT">Phân công cố định</option>
-                    <option value="FIXED_BY_DAY">
-                      Phân công cố định theo ngày
-                    </option>
-                    <option value="TEMPORARY">Tạm thời</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Ngày điều động *
+                    Từ ngày *
                   </label>
                   <input
                     type="date"
-                    value={reassignmentForm.date}
-                    onChange={(e) =>
+                    value={reassignmentForm.fromDate}
+                    onChange={(e) => {
+                      const fromDate = e.target.value;
                       setReassignmentForm({
                         ...reassignmentForm,
-                        date: e.target.value,
-                      })
-                    }
+                        fromDate,
+                        selectedDates: [], // Reset selected dates when range changes
+                      });
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Đến ngày *
+                  </label>
+                  <input
+                    type="date"
+                    value={reassignmentForm.toDate}
+                    min={reassignmentForm.fromDate}
+                    onChange={(e) => {
+                      const toDate = e.target.value;
+                      setReassignmentForm({
+                        ...reassignmentForm,
+                        toDate,
+                        selectedDates: [], // Reset selected dates when range changes
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
 
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Ngày làm việc trong tuần *
+                    Chọn các ngày điều động *
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { value: "MONDAY", label: "Thứ 2" },
-                      { value: "TUESDAY", label: "Thứ 3" },
-                      { value: "WEDNESDAY", label: "Thứ 4" },
-                      { value: "THURSDAY", label: "Thứ 5" },
-                      { value: "FRIDAY", label: "Thứ 6" },
-                      { value: "SATURDAY", label: "Thứ 7" },
-                      { value: "SUNDAY", label: "CN" },
-                    ].map((day) => (
-                      <label
-                        key={day.value}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={reassignmentForm.daysOfWeek.includes(
-                            day.value
-                          )}
-                          onChange={(e) => {
-                            const newDays = e.target.checked
-                              ? [...reassignmentForm.daysOfWeek, day.value]
-                              : reassignmentForm.daysOfWeek.filter(
-                                  (d) => d !== day.value
-                                );
-                            setReassignmentForm({
-                              ...reassignmentForm,
-                              daysOfWeek: newDays,
-                            });
-                          }}
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>{day.label}</span>
-                      </label>
-                    ))}
-                  </div>
+                  {reassignmentForm.fromDate && reassignmentForm.toDate && (
+                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                      {(() => {
+                        const dates = [];
+                        const start = new Date(reassignmentForm.fromDate);
+                        const end = new Date(reassignmentForm.toDate);
+                        
+                        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                          const dateStr = d.toISOString().split('T')[0];
+                          const dayName = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
+                          const displayDate = `${d.getDate()}/${d.getMonth() + 1} (${dayName})`;
+                          
+                          dates.push(
+                            <label
+                              key={dateStr}
+                              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-purple-50 p-1 rounded"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={reassignmentForm.selectedDates.includes(dateStr)}
+                                onChange={(e) => {
+                                  const newDates = e.target.checked
+                                    ? [...reassignmentForm.selectedDates, dateStr]
+                                    : reassignmentForm.selectedDates.filter(d => d !== dateStr);
+                                  setReassignmentForm({
+                                    ...reassignmentForm,
+                                    selectedDates: newDates.sort(),
+                                  });
+                                }}
+                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                              <span className="text-xs">{displayDate}</span>
+                            </label>
+                          );
+                        }
+                        
+                        return dates.length > 0 ? dates : (
+                          <p className="col-span-4 text-center text-gray-500 text-xs py-4">
+                            Vui lòng chọn khoảng ngày hợp lệ
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {reassignmentForm.selectedDates.length > 0 && (
+                    <p className="text-xs text-purple-600 mt-2">
+                      Đã chọn {reassignmentForm.selectedDates.length} ngày
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1636,25 +1713,6 @@ export default function CustomerDetail() {
                       setReassignmentForm({
                         ...reassignmentForm,
                         salaryAtTime: Number(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Phụ cấp (VND)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={reassignmentForm.allowance}
-                    onChange={(e) =>
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        allowance: Number(e.target.value),
                       })
                     }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1843,27 +1901,31 @@ export default function CustomerDetail() {
               </button>
               <button
                 onClick={handleTemporaryReassignment}
-                disabled={
-                  !reassignmentForm.replacedEmployeeId ||
-                  !reassignmentForm.replacementEmployeeId
-                }
+                disabled={savingReassignment}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                Xác nhận điều động
+                {savingReassignment && (
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                )}
+                {savingReassignment ? "Đang xử lý..." : "Xác nhận điều động"}
               </button>
             </div>
           </div>
@@ -2157,23 +2219,31 @@ export default function CustomerDetail() {
               </button>
               <button
                 onClick={handleAddContract}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                disabled={savingContract}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Thêm hợp đồng
+                {savingContract && (
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                )}
+                {savingContract ? "Đang thêm..." : "Thêm hợp đồng"}
               </button>
             </div>
           </div>

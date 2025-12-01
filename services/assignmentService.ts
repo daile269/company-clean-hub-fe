@@ -51,7 +51,7 @@ export interface AssignmentPaginationResponse {
 export interface TemporaryReassignmentRequest {
   replacementEmployeeId: number;
   replacedEmployeeId: number;
-  date: string;
+  dates: string[];
   salaryAtTime?: number;
   description?: string;
 }
@@ -115,7 +115,7 @@ class AssignmentService {
       employeeId: data.employeeId,
       customerId: data.customerId,
       startDate: data.startDate,
-      status: data.status || "ACTIVE",
+      status: data.status || "IN_PROGRESS",
       assignmentType: data.assignmentType,
       salaryAtTime: data.salaryAtTime,
       workingDaysPerWeek: data.workingDaysPerWeek,
@@ -130,6 +130,23 @@ class AssignmentService {
     try {
       const response = await apiService.get<any>(
         `/assignments/customer/${customerId}`
+      );
+
+      if (response.success && response.data) {
+        return Array.isArray(response.data) ? response.data : [];
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error fetching assignments:", error);
+      return [];
+    }
+  }
+
+  async getAllByCustomerId(customerId: string): Promise<Assignment[]> {
+    try {
+      const response = await apiService.get<any>(
+        `/assignments/customer/${customerId}/all`
       );
 
       if (response.success && response.data) {

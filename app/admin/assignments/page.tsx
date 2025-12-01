@@ -63,21 +63,15 @@ export default function AssignmentsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "ACTIVE":
+      case "IN_PROGRESS":
         return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-            Đang hoạt động
-          </span>
-        );
-      case "INACTIVE":
-        return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-            Không hoạt động
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+            Đang thực hiện
           </span>
         );
       case "COMPLETED":
         return (
-          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
             Hoàn thành
           </span>
         );
@@ -173,14 +167,14 @@ export default function AssignmentsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Đang hoạt động</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {assignments.filter((a) => a.status === "ACTIVE").length}
+                  <p className="text-sm text-gray-600">Đang thực hiện</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {assignments.filter((a) => a.status === "IN_PROGRESS").length}
                   </p>
                 </div>
-                <div className="bg-green-100 p-3 rounded-full">
+                <div className="bg-blue-100 p-3 rounded-full">
                   <svg
-                    className="w-6 h-6 text-green-600"
+                    className="w-6 h-6 text-blue-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -200,13 +194,13 @@ export default function AssignmentsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Hoàn thành</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-green-600">
                     {assignments.filter((a) => a.status === "COMPLETED").length}
                   </p>
                 </div>
-                <div className="bg-blue-100 p-3 rounded-full">
+                <div className="bg-green-100 p-3 rounded-full">
                   <svg
-                    className="w-6 h-6 text-blue-600"
+                    className="w-6 h-6 text-green-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

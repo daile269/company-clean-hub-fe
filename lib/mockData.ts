@@ -93,7 +93,7 @@ export const mockUsers: User[] = [
 export const mockEmployees: Employee[] = [
   {
     id: "1",
-    code: "NV001",
+    employeeCode: "NV001",
     name: "Nguyễn Văn An",
     avatar: "/avatars/default.png",
     address: "123 Nguyễn Huệ, Q1, TP.HCM",
@@ -109,7 +109,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "2",
-    code: "NV002",
+    employeeCode: "NV002",
     name: "Trần Thị Bình",
     avatar: "/avatars/default.png",
     address: "456 Lê Lợi, Q3, TP.HCM",
@@ -125,7 +125,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "3",
-    code: "NV003",
+    employeeCode: "NV003",
     name: "Lê Văn Cường",
     avatar: "/avatars/default.png",
     address: "789 Trần Hưng Đạo, Q5, TP.HCM",
@@ -141,7 +141,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "4",
-    code: "NV004",
+    employeeCode: "NV004",
     name: "Phạm Thị Diệu",
     avatar: "/avatars/default.png",
     address: "321 Hai Bà Trưng, Q1, TP.HCM",
@@ -157,7 +157,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "5",
-    code: "NV005",
+    employeeCode: "NV005",
     name: "Hoàng Văn Em",
     avatar: "/avatars/default.png",
     address: "654 Nguyễn Thái Học, Tân Bình, TP.HCM",
@@ -173,7 +173,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "6",
-    code: "NV006",
+    employeeCode: "NV006",
     name: "Vũ Thị Phượng",
     avatar: "/avatars/default.png",
     address: "987 Cách Mạng Tháng 8, Q10, TP.HCM",
@@ -189,7 +189,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "7",
-    code: "NV007",
+    employeeCode: "NV007",
     name: "Đỗ Văn Giang",
     avatar: "/avatars/default.png",
     address: "147 Lý Thường Kiệt, Q11, TP.HCM",
@@ -205,7 +205,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "8",
-    code: "NV008",
+    employeeCode: "NV008",
     name: "Bùi Thị Hương",
     avatar: "/avatars/default.png",
     address: "258 Võ Văn Tần, Q3, TP.HCM",

@@ -61,13 +61,26 @@ export interface Customer {
   updatedAt: Date;
 }
 
+// Service in Contract
+export interface ContractService {
+  id: number;
+  title: string;
+  description?: string;
+  price: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Hợp đồng
 export interface Contract {
   id: string;
   customerId: string;
   customerName?: string;         // Tên khách hàng (từ API)
-  serviceIds?: number[];         // Danh sách ID dịch vụ
-  serviceNames?: string[];       // Danh sách tên dịch vụ
+  services?: ContractService[];  // Danh sách dịch vụ (từ backend)
+  serviceIds?: number[];         // Danh sách ID dịch vụ (backward compatible)
+  serviceNames?: string[];       // Danh sách tên dịch vụ (backward compatible)
+  servicePrices?: number[];      // Danh sách giá dịch vụ (backward compatible)
+  serviceDescriptions?: string[]; // Danh sách mô tả dịch vụ (backward compatible)
   contractNumber?: string;       // Số hợp đồng
   startDate: Date;
   endDate: Date;
@@ -98,7 +111,7 @@ export interface ContractDocument {
 // Nhân viên (Frontend model)
 export interface Employee {
   id: string;
-  code: string;                  // Mã NV
+  employeeCode: string;                  // Mã NV
   name: string;
   avatar?: string;
   address: string;

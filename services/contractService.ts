@@ -17,13 +17,22 @@ export interface ContractPaginationResponse {
   pageSize: number;
 }
 
+// Interface cho Service từ backend
+export interface ApiService {
+  id: number;
+  title: string;
+  description?: string;
+  price: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Interface cho Contract data từ API (mapping với backend)
 export interface ApiContract {
   id: string;
   customerId: string;
   customerName?: string;
-  serviceIds?: number[];
-  serviceNames?: string[];
+  services?: ApiService[];       // Danh sách dịch vụ từ backend
   startDate: string;
   endDate: string;
   basePrice: number;
@@ -54,8 +63,7 @@ export const getAll = async (params: ContractPaginationParams): Promise<Contract
       id: apiContract.id,
       customerId: apiContract.customerId,
       customerName: apiContract.customerName,
-      serviceIds: apiContract.serviceIds,
-      serviceNames: apiContract.serviceNames,
+      services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
       basePrice: apiContract.basePrice,
@@ -83,6 +91,42 @@ export const getAll = async (params: ContractPaginationParams): Promise<Contract
   }
 };
 
+// Lấy danh sách hợp đồng theo customerId
+export const getByCustomerId = async (customerId: string): Promise<Contract[]> => {
+  try {
+    const response = await apiService.get<any>(`/contracts/customer/${customerId}`);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to fetch contracts');
+    }
+
+    // Map API response to Contract array
+    const contracts: Contract[] = response.data.map((apiContract: ApiContract) => ({
+      id: apiContract.id,
+      customerId: apiContract.customerId,
+      customerName: apiContract.customerName,
+      services: apiContract.services,
+      startDate: new Date(apiContract.startDate),
+      endDate: new Date(apiContract.endDate),
+      basePrice: apiContract.basePrice,
+      vat: apiContract.vat,
+      total: apiContract.total,
+      extraCost: apiContract.extraCost,
+      discountCost: apiContract.discountCost,
+      finalPrice: apiContract.finalPrice,
+      paymentStatus: apiContract.paymentStatus,
+      description: apiContract.description,
+      createdAt: new Date(apiContract.createdAt),
+      updatedAt: new Date(apiContract.updatedAt),
+    }));
+
+    return contracts;
+  } catch (error) {
+    console.error('Error fetching contracts by customer:', error);
+    throw error;
+  }
+};
+
 // Lấy chi tiết hợp đồng theo ID
 export const getById = async (id: string): Promise<Contract> => {
   try {
@@ -98,8 +142,7 @@ export const getById = async (id: string): Promise<Contract> => {
       id: apiContract.id,
       customerId: apiContract.customerId,
       customerName: apiContract.customerName,
-      serviceIds: apiContract.serviceIds,
-      serviceNames: apiContract.serviceNames,
+      services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
       basePrice: apiContract.basePrice,
@@ -150,8 +193,7 @@ export const create = async (contractData: any): Promise<Contract> => {
       id: apiContract.id,
       customerId: apiContract.customerId,
       customerName: apiContract.customerName,
-      serviceIds: apiContract.serviceIds,
-      serviceNames: apiContract.serviceNames,
+      services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
       basePrice: apiContract.basePrice,
@@ -241,8 +283,7 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
       id: apiContract.id,
       customerId: apiContract.customerId,
       customerName: apiContract.customerName,
-      serviceIds: apiContract.serviceIds,
-      serviceNames: apiContract.serviceNames,
+      services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
       basePrice: apiContract.basePrice,
@@ -279,6 +320,7 @@ export const delete_ = async (id: string): Promise<void> => {
 const contractService = {
   getAll,
   getById,
+  getByCustomerId,
   create,
   update,
   delete: delete_,

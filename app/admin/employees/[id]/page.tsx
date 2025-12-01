@@ -44,6 +44,7 @@ export default function EmployeeDetail() {
     try {
       setLoading(true);
       const data = await employeeService.getById(id!);
+      console.log(data);
       setEmployee(data);
       
       // Load employee images
@@ -297,7 +298,7 @@ export default function EmployeeDetail() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Mã nhân viên</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {employee.code}
+                  {employee.employeeCode}
                 </p>
               </div>
               <div className="flex-1">
@@ -345,33 +346,14 @@ export default function EmployeeDetail() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Số điện thoại</p>
-                <p className="text-sm text-gray-900">{employee.phone}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Email</p>
-                <p className="text-sm text-gray-900">
-                  {employee.email || "N/A"}
-                </p>
-              </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Số điện thoại</p>
+              <p className="text-sm text-gray-900">{employee.phone}</p>
             </div>
 
             <div>
               <p className="text-xs text-gray-500 mb-1">Địa chỉ</p>
               <p className="text-sm text-gray-900">{employee.address}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Loại nhân viên</p>
-              <p className="text-sm font-medium text-blue-700">
-                {employee.employeeType === EmployeeType.FIXED_BY_CONTRACT
-                  ? "Nhân viên chính tại chỗ"
-                  : employee.employeeType === EmployeeType.FIXED_BY_DAY
-                  ? "Nhân viên chính điều động"
-                  : "Nhân viên thời vụ"}
-              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2">
@@ -400,81 +382,23 @@ export default function EmployeeDetail() {
           </div>
         </div>
 
-        {/* Card 2: Thông tin lương & phúc lợi */}
+        {/* Card 2: Thông tin ngân hàng */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
-            Thông tin lương & phúc lợi
+            Thông tin ngân hàng
           </h3>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Lương cơ bản (tháng)</p>
-              <p className="text-lg font-bold text-green-600">
-                {employee.monthlySalary
-                  ? formatCurrency(employee.monthlySalary)
-                  : "N/A"}
+              <p className="text-xs text-gray-500 mb-1">Số tài khoản</p>
+              <p className="text-sm font-mono font-medium text-gray-900">
+                {employee.bankAccount || "N/A"}
               </p>
             </div>
-
             <div>
-              <p className="text-xs text-gray-500 mb-1">Lương ngày</p>
-              <p className="text-lg font-bold text-green-600">
-                {employee.dailySalary
-                  ? formatCurrency(employee.dailySalary)
-                  : "N/A"}
+              <p className="text-xs text-gray-500 mb-1">Ngân hàng</p>
+              <p className="text-sm font-medium text-gray-900">
+                {employee.bankName || "N/A"}
               </p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Phụ cấp</p>
-              <p className="text-base font-semibold text-blue-600">
-                {(employee as any).allowance
-                  ? formatCurrency((employee as any).allowance)
-                  : "N/A"}
-              </p>
-            </div>
-
-            <div className="pt-3 border-t">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                Bảo hiểm
-              </h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <p className="text-xs text-gray-600">Bảo hiểm xã hội</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {employee.socialInsurance
-                      ? formatCurrency(employee.socialInsurance)
-                      : "N/A"}
-                  </p>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-xs text-gray-600">Bảo hiểm y tế</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {employee.healthInsurance
-                      ? formatCurrency(employee.healthInsurance)
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                Thông tin ngân hàng
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Số tài khoản</p>
-                  <p className="text-sm font-mono font-medium text-gray-900">
-                    {employee.bankAccount || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Ngân hàng</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {employee.bankName || "N/A"}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -724,7 +648,7 @@ export default function EmployeeDetail() {
                 </label>
                 <input
                   type="text"
-                  value={editForm.code}
+                  value={editForm.employeeCode}
                   disabled
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                 />
@@ -758,19 +682,7 @@ export default function EmployeeDetail() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={editForm.email || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -845,103 +757,7 @@ export default function EmployeeDetail() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại nhân viên *
-                </label>
-                <select
-                  value={editForm.employeeType}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      employeeType: e.target.value as EmployeeType,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                    Nhân viên chính tại chỗ
-                  </option>
-                  <option value={EmployeeType.FIXED_BY_DAY}>
-                    Nhân viên chính điều động
-                  </option>
-                  <option value={EmployeeType.TEMPORARY}>
-                    Nhân viên thời vụ
-                  </option>
-                </select>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lương cơ bản (tháng) - VNĐ
-                </label>
-                <input
-                  type="number"
-                  value={editForm.monthlySalary || ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      monthlySalary: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VND"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lương ngày - VNĐ
-                </label>
-                <input
-                  type="number"
-                  value={editForm.dailySalary || ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      dailySalary: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VND"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bảo hiểm xã hội - VNĐ
-                </label>
-                <input
-                  type="number"
-                  value={editForm.socialInsurance || ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      socialInsurance: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VND"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bảo hiểm y tế - VNĐ
-                </label>
-                <input
-                  type="number"
-                  value={editForm.healthInsurance || ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      healthInsurance: Number(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VND"
-                />
-              </div>
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">

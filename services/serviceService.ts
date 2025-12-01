@@ -5,10 +5,7 @@ export interface ApiService {
   id: number;
   title: string;
   description?: string;
-  priceFrom: number;
-  priceTo: number;
-  mainImage?: string;
-  status: string;
+  price: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,16 +66,20 @@ export const getById = async (id: string): Promise<ApiService> => {
   }
 };
 
+// Interface cho ServiceRequest matching backend DTO
+export interface ServiceRequest {
+  title: string;
+  description?: string;
+  price: number;
+}
+
 // Tạo dịch vụ mới
-export const create = async (serviceData: any): Promise<ApiService> => {
+export const create = async (serviceData: ServiceRequest): Promise<ApiService> => {
   try {
     const payload = {
       title: serviceData.title,
       description: serviceData.description || '',
-      priceFrom: serviceData.priceFrom,
-      priceTo: serviceData.priceTo,
-      mainImage: serviceData.mainImage || '',
-      status: serviceData.status || 'ACTIVE',
+      price: serviceData.price,
     };
 
     const response = await apiService.post<any>('/services', payload);
@@ -107,22 +108,9 @@ export const update = async (id: string, serviceData: any): Promise<ApiService> 
       payload.description = serviceData.description;
     }
     
-    if (serviceData.priceFrom !== undefined) {
-      payload.priceFrom = serviceData.priceFrom;
+    if (serviceData.price !== undefined) {
+      payload.price = serviceData.price;
     }
-    
-    if (serviceData.priceTo !== undefined) {
-      payload.priceTo = serviceData.priceTo;
-    }
-    
-    if (serviceData.mainImage !== undefined) {
-      payload.mainImage = serviceData.mainImage;
-    }
-    
-    if (serviceData.status !== undefined) {
-      payload.status = serviceData.status;
-    }
-
     const response = await apiService.put<any>(`/services/${id}`, payload);
 
     if (!response.success || !response.data) {

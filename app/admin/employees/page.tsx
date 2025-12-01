@@ -17,23 +17,16 @@ export default function EmployeesPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState<Partial<Employee>>({
-    code: "",
+    employeeCode: "",
     name: "",
     phone: "",
-    email: "",
     username: "",
     password: "",
     address: "",
     idCard: "",
     bankAccount: "",
     bankName: "",
-    employeeType: EmployeeType.FIXED_BY_CONTRACT,
-    monthlySalary: 0,
-    dailySalary: 0,
-    socialInsurance: 0,
-    healthInsurance: 0,
     roleId: 2,
-    status: "ACTIVE",
     description: "",
   });
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
@@ -108,11 +101,11 @@ export default function EmployeesPage() {
       toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
       return;
     }
-    if (!addForm.code || addForm.code.trim() === "") {
+    if (!addForm.employeeCode || addForm.employeeCode.trim() === "") {
       toast.error("Mã nhân viên không được để trống");
       return;
     }
-    if (addForm.code.length > 50) {
+    if (addForm.employeeCode.length > 50) {
       toast.error("Mã nhân viên không được vượt quá 50 ký tự");
       return;
     }
@@ -130,19 +123,6 @@ export default function EmployeesPage() {
     }
     if (addForm.phone.length > 50) {
       toast.error("Số điện thoại không được vượt quá 50 ký tự");
-      return;
-    }
-    if (!addForm.email || addForm.email.trim() === "") {
-      toast.error("Email không được để trống");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(addForm.email)) {
-      toast.error("Email không hợp lệ");
-      return;
-    }
-    if (addForm.email.length > 255) {
-      toast.error("Email không được vượt quá 255 ký tự");
       return;
     }
     if (!addForm.idCard || addForm.idCard.trim() === "") {
@@ -165,26 +145,6 @@ export default function EmployeesPage() {
       toast.error("Tên không được vượt quá 150 ký tự");
       return;
     }
-    if (!addForm.employeeType) {
-      toast.error("Loại hình tuyển dụng bắt buộc");
-      return;
-    }
-    if (addForm.monthlySalary && addForm.monthlySalary < 0) {
-      toast.error("Lương cơ bản phải là số lớn hơn hoặc bằng 0");
-      return;
-    }
-    if (addForm.dailySalary && addForm.dailySalary < 0) {
-      toast.error("Lương theo ngày phải là số lớn hơn hoặc bằng 0");
-      return;
-    }
-    if (addForm.socialInsurance && addForm.socialInsurance < 0) {
-      toast.error("Bảo hiểm xã hội phải là số lớn hơn hoặc bằng 0");
-      return;
-    }
-    if (addForm.healthInsurance && addForm.healthInsurance < 0) {
-      toast.error("Bảo hiểm y tế phải là số lớn hơn hoặc bằng 0");
-      return;
-    }
 
     try {
       const response = await employeeService.create(addForm);
@@ -192,23 +152,16 @@ export default function EmployeesPage() {
         toast.success("Đã thêm nhân viên mới thành công");
         setShowAddModal(false);
         setAddForm({
-          code: "",
+          employeeCode: "",
           name: "",
           phone: "",
-          email: "",
           username: "",
           password: "",
           address: "",
           idCard: "",
           bankAccount: "",
           bankName: "",
-          employeeType: EmployeeType.FIXED_BY_CONTRACT,
-          monthlySalary: 0,
-          dailySalary: 0,
-          socialInsurance: 0,
-          healthInsurance: 0,
           roleId: 2,
-          status: "ACTIVE",
           description: "",
         });
         // Reload employees
@@ -302,12 +255,14 @@ export default function EmployeesPage() {
                 >
                   <option value="all">Tất cả</option>
                   <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                    Nhân viên chính tại chỗ 
+                    Nhân viên chính tại chỗ
                   </option>
                   <option value={EmployeeType.FIXED_BY_DAY}>
                     Nhân viên chính điều động
                   </option>
-                  <option value={EmployeeType.TEMPORARY}>Nhân viên thời vụ</option>
+                  <option value={EmployeeType.TEMPORARY}>
+                    Nhân viên thời vụ
+                  </option>
                 </select>
               </div>
 
@@ -350,7 +305,9 @@ export default function EmployeesPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Nhân viên chính tại chỗ  </p>
+                  <p className="text-sm text-gray-600">
+                    Nhân viên chính tại chỗ{" "}
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
                     {
                       employees.filter(
@@ -380,7 +337,9 @@ export default function EmployeesPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Nhân viên chính điều động</p>
+                  <p className="text-sm text-gray-600">
+                    Nhân viên chính điều động
+                  </p>
                   <p className="text-2xl font-bold text-blue-600">
                     {
                       employees.filter(
@@ -453,7 +412,8 @@ export default function EmployeesPage() {
                       Số điện thoại
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Loại NV
+                      CCCD
+
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
@@ -476,7 +436,7 @@ export default function EmployeesPage() {
                       }
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {employee.code}
+                        {employee.employeeCode}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -498,27 +458,9 @@ export default function EmployeesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {employee.phone}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            employee.employeeType ===
-                            EmployeeType.FIXED_BY_CONTRACT
-                              ? "bg-green-100 text-green-800"
-                              : employee.employeeType ===
-                                EmployeeType.FIXED_BY_DAY
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {employee.employeeType ===
-                          EmployeeType.FIXED_BY_CONTRACT
-                            ? "Nhân viên chính tại chỗ  "
-                            : employee.employeeType ===
-                              EmployeeType.FIXED_BY_DAY
-                            ? "Nhân viên chính điều động"
-                            : "Nhân viên thời vụ"}
-                        </span>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {employee.idCard}
+                      </td>  
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -527,7 +469,9 @@ export default function EmployeesPage() {
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                          {employee.status === "ACTIVE"
+                            ? "Hoạt động"
+                            : "Không hoạt động"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -538,7 +482,9 @@ export default function EmployeesPage() {
                           : "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.updatedAt ? formatDate(employee.updatedAt) : "N/A"}
+                        {employee.updatedAt
+                          ? formatDate(employee.updatedAt)
+                          : "N/A"}
                       </td>
                     </tr>
                   ))}
@@ -726,9 +672,9 @@ export default function EmployeesPage() {
                     </label>
                     <input
                       type="text"
-                      value={addForm.code}
+                      value={addForm.employeeCode}
                       onChange={(e) =>
-                        setAddForm({ ...addForm, code: e.target.value })
+                        setAddForm({ ...addForm, employeeCode: e.target.value })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="VD: NV001"
@@ -764,21 +710,22 @@ export default function EmployeesPage() {
                       placeholder="0123456789"
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
+                      CCCD *
                     </label>
                     <input
-                      type="email"
-                      value={addForm.email || ""}
+                      type="text"
+                      value={addForm.idCard}
                       onChange={(e) =>
-                        setAddForm({ ...addForm, email: e.target.value })
+                        setAddForm({ ...addForm, idCard: e.target.value })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="email@example.com"
+                      placeholder="Số CCCD"
                     />
                   </div>
+
+                  {/* Email removed per request */}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -827,21 +774,6 @@ export default function EmployeesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      CCCD *
-                    </label>
-                    <input
-                      type="text"
-                      value={addForm.idCard}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, idCard: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Số CCCD"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Số tài khoản
                     </label>
                     <input
@@ -867,118 +799,6 @@ export default function EmployeesPage() {
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="VD: VietBank"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Loại nhân viên *
-                    </label>
-                    <select
-                      value={addForm.employeeType}
-                      onChange={(e) =>
-                        setAddForm({
-                          ...addForm,
-                          employeeType: e.target.value as EmployeeType,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                        Nhân viên chính tại chỗ 
-                      </option>
-                      <option value={EmployeeType.FIXED_BY_DAY}>
-                        Nhân viên chính điều động
-                      </option>
-                      <option value={EmployeeType.TEMPORARY}>Nhân viên thời vụ</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Trạng thái
-                    </label>
-                    <select
-                      value={addForm.status || "ACTIVE"}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, status: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="ACTIVE">Hoạt động</option>
-                      <option value="INACTIVE">Không hoạt động</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lương cơ bản (tháng) - VNĐ
-                    </label>
-                    <input
-                      type="number"
-                      value={addForm.monthlySalary || ""}
-                      onChange={(e) =>
-                        setAddForm({
-                          ...addForm,
-                          monthlySalary: Number(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VND"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lương ngày - VNĐ
-                    </label>
-                    <input
-                      type="number"
-                      value={addForm.dailySalary || ""}
-                      onChange={(e) =>
-                        setAddForm({
-                          ...addForm,
-                          dailySalary: Number(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VND"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bảo hiểm xã hội - VNĐ
-                    </label>
-                    <input
-                      type="number"
-                      value={addForm.socialInsurance || ""}
-                      onChange={(e) =>
-                        setAddForm({
-                          ...addForm,
-                          socialInsurance: Number(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VND"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bảo hiểm y tế - VNĐ
-                    </label>
-                    <input
-                      type="number"
-                      value={addForm.healthInsurance || ""}
-                      onChange={(e) =>
-                        setAddForm({
-                          ...addForm,
-                          healthInsurance: Number(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VND"
                     />
                   </div>
 
@@ -1024,152 +844,6 @@ export default function EmployeesPage() {
                       />
                     </svg>
                     Thêm nhân viên
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Detail Modal */}
-          {selectedEmployee && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Chi tiết nhân viên
-                  </h2>
-                  <button
-                    onClick={() => setSelectedEmployee(null)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <svg
-                      className="w-6 h-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Mã nhân viên
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.code}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Họ và tên
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.name}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Số điện thoại
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.phone}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Email
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.email || "N/A"}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-sm font-medium text-gray-500">
-                        Địa chỉ
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.address}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        CCCD
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.idCard}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Số tài khoản
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.bankAccount || "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Loại nhân viên
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.employeeType ===
-                        EmployeeType.FIXED_BY_CONTRACT
-                          ? "Nhân viên chính tại chỗ  "
-                          : selectedEmployee.employeeType ===
-                            EmployeeType.FIXED_BY_DAY
-                          ? "Nhân viên chính điều động"
-                          : "Nhân viên thời vụ"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">
-                        Lương
-                      </label>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {selectedEmployee.monthlySalary
-                          ? formatCurrency(selectedEmployee.monthlySalary) +
-                            "/tháng"
-                          : selectedEmployee.dailySalary
-                          ? formatCurrency(selectedEmployee.dailySalary) +
-                            "/ngày"
-                          : "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    onClick={() => setSelectedEmployee(null)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                  >
-                    Đóng
-                  </button>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                      />
-                    </svg>
-                    Chỉnh sửa
                   </button>
                 </div>
               </div>

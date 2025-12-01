@@ -103,7 +103,8 @@ export default function AssignmentDetail() {
         startDate: editForm.startDate,
         status: editForm.status,
         salaryAtTime: editForm.salaryAtTime,
-        workDays: editForm.workDays,
+        workingDaysPerWeek: editForm.workingDaysPerWeek,
+        additionalAllowance: editForm.additionalAllowance,
         description: editForm.description,
       };
 

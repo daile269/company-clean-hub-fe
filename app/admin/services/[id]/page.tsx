@@ -15,10 +15,7 @@ export default function ServiceDetailPage() {
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
-    priceFrom: 0,
-    priceTo: 0,
-    mainImage: "",
-    status: "ACTIVE",
+    price: 0,
   });
 
   // Load service detail
@@ -95,22 +92,14 @@ export default function ServiceDetailPage() {
     setEditForm({
       title: service.title,
       description: service.description || "",
-      priceFrom: service.priceFrom,
-      priceTo: service.priceTo,
-      mainImage: service.mainImage || "",
-      status: service.status,
+      price: service.price,
     });
     setShowEditModal(true);
   };
 
   const handleSaveEdit = async () => {
-    if (!editForm.title || editForm.priceFrom <= 0 || editForm.priceTo <= 0) {
+    if (!editForm.title || editForm.price <= 0) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
-      return;
-    }
-
-    if (editForm.priceFrom >= editForm.priceTo) {
-      toast.error("Giá từ phải nhỏ hơn giá đến");
       return;
     }
 
@@ -224,15 +213,6 @@ export default function ServiceDetailPage() {
                 </h1>
                 <p className="text-gray-600">ID: #{service.id}</p>
               </div>
-              <span
-                className={`px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full ${
-                  service.status === "ACTIVE"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {service.status === "ACTIVE" ? "Đang hoạt động" : "Ngừng hoạt động"}
-              </span>
             </div>
           </div>
 
@@ -258,54 +238,12 @@ export default function ServiceDetailPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giá từ
+                  Giá dịch vụ
                 </label>
                 <p className="text-blue-600 font-bold text-lg">
-                  {formatCurrency(service.priceFrom)}
+                  {formatCurrency(service.price)}
                 </p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Giá đến
-                </label>
-                <p className="text-blue-600 font-bold text-lg">
-                  {formatCurrency(service.priceTo)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Trạng thái
-                </label>
-                <p>
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      service.status === "ACTIVE"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {service.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
-                  </span>
-                </p>
-              </div>
-
-              {service.mainImage && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Ảnh chính
-                  </label>
-                  <img
-                    src={service.mainImage}
-                    alt={service.title}
-                    className="w-32 h-32 object-cover rounded-lg"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -393,65 +331,19 @@ export default function ServiceDetailPage() {
                 />
               </div>
 
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá từ (VND) *
+                  Giá dịch vụ (VND) *
                 </label>
                 <input
                   type="number"
-                  value={editForm.priceFrom}
+                  value={editForm.price}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, priceFrom: Number(e.target.value) })
+                    setEditForm({ ...editForm, price: Number(e.target.value) })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="500000"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá đến (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={editForm.priceTo}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, priceTo: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="2000000"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ảnh chính (URL)
-                </label>
-                <input
-                  type="text"
-                  value={editForm.mainImage}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, mainImage: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái *
-                </label>
-                <select
-                  value={editForm.status}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, status: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="INACTIVE">Ngừng hoạt động</option>
-                </select>
               </div>
             </div>
 

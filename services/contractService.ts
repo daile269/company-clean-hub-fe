@@ -317,6 +317,20 @@ export const delete_ = async (id: string): Promise<void> => {
   }
 };
 
+// Thêm dịch vụ vào hợp đồng
+export const addServiceToContract = async (contractId: string, serviceId: number): Promise<void> => {
+  try {
+    const response = await apiService.post<any>(`/contracts/${contractId}/services/${serviceId}`, {});
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to add service to contract');
+    }
+  } catch (error) {
+    console.error('Error adding service to contract:', error);
+    throw error;
+  }
+};
+
 const contractService = {
   getAll,
   getById,
@@ -324,6 +338,7 @@ const contractService = {
   create,
   update,
   delete: delete_,
+  addServiceToContract,
 };
 
 export default contractService;

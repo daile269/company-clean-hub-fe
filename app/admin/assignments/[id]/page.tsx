@@ -147,12 +147,10 @@ export default function AssignmentDetail() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "ACTIVE":
-        return "bg-green-100 text-green-800";
-      case "INACTIVE":
-        return "bg-red-100 text-red-800";
-      case "COMPLETED":
+      case "IN_PROGRESS":
         return "bg-blue-100 text-blue-800";
+      case "COMPLETED":
+        return "bg-green-100 text-green-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -160,10 +158,8 @@ export default function AssignmentDetail() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "ACTIVE":
-        return "Đang hoạt động";
-      case "INACTIVE":
-        return "Không hoạt động";
+      case "IN_PROGRESS":
+        return "Đang thực hiện";
       case "COMPLETED":
         return "Hoàn thành";
       default:
@@ -454,14 +450,13 @@ export default function AssignmentDetail() {
                   Trạng thái *
                 </label>
                 <select
-                  value={editForm.status || "ACTIVE"}
+                  value={editForm.status || "IN_PROGRESS"}
                   onChange={(e) =>
                     setEditForm({ ...editForm, status: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="ACTIVE">Đang hoạt động</option>
-                  <option value="INACTIVE">Không hoạt động</option>
+                  <option value="IN_PROGRESS">Đang thực hiện</option>
                   <option value="COMPLETED">Hoàn thành</option>
                 </select>
               </div>

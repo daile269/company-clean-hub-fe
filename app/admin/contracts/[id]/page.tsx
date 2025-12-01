@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Contract, ContractDocument } from "@/types";
 import contractService from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
+import serviceService from "@/services/serviceService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast from "react-hot-toast";
 
@@ -20,6 +21,7 @@ export default function ContractDetailPage() {
   const [editForm, setEditForm] = useState<Partial<Contract>>({});
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
+  const [savingService, setSavingService] = useState(false);
   const [serviceForm, setServiceForm] = useState({
     title: "",
     description: "",
@@ -179,13 +181,49 @@ export default function ContractDetailPage() {
   };
 
   const handleSaveService = async () => {
-    // TODO: Implement API call to add/update service in contract
-    toast.success(editingService ? "Đã cập nhật dịch vụ" : "Đã thêm dịch vụ");
-    setShowServiceModal(false);
-    // Reload contract data
-    if (contract) {
-      const updatedContract = await contractService.getById(contract.id);
-      setContract(updatedContract);
+    if (!serviceForm.title || serviceForm.price <= 0) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+      return;
+    }
+
+    try {
+      setSavingService(true);
+      if (editingService) {
+        // Update existing service
+        await serviceService.update(editingService.id.toString(), {
+          title: serviceForm.title,
+          description: serviceForm.description,
+          price: serviceForm.price,
+        });
+        toast.success("Đã cập nhật dịch vụ");
+      } else {
+        // Create new service first
+        const newService = await serviceService.create({
+          title: serviceForm.title,
+          description: serviceForm.description,
+          price: serviceForm.price,
+        });
+        
+        // Then add service to contract
+        if (contract && newService.id) {
+          await contractService.addServiceToContract(contract.id, newService.id);
+        }
+        
+        toast.success("Đã thêm dịch vụ");
+      }
+      
+      setShowServiceModal(false);
+      
+      // Reload contract data
+      if (contract) {
+        const updatedContract = await contractService.getById(contract.id);
+        setContract(updatedContract);
+      }
+    } catch (error) {
+      console.error("Error saving service:", error);
+      toast.error(editingService ? "Không thể cập nhật dịch vụ" : "Không thể thêm dịch vụ");
+    } finally {
+      setSavingService(false);
     }
   };
 
@@ -928,29 +966,40 @@ export default function ContractDetailPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setShowServiceModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                disabled={savingService}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Hủy
               </button>
               <button
                 onClick={handleSaveService}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                disabled={savingService}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                {editingService ? "Lưu thay đổi" : "Thêm dịch vụ"}
+                {savingService ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    {editingService ? "Lưu thay đổi" : "Thêm dịch vụ"}
+                  </>
+                )}
               </button>
             </div>
           </div>

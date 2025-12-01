@@ -18,6 +18,13 @@ export default function ContractDetailPage() {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Contract>>({});
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingService, setEditingService] = useState<any>(null);
+  const [serviceForm, setServiceForm] = useState({
+    title: "",
+    description: "",
+    price: 0,
+  });
 
   // Load contract details
   useEffect(() => {
@@ -152,6 +159,33 @@ export default function ContractDetailPage() {
         console.error("Error deleting contract:", error);
         toast.error("Không thể xóa hợp đồng");
       }
+    }
+  };
+
+  const handleAddService = () => {
+    setEditingService(null);
+    setServiceForm({ title: "", description: "", price: 0 });
+    setShowServiceModal(true);
+  };
+
+  const handleEditService = (service: any) => {
+    setEditingService(service);
+    setServiceForm({
+      title: service.title,
+      description: service.description || "",
+      price: service.price,
+    });
+    setShowServiceModal(true);
+  };
+
+  const handleSaveService = async () => {
+    // TODO: Implement API call to add/update service in contract
+    toast.success(editingService ? "Đã cập nhật dịch vụ" : "Đã thêm dịch vụ");
+    setShowServiceModal(false);
+    // Reload contract data
+    if (contract) {
+      const updatedContract = await contractService.getById(contract.id);
+      setContract(updatedContract);
     }
   };
 
@@ -335,22 +369,7 @@ export default function ContractDetailPage() {
                 </span>
               </div>
 
-              <div className="pt-2 border-t">
-                <p className="text-xs text-gray-500 mb-2">Dịch vụ</p>
-                <div className="flex flex-wrap gap-2">
-                  {contract.serviceNames && contract.serviceNames.length > 0 ? (
-                    contract.serviceNames.map((serviceName, idx) => (
-                      <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {serviceName}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-400">Chưa có dịch vụ</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
                   <p className="text-sm text-gray-900">
@@ -434,6 +453,111 @@ export default function ContractDetailPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Card 3: Dịch vụ */}
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Dịch vụ trong hợp đồng
+            </h3>
+            <button
+              onClick={handleAddService}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Thêm dịch vụ
+            </button>
+          </div>
+
+          {contract.services && contract.services.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      STT
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tên dịch vụ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mô tả
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Giá dịch vụ
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {contract.services.map((service, index) => (
+                    <tr key={service.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-semibold text-blue-900">
+                          {service.title}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">
+                          {service.description || "—"}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-bold text-blue-700">
+                          {formatCurrency(service.price)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleEditService(service)}
+                          className="text-green-600 hover:text-green-800 inline-flex items-center gap-1"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                            />
+                          </svg>
+                          Sửa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p className="text-sm">Chưa có dịch vụ nào cho hợp đồng này</p>
+            </div>
+          )}
         </div>
 
         {/* Documents Section */}
@@ -720,6 +844,113 @@ export default function ContractDetailPage() {
                   />
                 </svg>
                 Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Service Modal */}
+      {showServiceModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingService ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ mới"}
+              </h2>
+              <button
+                onClick={() => setShowServiceModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên dịch vụ *
+                </label>
+                <input
+                  type="text"
+                  value={serviceForm.title}
+                  onChange={(e) =>
+                    setServiceForm({ ...serviceForm, title: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập tên dịch vụ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá dịch vụ (VND) *
+                </label>
+                <input
+                  type="number"
+                  value={serviceForm.price}
+                  onChange={(e) =>
+                    setServiceForm({ ...serviceForm, price: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả
+                </label>
+                <textarea
+                  value={serviceForm.description}
+                  onChange={(e) =>
+                    setServiceForm({ ...serviceForm, description: e.target.value })
+                  }
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập mô tả dịch vụ"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowServiceModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveService}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                {editingService ? "Lưu thay đổi" : "Thêm dịch vụ"}
               </button>
             </div>
           </div>

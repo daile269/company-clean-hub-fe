@@ -5,11 +5,11 @@ export interface Payroll {
   employeeId: number;
   employeeName: string;
   employeeCode: string;
-  employmentType: string;
+  employmentType?: string;
   month: number;
   year: number;
   totalDays: number;
-  salaryBase: number;
+  salaryBase?: number;
   bonusTotal: number;
   penaltyTotal: number;
   advanceTotal: number;
@@ -22,6 +22,18 @@ export interface Payroll {
   accountantName: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PayrollCalculateRequest {
+  employeeId: number;
+  month: number;
+  year: number;
+}
+
+export interface PayrollUpdateRequest {
+  allowanceTotal?: number;
+  insuranceTotal?: number;
+  advanceTotal?: number;
 }
 
 export interface PayrollFilterParams {
@@ -150,7 +162,7 @@ const payrollService = {
   // Thanh toán lương
   markAsPaid: async (id: number): Promise<Payroll> => {
     try {
-      const response = await apiService.put<any>(`/payrolls/${id}/pay`);
+      const response = await apiService.put<any>(`/payrolls/${id}/payment-status?isPaid=true`);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to mark payroll as paid');
@@ -159,6 +171,38 @@ const payrollService = {
       return response.data;
     } catch (error) {
       console.error('Error marking payroll as paid:', error);
+      throw error;
+    }
+  },
+
+  // Tính lương cho nhân viên
+  calculatePayroll: async (data: PayrollCalculateRequest): Promise<Payroll> => {
+    try {
+      const response = await apiService.post<any>("/payrolls/calculate", data);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to calculate payroll');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error calculating payroll:', error);
+      throw error;
+    }
+  },
+
+  // Cập nhật và tính lại bảng lương
+  recalculatePayroll: async (id: number, data: PayrollUpdateRequest): Promise<Payroll> => {
+    try {
+      const response = await apiService.put<any>(`/payrolls/${id}/recalculate`, data);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to recalculate payroll');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error recalculating payroll:', error);
       throw error;
     }
   },

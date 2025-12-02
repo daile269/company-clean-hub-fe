@@ -51,15 +51,11 @@ export default function CustomerDetail() {
     customerId: "",
     serviceIds: [] as number[],
     serviceName: "",
-    servicePrice: 0,
+    servicePrice: "" as any,
+    serviceVat: "" as any,
     serviceDescription: "",
     startDate: "",
     endDate: "",
-    basePrice: 0,
-    vat: 0,
-    total: 0,
-    extraCost: 0,
-    discountCost: 0,
     finalPrice: 0,
     paymentStatus: "PENDING",
     description: "",
@@ -69,17 +65,17 @@ export default function CustomerDetail() {
     employeeId: number | null;
     assignmentType: string;
     daysOfWeek: string[];
-    allowance: number;
+    allowance: number | string;
     startDate: string;
-    salaryAtTime: number;
+    salaryAtTime: number | string;
     description: string;
   }>({
     employeeId: null,
     assignmentType: "FIXED_BY_CONTRACT",
     daysOfWeek: [],
-    allowance: 0,
+    allowance: "",
     startDate: new Date().toISOString().split("T")[0],
-    salaryAtTime: 0,
+    salaryAtTime: "",
     description: "",
   });
   const [reassignmentForm, setReassignmentForm] = useState<{
@@ -88,7 +84,7 @@ export default function CustomerDetail() {
     fromDate: string;
     toDate: string;
     selectedDates: string[];
-    salaryAtTime?: number;
+    salaryAtTime?: number | string;
     description: string;
   }>({
     replacementEmployeeId: null,
@@ -96,7 +92,7 @@ export default function CustomerDetail() {
     fromDate: new Date().toISOString().split("T")[0],
     toDate: new Date().toISOString().split("T")[0],
     selectedDates: [],
-    salaryAtTime: 0,
+    salaryAtTime: "",
     description: "",
   });
 
@@ -319,9 +315,9 @@ export default function CustomerDetail() {
         startDate: assignmentForm.startDate,
         status: "IN_PROGRESS",
         assignmentType: assignmentForm.assignmentType,
-        salaryAtTime: assignmentForm.salaryAtTime,
+        salaryAtTime: assignmentForm.salaryAtTime ? Number(assignmentForm.salaryAtTime) : 0,
         workingDaysPerWeek: assignmentForm.daysOfWeek,
-        additionalAllowance: assignmentForm.allowance,
+        additionalAllowance: assignmentForm.allowance ? Number(assignmentForm.allowance) : 0,
         description: assignmentForm.description,
       };
       console.log("Assignment data:", assignmentData);
@@ -335,9 +331,9 @@ export default function CustomerDetail() {
           employeeId: null,
           assignmentType: "FIXED_BY_CONTRACT",
           daysOfWeek: [],
-          allowance: 0,
+          allowance: "",
           startDate: new Date().toISOString().split("T")[0],
-          salaryAtTime: 0,
+          salaryAtTime: "",
           description: "",
         });
         // Reload assigned employees list
@@ -370,7 +366,7 @@ export default function CustomerDetail() {
         replacementEmployeeId: reassignmentForm.replacementEmployeeId,
         replacedEmployeeId: reassignmentForm.replacedEmployeeId,
         dates: reassignmentForm.selectedDates,
-        salaryAtTime: reassignmentForm.salaryAtTime,
+        salaryAtTime: reassignmentForm.salaryAtTime ? Number(reassignmentForm.salaryAtTime) : undefined,
         description: reassignmentForm.description,
       };
 
@@ -388,7 +384,7 @@ export default function CustomerDetail() {
           fromDate: new Date().toISOString().split("T")[0],
           toDate: new Date().toISOString().split("T")[0],
           selectedDates: [],
-          salaryAtTime: 0,
+          salaryAtTime: "",
           description: "",
         });
         loadAssignedEmployees();
@@ -406,23 +402,30 @@ export default function CustomerDetail() {
   const handleAddContract = async () => {
     setSavingContract(true);
     try {
-      // Validate required fields
+      // Parse formatted numbers correctly
+      const rawPrice = parseFormattedNumber(String(contractForm.servicePrice || ''));
+      const servicePrice = Number(rawPrice) || 0;
+      const serviceVat = contractForm.serviceVat === "" ? 0 : Number(contractForm.serviceVat);
+      
       if (
         !contractForm.serviceName ||
-        contractForm.servicePrice <= 0 ||
+        servicePrice <= 0 ||
         !contractForm.startDate ||
-        !contractForm.endDate ||
-        contractForm.basePrice <= 0
+        !contractForm.endDate
       ) {
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
 
+      // Calculate finalPrice from service price + vat percentage
+      const calculatedFinalPrice = servicePrice + (servicePrice * serviceVat / 100);
+
       // Step 1: Create service first
       const serviceRequest: ServiceRequest = {
         title: contractForm.serviceName,
         description: contractForm.serviceDescription,
-        price: contractForm.servicePrice,
+        price: servicePrice,
+        vat: serviceVat,
       };
 
       const serviceResponse = await serviceService.create(serviceRequest);
@@ -438,12 +441,7 @@ export default function CustomerDetail() {
         serviceIds: [serviceResponse.id],
         startDate: contractForm.startDate,
         endDate: contractForm.endDate,
-        basePrice: contractForm.basePrice,
-        vat: contractForm.vat,
-        total: contractForm.total,
-        extraCost: contractForm.extraCost,
-        discountCost: contractForm.discountCost,
-        finalPrice: contractForm.finalPrice,
+        finalPrice: calculatedFinalPrice,
         paymentStatus: contractForm.paymentStatus,
         description: contractForm.description,
       };
@@ -459,15 +457,11 @@ export default function CustomerDetail() {
         customerId: "",
         serviceIds: [],
         serviceName: "",
-        servicePrice: 0,
+        servicePrice: "" as any,
+        serviceVat: "" as any,
         serviceDescription: "",
         startDate: "",
         endDate: "",
-        basePrice: 0,
-        vat: 0,
-        total: 0,
-        extraCost: 0,
-        discountCost: 0,
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
@@ -485,6 +479,23 @@ export default function CustomerDetail() {
       style: "currency",
       currency: "VND",
     }).format(amount);
+
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    // Parse to remove any existing formatting, then format again
+    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const parseFormattedNumber = (str: string) => {
+    // Remove both comma and dot separators (vi-VN uses dot as thousand separator)
+    return str.replace(/[,.]/g, "");
+  };
+
+  const handleNumberInput = (value: string) => {
+    // Chỉ cho phép số
+    return value.replace(/[^0-9]/g, '');
+  };
 
   return (
     <div className="p-6">
@@ -1196,14 +1207,30 @@ export default function CustomerDetail() {
                     Lương theo phân công (VND)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     value={assignmentForm.salaryAtTime}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
                       setAssignmentForm({
                         ...assignmentForm,
-                        salaryAtTime: Number(e.target.value),
-                      })
-                    }
+                        salaryAtTime: rawValue,
+                      });
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          salaryAtTime: formatNumber(e.target.value),
+                        });
+                      }
+                    }}
+                    onFocus={(e) => {
+                      const rawValue = parseFormattedNumber(e.target.value);
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        salaryAtTime: rawValue,
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Sẽ lấy từ lương nhân viên"
                   />
@@ -1213,14 +1240,30 @@ export default function CustomerDetail() {
                     Phụ cấp (VND)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     value={assignmentForm.allowance}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
                       setAssignmentForm({
                         ...assignmentForm,
-                        allowance: Number(e.target.value),
-                      })
-                    }
+                        allowance: rawValue,
+                      });
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          allowance: formatNumber(e.target.value),
+                        });
+                      }
+                    }}
+                    onFocus={(e) => {
+                      const rawValue = parseFormattedNumber(e.target.value);
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        allowance: rawValue,
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0"
                   />
@@ -1706,15 +1749,30 @@ export default function CustomerDetail() {
                     Lương tại thời điểm điều động (VND)
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    value={reassignmentForm.salaryAtTime ?? 0}
-                    onChange={(e) =>
+                    type="text"
+                    value={reassignmentForm.salaryAtTime}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
                       setReassignmentForm({
                         ...reassignmentForm,
-                        salaryAtTime: Number(e.target.value),
-                      })
-                    }
+                        salaryAtTime: rawValue,
+                      });
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        setReassignmentForm({
+                          ...reassignmentForm,
+                          salaryAtTime: formatNumber(e.target.value),
+                        });
+                      }
+                    }}
+                    onFocus={(e) => {
+                      const rawValue = parseFormattedNumber(e.target.value);
+                      setReassignmentForm({
+                        ...reassignmentForm,
+                        salaryAtTime: rawValue,
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="0"
                   />
@@ -1962,7 +2020,6 @@ export default function CustomerDetail() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tên dịch vụ *
                 </label>
@@ -1978,7 +2035,6 @@ export default function CustomerDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="VD: Dọn dẹp văn phòng"
                 />
-                </div>
               </div>
 
               <div>
@@ -1986,16 +2042,66 @@ export default function CustomerDetail() {
                   Giá dịch vụ (VND) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={contractForm.servicePrice}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const rawValue = handleNumberInput(e.target.value);
+                    if (rawValue === "") {
+                      setContractForm({
+                        ...contractForm,
+                        servicePrice: "",
+                        finalPrice: 0,
+                      });
+                      return;
+                    }
+                    const price = Number(rawValue) || 0;
+                    const vatValue = contractForm.serviceVat === "" ? 0 : Number(contractForm.serviceVat);
                     setContractForm({
                       ...contractForm,
-                      servicePrice: Number(e.target.value),
-                    })
-                  }
+                      servicePrice: formatNumber(rawValue),
+                      finalPrice: price + (price * vatValue / 100),
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="5000000"
+                  placeholder="Nhập giá dịch vụ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VAT (%) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={contractForm.serviceVat}
+                  onChange={(e) => {
+                    const vat = e.target.value === "" ? 0 : Number(e.target.value);
+                    // Parse formatted price to get raw number
+                    const priceStr = String(contractForm.servicePrice || '');
+                    const rawPrice = parseFormattedNumber(priceStr);
+                    const price = Number(rawPrice) || 0;
+                    setContractForm({
+                      ...contractForm,
+                      serviceVat: e.target.value,
+                      finalPrice: price + (price * vat / 100),
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập VAT (%)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tổng giá (Giá dịch vụ + VAT) (VNĐ)
+                </label>
+                <input
+                  type="text"
+                  value={contractForm.finalPrice ? formatNumber(contractForm.finalPrice) : ""}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
                 />
               </div>
 
@@ -2048,126 +2154,6 @@ export default function CustomerDetail() {
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cơ bản (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.basePrice}
-                  onChange={(e) => {
-                    const basePrice = Number(e.target.value);
-                    const total = basePrice + contractForm.vat;
-                    const finalPrice =
-                      total +
-                      contractForm.extraCost -
-                      contractForm.discountCost;
-                    setContractForm({
-                      ...contractForm,
-                      basePrice,
-                      total,
-                      finalPrice,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="10000000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.vat}
-                  onChange={(e) => {
-                    const vat = Number(e.target.value);
-                    const total = contractForm.basePrice + vat;
-                    const finalPrice =
-                      total +
-                      contractForm.extraCost -
-                      contractForm.discountCost;
-                    setContractForm({
-                      ...contractForm,
-                      vat,
-                      total,
-                      finalPrice,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="1000000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng (Base + VAT)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.total}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chi phí phát sinh (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.extraCost}
-                  onChange={(e) => {
-                    const extraCost = Number(e.target.value);
-                    const finalPrice =
-                      contractForm.total +
-                      extraCost -
-                      contractForm.discountCost;
-                    setContractForm({ ...contractForm, extraCost, finalPrice });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giảm giá (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.discountCost}
-                  onChange={(e) => {
-                    const discountCost = Number(e.target.value);
-                    const finalPrice =
-                      contractForm.total +
-                      contractForm.extraCost -
-                      discountCost;
-                    setContractForm({
-                      ...contractForm,
-                      discountCost,
-                      finalPrice,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="500000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cuối cùng (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.finalPrice}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-blue-600"
                 />
               </div>
 

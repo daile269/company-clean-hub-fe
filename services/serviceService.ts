@@ -6,6 +6,7 @@ export interface ApiService {
   title: string;
   description?: string;
   price: number;
+  vat: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +72,7 @@ export interface ServiceRequest {
   title: string;
   description?: string;
   price: number;
+  vat: number;
 }
 
 // Tạo dịch vụ mới
@@ -80,6 +82,7 @@ export const create = async (serviceData: ServiceRequest): Promise<ApiService> =
       title: serviceData.title,
       description: serviceData.description || '',
       price: serviceData.price,
+      vat: serviceData.vat,
     };
 
     const response = await apiService.post<any>('/services', payload);
@@ -111,6 +114,11 @@ export const update = async (id: string, serviceData: any): Promise<ApiService> 
     if (serviceData.price !== undefined) {
       payload.price = serviceData.price;
     }
+    
+    if (serviceData.vat !== undefined) {
+      payload.vat = serviceData.vat;
+    }
+    
     const response = await apiService.put<any>(`/services/${id}`, payload);
 
     if (!response.success || !response.data) {

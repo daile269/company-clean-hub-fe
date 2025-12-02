@@ -441,9 +441,7 @@ export default function ContractsPage() {
                         <div className="text-sm font-medium text-gray-900">
                           {formatCurrency(contract.finalPrice)}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          Base: {formatCurrency(contract.basePrice)}
-                        </div>
+                  
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -718,7 +716,7 @@ export default function ContractsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (VND) *
+                  VAT (%) *
                 </label>
                 <input
                   type="number"

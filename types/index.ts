@@ -67,6 +67,7 @@ export interface ContractService {
   title: string;
   description?: string;
   price: number;
+  vat: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,12 +85,7 @@ export interface Contract {
   contractNumber?: string;       // Số hợp đồng
   startDate: Date;
   endDate: Date;
-  basePrice: number;             // Giá cơ bản
-  vat: number;                   // VAT (số tiền)
-  total: number;                 // Tổng (basePrice + vat)
-  extraCost: number;             // Chi phí phát sinh
-  discountCost: number;          // Giảm giá
-  finalPrice: number;            // Giá cuối cùng
+  finalPrice: number;            // Giá cuối cùng (tổng giá các service)
   paymentStatus: string;         // Trạng thái thanh toán
   description?: string;
   notes?: string;

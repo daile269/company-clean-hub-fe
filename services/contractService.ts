@@ -23,6 +23,7 @@ export interface ApiService {
   title: string;
   description?: string;
   price: number;
+  vat: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,11 +36,6 @@ export interface ApiContract {
   services?: ApiService[];       // Danh sách dịch vụ từ backend
   startDate: string;
   endDate: string;
-  basePrice: number;
-  vat: number;
-  total: number;
-  extraCost: number;
-  discountCost: number;
   finalPrice: number;
   paymentStatus: string;
   description?: string;
@@ -66,11 +62,6 @@ export const getAll = async (params: ContractPaginationParams): Promise<Contract
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
@@ -108,11 +99,6 @@ export const getByCustomerId = async (customerId: string): Promise<Contract[]> =
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
@@ -145,11 +131,6 @@ export const getById = async (id: string): Promise<Contract> => {
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
@@ -171,11 +152,6 @@ export const create = async (contractData: any): Promise<Contract> => {
       serviceIds: contractData.serviceIds || [],
       startDate: contractData.startDate,
       endDate: contractData.endDate,
-      basePrice: contractData.basePrice,
-      vat: contractData.vat,
-      total: contractData.total,
-      extraCost: contractData.extraCost || 0,
-      discountCost: contractData.discountCost || 0,
       finalPrice: contractData.finalPrice,
       paymentStatus: contractData.paymentStatus || 'PENDING',
       description: contractData.description || '',
@@ -196,11 +172,6 @@ export const create = async (contractData: any): Promise<Contract> => {
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
@@ -239,26 +210,6 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
         : contractData.endDate;
     }
     
-    if (contractData.basePrice !== undefined) {
-      payload.basePrice = contractData.basePrice;
-    }
-    
-    if (contractData.vat !== undefined) {
-      payload.vat = contractData.vat;
-    }
-    
-    if (contractData.total !== undefined) {
-      payload.total = contractData.total;
-    }
-    
-    if (contractData.extraCost !== undefined) {
-      payload.extraCost = contractData.extraCost;
-    }
-    
-    if (contractData.discountCost !== undefined) {
-      payload.discountCost = contractData.discountCost;
-    }
-    
     if (contractData.finalPrice !== undefined) {
       payload.finalPrice = contractData.finalPrice;
     }
@@ -286,11 +237,6 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,

@@ -25,7 +25,8 @@ export default function ContractDetailPage() {
   const [serviceForm, setServiceForm] = useState({
     title: "",
     description: "",
-    price: 0,
+    price: "" as any,
+    vat: "" as any,
   });
 
   // Load contract details
@@ -103,6 +104,23 @@ export default function ContractDetailPage() {
     return d.toISOString().split("T")[0];
   };
 
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    // Parse to remove any existing formatting, then format again
+    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const parseFormattedNumber = (str: string) => {
+    // Remove both comma and dot separators (vi-VN uses dot as thousand separator)
+    return str.replace(/[,.]/g, "");
+  };
+
+  const handleNumberInput = (value: string) => {
+    // Chỉ cho phép số
+    return value.replace(/[^0-9]/g, '');
+  };
+
   const handleEdit = () => {
     if (!contract) return;
     setEditForm({ ...contract });
@@ -113,25 +131,19 @@ export default function ContractDetailPage() {
     if (!contract || !editForm) return;
     
     try {
-      // Calculate total and finalPrice before sending to API
-      const basePrice = editForm.basePrice || 0;
-      const vat = editForm.vat || 0;
-      const extraCost = editForm.extraCost || 0;
-      const discountCost = editForm.discountCost || 0;
+      // Get current service IDs from contract.services
+      const currentServiceIds = contract.services?.map(service => service.id) || [];
       
-      const total = basePrice + vat;
-      const finalPrice = total + extraCost - discountCost;
+      // Calculate finalPrice from services
+      const finalPrice = contract.services?.reduce((sum, service) => {
+        return sum + service.price + service.vat;
+      }, 0) || 0;
       
       const updateData = {
-        customerId: contract.customerId, // Keep original customerId
-        serviceIds: contract.serviceIds, // Keep original serviceIds
+        customerId: contract.customerId,
+        serviceIds: currentServiceIds,
         startDate: editForm.startDate,
         endDate: editForm.endDate,
-        basePrice: basePrice,
-        vat: vat,
-        total: total,
-        extraCost: extraCost,
-        discountCost: discountCost,
         finalPrice: finalPrice,
         paymentStatus: editForm.paymentStatus,
         description: editForm.description,
@@ -166,7 +178,7 @@ export default function ContractDetailPage() {
 
   const handleAddService = () => {
     setEditingService(null);
-    setServiceForm({ title: "", description: "", price: 0 });
+    setServiceForm({ title: "", description: "", price: "" as any, vat: "" as any });
     setShowServiceModal(true);
   };
 
@@ -176,12 +188,18 @@ export default function ContractDetailPage() {
       title: service.title,
       description: service.description || "",
       price: service.price,
+      vat: service.vat || 0,
     });
     setShowServiceModal(true);
   };
 
   const handleSaveService = async () => {
-    if (!serviceForm.title || serviceForm.price <= 0) {
+    // Parse formatted numbers correctly
+    const rawPrice = parseFormattedNumber(String(serviceForm.price || ''));
+    const servicePrice = Number(rawPrice) || 0;
+    const serviceVat = serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
+
+    if (!serviceForm.title || servicePrice <= 0) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
@@ -193,7 +211,8 @@ export default function ContractDetailPage() {
         await serviceService.update(editingService.id.toString(), {
           title: serviceForm.title,
           description: serviceForm.description,
-          price: serviceForm.price,
+          price: servicePrice,
+          vat: serviceVat,
         });
         toast.success("Đã cập nhật dịch vụ");
       } else {
@@ -201,7 +220,8 @@ export default function ContractDetailPage() {
         const newService = await serviceService.create({
           title: serviceForm.title,
           description: serviceForm.description,
-          price: serviceForm.price,
+          price: servicePrice,
+          vat: serviceVat,
         });
         
         // Then add service to contract
@@ -438,45 +458,6 @@ export default function ContractDetailPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Giá cơ bản</p>
-                <p className="text-lg font-bold text-gray-900">
-                  {formatCurrency(contract.basePrice)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-gray-500 mb-1">VAT</p>
-                <p className="text-base font-semibold text-gray-900">
-                  {formatCurrency(contract.vat)}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t">
-                <p className="text-xs text-gray-500 mb-1">Tổng (Base + VAT)</p>
-                <p className="text-lg font-bold text-blue-600">
-                  {formatCurrency(contract.total)}
-                </p>
-              </div>
-
-              <div className="pt-3 border-t">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Điều chỉnh</h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-gray-600">Chi phí phát sinh</p>
-                    <p className="text-sm font-medium text-orange-600">
-                      +{formatCurrency(contract.extraCost)}
-                    </p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-gray-600">Giảm giá</p>
-                    <p className="text-sm font-medium text-green-600">
-                      -{formatCurrency(contract.discountCost)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t">
                 <p className="text-xs text-gray-500 mb-1">Giá cuối cùng</p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(contract.finalPrice)}
@@ -538,6 +519,12 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Giá dịch vụ
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      VAT
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tổng
+                    </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Thao tác
                     </th>
@@ -560,8 +547,18 @@ export default function ContractDetailPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-bold text-blue-700">
+                        <span className="text-sm font-medium text-gray-700">
                           {formatCurrency(service.price)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-700">
+                          {service.vat}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-bold text-blue-700">
+                          {formatCurrency(service.price + (service.price * service.vat) / 100)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -670,104 +667,6 @@ export default function ContractDetailPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cơ bản (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={editForm.basePrice || 0}
-                  onChange={(e) => {
-                    const basePrice = Number(e.target.value);
-                    const vat = editForm.vat || 0;
-                    const extraCost = editForm.extraCost || 0;
-                    const discountCost = editForm.discountCost || 0;
-                    const total = basePrice + vat;
-                    const finalPrice = total + extraCost - discountCost;
-                    setEditForm({ 
-                      ...editForm, 
-                      basePrice, 
-                      total,
-                      finalPrice 
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (VND) *
-                </label>
-                <input
-                  type="number"
-                  value={editForm.vat || 0}
-                  onChange={(e) => {
-                    const vat = Number(e.target.value);
-                    const basePrice = editForm.basePrice || 0;
-                    const extraCost = editForm.extraCost || 0;
-                    const discountCost = editForm.discountCost || 0;
-                    const total = basePrice + vat;
-                    const finalPrice = total + extraCost - discountCost;
-                    setEditForm({ 
-                      ...editForm, 
-                      vat, 
-                      total,
-                      finalPrice 
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chi phí phát sinh (VND)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.extraCost || 0}
-                  onChange={(e) => {
-                    const extraCost = Number(e.target.value);
-                    const basePrice = editForm.basePrice || 0;
-                    const vat = editForm.vat || 0;
-                    const discountCost = editForm.discountCost || 0;
-                    const total = basePrice + vat;
-                    const finalPrice = total + extraCost - discountCost;
-                    setEditForm({ 
-                      ...editForm, 
-                      extraCost,
-                      finalPrice 
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giảm giá (VND)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.discountCost || 0}
-                  onChange={(e) => {
-                    const discountCost = Number(e.target.value);
-                    const basePrice = editForm.basePrice || 0;
-                    const vat = editForm.vat || 0;
-                    const extraCost = editForm.extraCost || 0;
-                    const total = basePrice + vat;
-                    const finalPrice = total + extraCost - discountCost;
-                    setEditForm({ 
-                      ...editForm, 
-                      discountCost,
-                      finalPrice 
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Trạng thái thanh toán *
                 </label>
                 <select
@@ -785,25 +684,13 @@ export default function ContractDetailPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng (Base + VAT)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.total || 0}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Giá cuối cùng (VND)
                 </label>
                 <input
                   type="number"
-                  value={editForm.finalPrice || 0}
+                  value={contract?.finalPrice || 0}
                   disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-blue-600"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
                 />
               </div>
 
@@ -932,18 +819,60 @@ export default function ContractDetailPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giá dịch vụ (VND) *
+                  </label>
+                  <input
+                    type="text"
+                    value={serviceForm.price}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      if (rawValue === "") {
+                        setServiceForm({ ...serviceForm, price: "" });
+                        return;
+                      }
+                      setServiceForm({ ...serviceForm, price: formatNumber(rawValue) });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập giá dịch vụ"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    VAT (%) *
+                  </label>
+                  <input
+                    type="number"
+                    value={serviceForm.vat}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, vat: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập VAT (%)"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá dịch vụ (VND) *
+                  Tổng giá (Price + VAT)
                 </label>
                 <input
-                  type="number"
-                  value={serviceForm.price}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, price: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
+                  type="text"
+                  value={(() => {
+                    const rawPrice = parseFormattedNumber(String(serviceForm.price || ''));
+                    const price = Number(rawPrice) || 0;
+                    const vat = serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
+                    const total = price + (price * vat / 100);
+                    return total ? formatNumber(total) : "";
+                  })()}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
                 />
               </div>
 

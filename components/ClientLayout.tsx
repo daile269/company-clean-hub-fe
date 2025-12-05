@@ -1,5 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
+import { Toaster } from "react-hot-toast";
 import Header from "@/components/Header";
 
 export default function ClientLayout({
@@ -12,6 +13,7 @@ export default function ClientLayout({
 
   return (
     <>
+      <Toaster position="top-right" />
       {/* Header - Hidden on admin pages */}
       {!isAdminPage && <Header />}
 

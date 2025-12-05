@@ -276,7 +276,7 @@ export default function PayrollDetailPage() {
               <label className="text-sm font-medium text-gray-500">
                 Mã nhân viên
               </label>
-              <p className="mt-1 text-sm text-gray-900 font-mono">
+              <p className="mt-1 text-sm text-gray-900  ">
                 {payroll.employeeCode}
               </p>
             </div>
@@ -442,6 +442,76 @@ export default function PayrollDetailPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Salary Calculation Formulas */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">
+            Công thức tính lương theo loại phân công
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Formula 1: FIXED_BY_CONTRACT */}
+            <div className="border-l-4 border-blue-500 pl-4 py-2">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Phân công cố định (Hợp đồng)
+              </h4>
+              <div className="text-xs text-gray-700 space-y-1 bg-blue-50 p-3 rounded">
+                <p><span className="  font-semibold">Lương ngày = </span></p>
+                <p className="ml-2">Lương hợp đồng ÷ Số ngày DK</p>
+                <p className="mt-2"><span className="  font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
+                <div className="mt-2 pt-2 border-t border-blue-200">
+                  <p className="text-gray-600">Ví dụ: 30tr ÷ 26 ngày = ~1.15tr/ngày</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Formula 2: FIXED_BY_DAY */}
+            <div className="border-l-4 border-green-500 pl-4 py-2">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Phân công cố định (Theo ngày)
+              </h4>
+              <div className="text-xs text-gray-700 space-y-1 bg-green-50 p-3 rounded">
+                <p><span className="  font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương cố định (cố định theo ngày)</p>
+                <div className="mt-2 pt-2 border-t border-green-200">
+                  <p className="text-gray-600">Lương được xác định sẵn cho phân công này</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Formula 3: TEMPORARY */}
+            <div className="border-l-4 border-orange-500 pl-4 py-2">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Phân công tạm thời
+              </h4>
+              <div className="text-xs text-gray-700 space-y-1 bg-orange-50 p-3 rounded">
+                <p><span className="  font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương ngày × Số ngày làm việc</p>
+                <div className="mt-2 pt-2 border-t border-orange-200">
+                  <p className="text-gray-600">Ví dụ: 500k/ngày × 20 ngày = 10tr</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Final Calculation Formula */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">
+              Lương thực nhận cuối cùng
+            </h4>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-700   leading-relaxed">
+                <span className="text-blue-600 font-semibold">Lương thực nhận =</span>
+
+                <span className="text-green-600">  Thưởng</span>
+                <span className="text-purple-600"> + Phụ cấp</span>
+                <span className="text-orange-600"> + Bảo hiểm</span>
+                <span className="text-red-600"> - Phạt</span>
+                <span className="text-yellow-600"> - Ứng trước</span>
+              </p>
             </div>
           </div>
         </div>

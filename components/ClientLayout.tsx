@@ -31,7 +31,7 @@ export default function ClientLayout({
             className="group relative"
           >
             <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-2xl transition-all hover:scale-110 animate-pulse">
-              <img src="/zalo.png" alt="Zalo" className="w-8 h-8" />
+              <img src="/Icon_of_Zalo.svg.png" alt="Zalo" className="w-8 h-8" />
             </div>
           </a>
 

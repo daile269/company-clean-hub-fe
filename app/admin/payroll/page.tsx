@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import payrollService, { Payroll } from "@/services/payrollService";
 import { employeeService } from "@/services/employeeService";
 import PayrollCalculateModal from "@/components/PayrollCalculateModal";
-import { toast } from "react-hot-toast";
+import PayrollExportModal from "@/components/PayrollExportModal";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function PayrollPage() {
   const router = useRouter();
@@ -16,17 +17,33 @@ export default function PayrollPage() {
   const [filterYear, setFilterYear] = useState<string>("all");
   const [showCalculateModal, setShowCalculateModal] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [overlayMessage, setOverlayMessage] = useState("");
+  const [overlayVisible, setOverlayVisible] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [showExportModal, setShowExportModal] = useState(false);
   const pageSize = 10;
 
   // Load payrolls
-  const loadPayrolls = async () => {
+  const showOverlay = (message?: string) => {
+    setOverlayMessage(message || "Đang xử lý...");
+    setOverlayVisible(true);
+  };
+
+  const hideOverlay = () => {
+    setOverlayVisible(false);
+    setOverlayMessage("");
+  };
+  const loadPayrolls = async (options?: { showOverlay?: boolean; message?: string }) => {
+    const shouldShowOverlay = options?.showOverlay ?? true;
     try {
       setLoading(true);
+      // if (shouldShowOverlay) {
+      //   showOverlay(options?.message || "Đang tải danh sách bảng lương...");
+      // }
       const response = await payrollService.getPayrolls({
         keyword: searchTerm,
         month: filterMonth !== "all" ? Number(filterMonth) : undefined,
@@ -36,7 +53,6 @@ export default function PayrollPage() {
         pageSize,
       });
       console.log("API Response:", response);
-
       if (response && response.content) {
         setPayrolls(response.content);
         setTotalPages(response.totalPages);
@@ -51,6 +67,9 @@ export default function PayrollPage() {
       toast.error("Không thể tải danh sách bảng lương");
     } finally {
       setLoading(false);
+      // if (shouldShowOverlay) {
+      //   hideOverlay();
+      // }
     }
   };
 
@@ -74,7 +93,7 @@ export default function PayrollPage() {
 
   // Load data on mount and when filters change
   useEffect(() => {
-    loadPayrolls();
+    loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." });
     loadEmployees();
   }, [currentPage, filterMonth, filterYear, filterStatus]);
 
@@ -82,7 +101,7 @@ export default function PayrollPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (currentPage === 0) {
-        loadPayrolls();
+        loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." });
       } else {
         setCurrentPage(0);
       }
@@ -95,11 +114,15 @@ export default function PayrollPage() {
     if (!confirm("Bạn có chắc chắn muốn xóa bảng lương này?")) return;
 
     try {
+      showOverlay("Đang xóa bảng lương...");
       await payrollService.deletePayroll(id);
+      setOverlayMessage("Đang tải danh sách bảng lương...");
+      await loadPayrolls({ showOverlay: false });
+      hideOverlay();
       toast.success("Xóa bảng lương thành công");
-      loadPayrolls();
     } catch (error) {
       console.error("Failed to delete payroll:", error);
+      hideOverlay();
       toast.error("Không thể xóa bảng lương");
     }
   };
@@ -109,11 +132,15 @@ export default function PayrollPage() {
     if (!confirm("Xác nhận đã thanh toán lương?")) return;
 
     try {
+      showOverlay("Đang cập nhật trạng thái thanh toán...");
       await payrollService.markAsPaid(id);
+      setOverlayMessage("Đang tải danh sách bảng lương...");
+      await loadPayrolls({ showOverlay: false });
+      hideOverlay();
       toast.success("Đã cập nhật trạng thái thanh toán");
-      loadPayrolls();
     } catch (error) {
       console.error("Failed to mark as paid:", error);
+      hideOverlay();
       toast.error("Không thể cập nhật trạng thái");
     }
   };
@@ -135,7 +162,8 @@ export default function PayrollPage() {
   const unpaidPayrolls = payrolls.filter((p) => !p.isPaid).length;
 
   return (
-    <div>
+    <div className="relative">
+      <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
         <div className="flex gap-2">
@@ -164,8 +192,15 @@ export default function PayrollPage() {
       <PayrollCalculateModal
         isOpen={showCalculateModal}
         onClose={() => setShowCalculateModal(false)}
-        onSuccess={loadPayrolls}
+        onSuccess={() =>
+          loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." })
+        }
         employees={employees}
+      />
+
+      <PayrollExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
       />
 
       {/* Stats */}
@@ -356,7 +391,10 @@ export default function PayrollPage() {
               </div>
 
               <div className="flex items-end">
-                <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
+                <button 
+                  className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+                  onClick={() => setShowExportModal(true)}
+                >
                   Xuất Excel
                 </button>
               </div>
@@ -376,9 +414,7 @@ export default function PayrollPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tên nhân viên
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Loại hợp đồng
-                      </th>
+                
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tháng/Năm
                       </th>
@@ -407,11 +443,7 @@ export default function PayrollPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {payroll.employeeName}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                            {payroll.employmentType || "N/A"}
-                          </span>
-                        </td>
+                       
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           Tháng {payroll.month}/{payroll.year}
                         </td>

@@ -3,9 +3,12 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import payrollService, { Payroll } from "@/services/payrollService";
 import attendanceService, { Attendance } from "@/services/attendanceService";
+import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollUpdateModal from "@/components/PayrollUpdateModal";
-import { toast } from "react-hot-toast";
-
+import AttendanceEditModal from "@/components/AttendanceEditModal";
+import AttendanceCalendar from "@/components/AttendanceCalendar";
+import toast, { Toaster } from "react-hot-toast";
+import FullPageLoading from "@/components/shared/FullPageLoading";
 export default function PayrollDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -17,50 +20,70 @@ export default function PayrollDetailPage() {
   // Attendance list state for this payroll's employee & month
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [attLoading, setAttLoading] = useState(false);
-  const [attPage, setAttPage] = useState(0);
-  const [attPageSize, setAttPageSize] = useState(10);
-  const [attTotalPages, setAttTotalPages] = useState(0);
+  const [selectedAttendance, setSelectedAttendance] = useState<Attendance | null>(null);
+  const [showEditAttendanceModal, setShowEditAttendanceModal] = useState(false);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState("");
 
+  const showOverlay = (message?: string) => {
+    setOverlayMessage(message || "Đang xử lý...");
+    setOverlayVisible(true);
+  };
+
+  const hideOverlay = () => {
+    setOverlayVisible(false);
+    setOverlayMessage("");
+  };
+  const showToast = (msg: string, type: "success" | "error" | "info" = "success") => {
+    console.log("Showing toast:", msg, type);
+    if (type === "success") toast.success(msg);
+    else if (type === "error") toast.error(msg);
+    else toast(msg);
+  };
   useEffect(() => {
-    loadPayroll();
+    loadPayroll({ showOverlay: true, message: "Đang tải thông tin bảng lương..." });
   }, [id]);
 
-  const loadPayroll = async () => {
+  const loadPayroll = async (options?: { showOverlay?: boolean; message?: string }) => {
+    const shouldShowOverlay = options?.showOverlay ?? false;
     try {
       setLoading(true);
+      if (shouldShowOverlay) {
+        showOverlay(options?.message || "Đang tải thông tin bảng lương...");
+      }
       const data = await payrollService.getPayrollById(Number(id));
       setPayroll(data);
       // load attendances for this employee/month
       if (data && data.employeeId) {
-        loadAttendances(data.employeeId, data.month, data.year, attPage, attPageSize);
+        loadAttendances(data.employeeId, data.month, data.year);
+        loadAssignments(data.employeeId, data.month, data.year);
       }
     } catch (error) {
       console.error("Failed to load payroll:", error);
       toast.error("Không thể tải thông tin bảng lương");
     } finally {
       setLoading(false);
+      if (shouldShowOverlay) {
+        hideOverlay();
+      }
     }
   };
 
   const loadAttendances = async (
     employeeId: number | string,
     month: number | undefined,
-    year: number | undefined,
-    page = 0,
-    pageSize = 10
+    year: number | undefined
   ) => {
     try {
       setAttLoading(true);
       const res = await attendanceService.getByEmployeeAndMonth(employeeId, {
         month,
         year,
-        page,
-        pageSize,
+        page: 0,
+        pageSize: 1000, // Lấy tất cả record cho lịch
       });
       setAttendances(res.content || []);
-      setAttPage(res.currentPage || page);
-      setAttPageSize(res.pageSize || pageSize);
-      setAttTotalPages(res.totalPages || 0);
     } catch (error) {
       console.error("Error loading attendances:", error);
       toast.error("Không thể tải danh sách chấm công");
@@ -68,32 +91,65 @@ export default function PayrollDetailPage() {
       setAttLoading(false);
     }
   };
-
-  const handleMarkAsPaid = async () => {
-    if (!confirm("Xác nhận đã thanh toán lương?")) return;
-
+  
+  const loadAssignments = async (employeeId: number | string, month: number | undefined, year: number | undefined) => {
     try {
-      await payrollService.markAsPaid(Number(id));
-      toast.success("Đã cập nhật trạng thái thanh toán");
-      loadPayroll();
+      const res = await assignmentService.getAssignmentsByEmployeeId(employeeId.toString(), month || 0, year || 0 );
+      setAssignments(res);
+      console.log("Loaded assignments:", res);  
     } catch (error) {
-      console.error("Failed to mark as paid:", error);
-      toast.error("Không thể cập nhật trạng thái");
+      console.error("Error loading assignments:", error);
     }
   };
 
-  //   const handleDelete = async () => {
-  //     if (!confirm("Bạn có chắc chắn muốn xóa bảng lương này?")) return;
+  const handleMarkAsPaid = async () => {
+    if (!confirm("Xác nhận đã thanh toán lương?")) return;
+    setLoading(true);
+    try {
+      showOverlay("Đang cập nhật trạng thái thanh toán...");
+      await payrollService.markAsPaid(Number(id));
+      setOverlayMessage("Đang tải thông tin bảng lương...");
+      await loadPayroll({ showOverlay: false });
+      hideOverlay();
+      toast.success("Đã cập nhật trạng thái thanh toán");
+    } catch (error) {
+      console.error("Failed to mark as paid:", error);
+      hideOverlay();
+      toast.error("Không thể cập nhật trạng thái");
+    }finally
+    {
+      setLoading(false);
+    }
+  };
 
-  //     try {
-  //       await payrollService.deletePayroll(Number(id));
-  //       toast.success("Xóa bảng lương thành công");
-  //       router.push("/admin/payroll");
-  //     } catch (error) {
-  //       console.error("Failed to delete payroll:", error);
-  //       toast.error("Không thể xóa bảng lương");
-  //     }
-  //   };
+  const handleEditAttendance = (attendance: Attendance) => {
+    setSelectedAttendance(attendance);
+    setShowEditAttendanceModal(true);
+  };
+
+  const handleEditAttendanceSuccess = async () => {
+    try {
+      // Nếu chưa có payroll (trường hợp bất thường) thì chỉ reload dữ liệu
+      if (!payroll) {
+        await loadPayroll({ showOverlay: true, message: "Đang tải thông tin bảng lương..." });
+        return;
+      }
+
+      showOverlay("Đang tính lại bảng lương...");
+      // Sau khi cập nhật chấm công, gọi API tính lại bảng lương cho kỳ hiện tại
+      await payrollService.recalculatePayroll(payroll.id, {});
+
+      // Reload lại payroll + danh sách chấm công
+      setOverlayMessage("Đang tải thông tin bảng lương...");
+      await loadPayroll({ showOverlay: false });
+      hideOverlay();
+      toast.success("Đã tính lại bảng lương theo chấm công mới");
+    } catch (error) {
+      console.error("Failed to recalculate payroll after attendance update:", error);
+      hideOverlay();
+      toast.error("Không thể tính lại bảng lương sau khi cập nhật chấm công");
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -107,32 +163,27 @@ export default function PayrollDetailPage() {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(dateString));
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <svg
-          className="animate-spin h-10 w-10 text-blue-600"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
-      </div>
-    );
-  }
+  const getAssignmentTypeLabel = (type: string | undefined): string => {
+    if (!type) return "";
+    const typeMap: Record<string, string> = {
+      "FIXED_BY_CONTRACT": "Phân công cố định (hợp đồng)",
+      "FIXED_BY_DAY": "Phân công cố định (theo ngày)",
+      "TEMPORARY": "Phân công tạm thời",
+    };
+    return typeMap[type] || type;
+  };
 
+  const getAssignmentTypeColor = (type: string | undefined): string => {
+    if (!type) return "bg-gray-100 text-gray-800";
+    const colorMap: Record<string, string> = {
+      "FIXED_BY_CONTRACT": "bg-blue-100 text-blue-800",
+      "FIXED_BY_DAY": "bg-green-100 text-green-800",
+      "TEMPORARY": "bg-orange-100 text-orange-800",
+    };
+    return colorMap[type] || "bg-gray-100 text-gray-800";
+  };
+
+ 
   if (!payroll) {
     return (
       <div className="text-center py-12">
@@ -142,7 +193,9 @@ export default function PayrollDetailPage() {
   }
 
   return (
-    <div>
+    <div className="relative">
+      <Toaster position="top-right" />
+      {loading && <FullPageLoading />}
       <div className="mb-8 flex justify-between items-center">
         <div>
           <button
@@ -223,7 +276,7 @@ export default function PayrollDetailPage() {
               <label className="text-sm font-medium text-gray-500">
                 Mã nhân viên
               </label>
-              <p className="mt-1 text-sm text-gray-900 font-mono">
+              <p className="mt-1 text-sm text-gray-900  ">
                 {payroll.employeeCode}
               </p>
             </div>
@@ -237,11 +290,26 @@ export default function PayrollDetailPage() {
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">
-                Loại hợp đồng
+                Loại phân công
               </label>
-              <p className="mt-1 text-sm text-gray-900">
-                {payroll.employmentType || "N/A"}
-              </p>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {assignments && assignments.length > 0 ? (
+                  // Lấy các assignmentType duy nhất
+                  [...new Map(assignments.map(a => [a.assignmentType, a])).values()].map(
+                    (assignment) => (
+                      <span
+                        key={assignment.id}
+                        className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getAssignmentTypeColor(assignment.assignmentType)}`}
+                      >
+                        {getAssignmentTypeLabel(assignment.assignmentType)}
+                      </span>
+                    )
+                  )
+                ) : (
+                  <span className="text-sm text-gray-500">Không có phân công</span>
+                )}
+              </div>
+
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">
@@ -259,20 +327,22 @@ export default function PayrollDetailPage() {
           {/* Card 1: Thông tin công và lương cơ bản */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-900">
-              Lương cơ bản & Công
+              Khách hàng & Công
             </h3>
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
                 <label className="text-sm font-medium text-gray-500">
-                  Lương cơ bản
+                  Số khách hàng phục vụ
                 </label>
                 <p className="mt-1 text-xl font-semibold text-gray-900">
-                  {formatCurrency(payroll.salaryBase || 0)}
+                  {attendances.length > 0
+                    ? new Set(attendances.map(att => att.customerId)).size
+                    : 0} khách
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <label className="text-sm font-medium text-gray-500">
-                  Số ngày công
+                  Tổng ngày công
                 </label>
                 <p className="mt-1 text-xl font-semibold text-gray-900">
                   {payroll.totalDays} ngày
@@ -338,9 +408,9 @@ export default function PayrollDetailPage() {
               <p className="mt-2 text-3xl font-bold text-blue-600">
                 {formatCurrency(payroll.finalSalary)}
               </p>
-              <p className="text-sm text-gray-500 mt-2">
+              {/* <p className="text-sm text-gray-500 mt-2">
                 = Lương cơ bản + Thưởng + Phụ cấp - Phạt - Bảo hiểm - Ứng trước
-              </p>
+              </p> */}
             </div>
             {/* Payment Status */}
             <div className="bg-white rounded-lg shadow p-6 mt-4">
@@ -354,11 +424,10 @@ export default function PayrollDetailPage() {
                   </label>
                   <p className="mt-1">
                     <span
-                      className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${
-                        payroll.isPaid
+                      className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${payroll.isPaid
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
-                      }`}
+                        }`}
                     >
                       {payroll.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
                     </span>
@@ -376,6 +445,76 @@ export default function PayrollDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Salary Calculation Formulas */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">
+            Công thức tính lương theo loại phân công
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Formula 1: FIXED_BY_CONTRACT */}
+            <div className="border-l-4 border-blue-500 pl-4 py-2">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Phân công cố định (Hợp đồng)
+              </h4>
+              <div className="text-xs text-gray-700 space-y-1 bg-blue-50 p-3 rounded">
+                <p><span className="  font-semibold">Lương ngày = </span></p>
+                <p className="ml-2">Lương hợp đồng ÷ Số ngày DK</p>
+                <p className="mt-2"><span className="  font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
+                <div className="mt-2 pt-2 border-t border-blue-200">
+                  <p className="text-gray-600">Ví dụ: 30tr ÷ 26 ngày = ~1.15tr/ngày</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Formula 2: FIXED_BY_DAY */}
+            <div className="border-l-4 border-green-500 pl-4 py-2">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Phân công cố định (Theo ngày)
+              </h4>
+              <div className="text-xs text-gray-700 space-y-1 bg-green-50 p-3 rounded">
+                <p><span className="  font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương cố định (cố định theo ngày)</p>
+                <div className="mt-2 pt-2 border-t border-green-200">
+                  <p className="text-gray-600">Lương được xác định sẵn cho phân công này</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Formula 3: TEMPORARY */}
+            <div className="border-l-4 border-orange-500 pl-4 py-2">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                Phân công tạm thời
+              </h4>
+              <div className="text-xs text-gray-700 space-y-1 bg-orange-50 p-3 rounded">
+                <p><span className="  font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương ngày × Số ngày làm việc</p>
+                <div className="mt-2 pt-2 border-t border-orange-200">
+                  <p className="text-gray-600">Ví dụ: 500k/ngày × 20 ngày = 10tr</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Final Calculation Formula */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">
+              Lương thực nhận cuối cùng
+            </h4>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-700   leading-relaxed">
+                <span className="text-blue-600 font-semibold">Lương thực nhận =</span>
+
+                <span className="text-green-600">  Thưởng</span>
+                <span className="text-purple-600"> + Phụ cấp</span>
+                <span className="text-orange-600"> + Bảo hiểm</span>
+                <span className="text-red-600"> - Phạt</span>
+                <span className="text-yellow-600"> - Ứng trước</span>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Update Modal */}
@@ -386,105 +525,44 @@ export default function PayrollDetailPage() {
           onSuccess={loadPayroll}
           payrollId={payroll.id}
           currentValues={{
-            allowanceTotal: payroll.allowanceTotal,
             insuranceTotal: payroll.insuranceTotal,
             advanceTotal: payroll.advanceTotal,
           }}
+           onShowToast={(msg, type) => showToast(msg, type)}
         />
       )}
 
-      {/* Attendance list for this payroll's employee/month */}
-      <div className="mt-6 bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
+      {/* Edit Attendance Modal */}
+      <AttendanceEditModal
+        isOpen={showEditAttendanceModal}
+        onClose={() => {
+          setShowEditAttendanceModal(false);
+          setSelectedAttendance(null);
+        }}
+        onSuccess={handleEditAttendanceSuccess}
+        attendance={selectedAttendance}
+        onStartLoading={() => setLoading(true)}
+        onStopLoading={() => setLoading(false)}
+        onShowToast={(msg, type) => showToast(msg, type)}
+      />
+
+      {/* Attendance Calendar for this payroll's employee/month */}
+      <div className="mt-6">
+        <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Chấm công (Tháng {payroll.month}/{payroll.year})</h3>
         </div>
-
-        {attLoading ? (
-          <div className="flex justify-center py-8">
-            <svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          </div>
-        ) : attendances.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">Chưa có bản ghi chấm công trong tháng này</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-3 text-left">Ngày</th>
-                  <th className="px-4 py-3 text-left">Giờ công</th>
-                  <th className="px-4 py-3 text-right">Thưởng</th>
-                  <th className="px-4 py-3 text-right">Phạt</th>
-                  <th className="px-4 py-3 text-right">Hỗ trợ</th>
-                  <th className="px-4 py-3 text-right">Tăng ca</th>
-                  <th className="px-4 py-3 text-left">Ghi chú</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendances.map((a) => (
-                  <tr key={a.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3">{formatDate(a.date)}</td>
-                    <td className="px-4 py-3">{a.workHours}h</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(a.bonus || 0)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(a.penalty || 0)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(a.supportCost || 0)}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(a.overtimeAmount || 0)}</td>
-                    <td className="px-4 py-3">{a.description || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination controls */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">Trang {attPage + 1} / {attTotalPages || 1}</div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (attPage > 0 && payroll) {
-                  const newPage = attPage - 1;
-                  setAttPage(newPage);
-                  loadAttendances(payroll.employeeId, payroll.month, payroll.year, newPage, attPageSize);
-                }
-              }}
-              disabled={attPage <= 0}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Trước
-            </button>
-            <button
-              onClick={() => {
-                if (payroll && attPage + 1 < attTotalPages) {
-                  const newPage = attPage + 1;
-                  setAttPage(newPage);
-                  loadAttendances(payroll.employeeId, payroll.month, payroll.year, newPage, attPageSize);
-                }
-              }}
-              disabled={attPage + 1 >= (attTotalPages || 1)}
-              className="px-3 py-1 border rounded disabled:opacity-50"
-            >
-              Tiếp
-            </button>
-            <select
-              value={attPageSize}
-              onChange={(e) => {
-                const newSize = Number(e.target.value);
-                setAttPageSize(newSize);
-                if (payroll) loadAttendances(payroll.employeeId, payroll.month, payroll.year, 0, newSize);
-                setAttPage(0);
-              }}
-              className="px-2 py-1 border rounded"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-            </select>
-          </div>
-        </div>
+        <AttendanceCalendar
+          attendances={attendances}
+          month={payroll.month}
+          year={payroll.year}
+          onSuccess={handleEditAttendanceSuccess}
+          loading={attLoading}
+          onEditAttendance={handleEditAttendance}
+          onAsyncStart={(message) =>
+            showOverlay(message || "Đang cập nhật phụ cấp...")
+          }
+          onAsyncEnd={hideOverlay}
+        />
       </div>
     </div>
   );

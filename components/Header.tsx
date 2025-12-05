@@ -16,22 +16,22 @@ export default function Header() {
     shadow-sm sticky top-0 z-50
   "
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center">
           <a href="/">
             <div className="flex items-center">
-              <div className="w-18 h-18 overflow-hidden flex-shrink-0 rounded">
+              <div className="w-16 h-16 flex-shrink-0 rounded">
                 <img
                   src="/logo.png"
                   alt="PANPACIFIC"
-                  className="w-full h-full object-contain transform scale-120"
+                  className="w-full h-full object-contain transform scale-150"
                 />
               </div>
             </div>
           </a>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex gap-8">
+          <nav className="hidden md:flex gap-8  px-4 sm:px-6 lg:px-8">
             <a
               href="/"
               className="text-white font-bold transition uppercase relative pb-1 hover:after:w-full after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300"

@@ -28,10 +28,11 @@ export interface PayrollCalculateRequest {
   employeeId: number;
   month: number;
   year: number;
+  insuranceAmount?: number;  // Bảo hiểm (có thể null)
+  advanceSalary?: number;    // Tiền ứng lương (có thể null)
 }
 
 export interface PayrollUpdateRequest {
-  allowanceTotal?: number;
   insuranceTotal?: number;
   advanceTotal?: number;
 }
@@ -128,22 +129,21 @@ const payrollService = {
       throw error;
     }
   },
-
-  // Cập nhật bảng lương
-  updatePayroll: async (id: number, data: Partial<Payroll>): Promise<Payroll> => {
-    try {
-      const response = await apiService.put<any>(`/payrolls/${id}`, data);
-
-      if (!response.success || !response.data) {
-        throw new Error(response.message || 'Failed to update payroll');
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error('Error updating payroll:', error);
-      throw error;
-    }
+    exportExcel: async (month: number, year: number) => {
+      console.log("2 Exporting Excel file...");
+    const blob = await apiService.getFile(`/payrolls/export/excel/${month}/${year}`);
+console.log("Exporting Excel file...");
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    console.log("link: ", link);
+    link.href = url;
+    link.download = `Bảng lương: ${month}/${year}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   },
+
+
+
 
   // Xóa bảng lương
   deletePayroll: async (id: number): Promise<void> => {

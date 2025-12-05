@@ -25,6 +25,7 @@ export interface Assignment {
   status: string;
   salaryAtTime: number;
   workDays: number;
+  plannedDays?: number;
   workingDaysPerWeek?: string[];
   additionalAllowance?: number;
   description?: string;
@@ -211,8 +212,35 @@ class AssignmentService {
       const response = await apiService.get<any>(
         `/assignments/employee/${employeeId}`
       );
-      console.log('Assignments response:', response);
       if (response.success && response.data) {
+        console.log('Assignments response:', response);
+        return Array.isArray(response.data) ? response.data : [];
+      }
+
+      return [];
+    } catch (error) {
+      // Improved error logging to capture useful details from API errors
+      try {
+        const errDetails =
+          error && typeof error === "object"
+            ? JSON.stringify(error)
+            : String(error);
+        console.error(
+          `Error fetching assignments for employeeId=${employeeId}: ${errDetails}`
+        );
+      } catch (e) {
+        console.error("Error fetching assignments (and failed to stringify error):", error);
+      }
+      return [];
+    }
+  }
+  async getAssignmentsByEmployeeId(employeeId: string,month: number, year:number): Promise<Assignment[]> {
+    try {
+      const response = await apiService.get<any>(
+        `/assignments/assignments/${employeeId}/${month}/${year}`
+      );
+      if (response.success && response.data) {
+        console.log('Assignments response:', response);
         return Array.isArray(response.data) ? response.data : [];
       }
 

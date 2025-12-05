@@ -55,6 +55,28 @@ export interface TemporaryReassignmentRequest {
   description?: string;
 }
 
+export interface AssignmentHistory {
+  historyId: number;
+  replacedEmployeeName: string;
+  replacedEmployeeCode: string;
+  replacementEmployeeName: string;
+  replacementEmployeeCode: string;
+  customerName: string;
+  reassignmentDates: string[];
+  status: string; // ACTIVE, ROLLED_BACK
+  createdByName: string;
+  createdAt: string;
+  rolledBackAt?: string;
+}
+
+export interface RollbackResponse {
+  historyId: number;
+  oldAssignmentId: number;
+  newAssignmentId: number;
+  affectedDates: string[];
+  message: string;
+}
+
 class AssignmentService {
   async getAll(
     params?: AssignmentPaginationParams
@@ -234,6 +256,36 @@ class AssignmentService {
       return response;
     } catch (error) {
       console.error("Error creating temporary reassignment:", error);
+      throw error;
+    }
+  }
+
+  async getHistoryByContractId(contractId: number): Promise<AssignmentHistory[]> {
+    try {
+      const response = await apiService.get<any>(
+        `/assignments/history/contract/${contractId}`
+      );
+
+      if (response.success && response.data) {
+        return Array.isArray(response.data) ? response.data : [];
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error fetching assignment history:", error);
+      return [];
+    }
+  }
+
+  async rollbackHistory(historyId: number): Promise<ApiResponse<RollbackResponse>> {
+    try {
+      const response = await apiService.post<RollbackResponse>(
+        `/assignments/history/${historyId}/rollback`,
+        {}
+      );
+      return response;
+    } catch (error) {
+      console.error("Error rolling back assignment:", error);
       throw error;
     }
   }

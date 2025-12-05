@@ -9,6 +9,7 @@ import {
   AssignmentCreateRequest,
   TemporaryReassignmentRequest,
   Assignment,
+  AssignmentHistory,
 } from "@/services/assignmentService";
 import serviceService, { ServiceRequest } from "@/services/serviceService";
 import contractService from "@/services/contractService";
@@ -107,6 +108,18 @@ export default function CustomerDetail() {
     description: "",
   });
 
+  // Assignment history states
+  const [assignmentHistories, setAssignmentHistories] = useState<AssignmentHistory[]>([]);
+  const [loadingHistories, setLoadingHistories] = useState(false);
+  const [showRollbackModal, setShowRollbackModal] = useState(false);
+  const [selectedHistory, setSelectedHistory] = useState<AssignmentHistory | null>(null);
+  const [rollingBack, setRollingBack] = useState(false);
+
+  // Filter states for Card 1
+  const [filterAssignmentType, setFilterAssignmentType] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [sortBy, setSortBy] = useState<string>("startDate_desc");
+
   // Load contracts for customer
   const loadContracts = async () => {
     if (!id) return;
@@ -126,11 +139,17 @@ export default function CustomerDetail() {
   useEffect(() => {
     if (id) {
       loadCustomer();
-      loadAssignedEmployees();
       loadAllAssignedEmployeesForCustomer();
       loadContracts();
     }
   }, [id]);
+
+  // Load history when contracts are loaded
+  useEffect(() => {
+    if (contracts.length > 0 && contracts[0]?.id) {
+      loadAssignmentHistories(Number(contracts[0].id));
+    }
+  }, [contracts]);
 
   const loadCustomer = async () => {
     try {
@@ -156,6 +175,7 @@ export default function CustomerDetail() {
       setLoadingAssignments(false);
     }
   };
+
   const loadAllAssignedEmployeesForCustomer = async () => {
     try {
       setLoadingAllAssignments(true);
@@ -166,6 +186,61 @@ export default function CustomerDetail() {
       console.error("Error loading assigned employees:", error);
     } finally {
       setLoadingAllAssignments(false);
+    }
+  };
+
+  const loadAssignmentHistories = async (contractId: number) => {
+    try {
+      setLoadingHistories(true);
+      const data = await assignmentService.getHistoryByContractId(contractId);
+      console.log("Assignment histories loaded:", data);
+      setAssignmentHistories(data);
+    } catch (error) {
+      console.error("Error loading assignment histories:", error);
+    } finally {
+      setLoadingHistories(false);
+    }
+  };
+
+  const handleOpenRollbackModal = (history: AssignmentHistory) => {
+    console.log("Opening rollback modal for history:", history);
+    setSelectedHistory(history);
+    setShowRollbackModal(true);
+  };
+
+  const handleConfirmRollback = async () => {
+    if (!selectedHistory) return;
+
+    console.log("Rolling back history:", selectedHistory);
+    const historyId = selectedHistory.historyId || (selectedHistory as any).id;
+    
+    if (!historyId) {
+      toast.error("Không tìm thấy ID lịch sử");
+      console.error("No historyId found in selectedHistory:", selectedHistory);
+      return;
+    }
+
+    try {
+      setRollingBack(true);
+      const response = await assignmentService.rollbackHistory(historyId);
+      
+      if (response.success) {
+        toast.success(response.data?.message || "Đã hoàn tác điều động thành công");
+        setShowRollbackModal(false);
+        
+        // Refresh both cards
+        await Promise.all([
+          loadAllAssignedEmployeesForCustomer(),
+          contracts[0]?.id && loadAssignmentHistories(Number(contracts[0].id))
+        ]);
+      } else {
+        toast.error(response.message || "Không thể hoàn tác điều động");
+      }
+    } catch (error: any) {
+      console.error("Error rolling back assignment:", error);
+      toast.error(error?.message || "Không thể hoàn tác điều động");
+    } finally {
+      setRollingBack(false);
     }
   };
 
@@ -209,6 +284,46 @@ export default function CustomerDetail() {
   const formatDateInput = (date: Date) => {
     const d = new Date(date);
     return d.toISOString().split("T")[0];
+  };
+
+  // Filter and sort assignments for Card 1
+  const getFilteredAndSortedAssignments = () => {
+    let filtered = [...allAssignedEmployees];
+
+    // Apply filters
+    if (filterAssignmentType) {
+      filtered = filtered.filter(a => a.assignmentType === filterAssignmentType);
+    }
+    if (filterStatus) {
+      filtered = filtered.filter(a => a.status === filterStatus);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.startDate).getTime();
+      const dateB = new Date(b.startDate).getTime();
+      
+      if (sortBy === "startDate_asc") {
+        return dateA - dateB;
+      } else {
+        return dateB - dateA; // default: desc
+      }
+    });
+
+    return filtered;
+  };
+
+  const getAssignmentTypeBadge = (type: string) => {
+    if (type === "FIXED_BY_CONTRACT" || type === "FIXED_BY_DAY") {
+      return "bg-green-100 text-green-800";
+    }
+    return "bg-orange-100 text-orange-800";
+  };
+
+  const getAssignmentTypeLabel = (type: string) => {
+    if (type === "FIXED_BY_CONTRACT") return "Cố định";
+    if (type === "FIXED_BY_DAY") return "Cố định";
+    return "Tạm thời";
   };
 
   const handleEdit = () => {
@@ -966,26 +1081,60 @@ export default function CustomerDetail() {
           <h3 className="text-lg font-semibold text-gray-800">
             Nhân viên đang phụ trách
           </h3>
-          <button
-            onClick={loadAllAssignedEmployeesForCustomer}
-            className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="flex items-center gap-2">
+            {/* Filters */}
+            <select
+              value={filterAssignmentType}
+              onChange={(e) => setFilterAssignmentType(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Làm mới
-          </button>
+              <option value="">Tất cả loại</option>
+              <option value="FIXED_BY_CONTRACT">Cố định HĐ</option>
+              <option value="FIXED_BY_DAY">Cố định ngày</option>
+              <option value="TEMPORARY">Tạm thời</option>
+            </select>
+
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="IN_PROGRESS">Đang thực hiện</option>
+              <option value="COMPLETED">Hoàn thành</option>
+              <option value="CANCELED">Đã hủy</option>
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="startDate_desc">Mới nhất</option>
+              <option value="startDate_asc">Cũ nhất</option>
+            </select>
+
+            <button
+              onClick={loadAllAssignedEmployeesForCustomer}
+              className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Làm mới
+            </button>
+          </div>
         </div>
 
         {loadingAllAssignments ? (
@@ -1010,7 +1159,7 @@ export default function CustomerDetail() {
               />
             </svg>
           </div>
-        ) : allAssignedEmployees.length === 0 ? (
+        ) : getFilteredAndSortedAssignments().length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1027,7 +1176,7 @@ export default function CustomerDetail() {
               />
             </svg>
             <p className="text-sm">
-              Chưa có nhân viên nào được phân công cho khách hàng này
+              Không có nhân viên phù hợp với bộ lọc
             </p>
           </div>
         ) : (
@@ -1065,7 +1214,7 @@ export default function CustomerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {allAssignedEmployees.map((assignment) => (
+                {getFilteredAndSortedAssignments().map((assignment) => (
                   <tr
                     key={assignment.id}
                     role="button"
@@ -1095,12 +1244,8 @@ export default function CustomerDetail() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-gray-700">
-                        {assignment.assignmentType === "FIXED_BY_CONTRACT"
-                          ? "Cố định theo HĐ"
-                          : assignment.assignmentType === "FIXED_BY_DAY"
-                          ? "Cố định theo ngày"
-                          : "Tạm thời"}
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getAssignmentTypeBadge(assignment.assignmentType || "")}`}>
+                        {getAssignmentTypeLabel(assignment.assignmentType || "")}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -1112,12 +1257,16 @@ export default function CustomerDetail() {
                       <span
                         className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
                           assignment.status === "IN_PROGRESS"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-green-100 text-green-800"
+                            ? "bg-green-100 text-green-800"
+                            : assignment.status === "CANCELED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {assignment.status === "IN_PROGRESS"
                           ? "Đang thực hiện"
+                          : assignment.status === "CANCELED"
+                          ? "Đã hủy"
                           : "Hoàn thành"}
                       </span>
                     </td>
@@ -1135,6 +1284,193 @@ export default function CustomerDetail() {
                       <span className="text-sm text-gray-600 line-clamp-2">
                         {assignment.description || "-"}
                       </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Card 5: Lịch sử điều động */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Lịch sử điều động
+          </h3>
+          <button
+            onClick={() => contracts[0]?.id && loadAssignmentHistories(Number(contracts[0].id))}
+            className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Làm mới
+          </button>
+        </div>
+
+        {loadingHistories ? (
+          <div className="flex justify-center items-center py-8">
+            <svg
+              className="animate-spin h-8 w-8 text-blue-600"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          </div>
+        ) : assignmentHistories.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-16 h-16 mx-auto mb-3 text-gray-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-sm">
+              Chưa có lịch sử điều động nào
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Mã lịch sử
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Người bị thay
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Người làm thay
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Khách hàng
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Ngày điều động
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Trạng thái
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Người tạo
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Ngày tạo
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                    Hành động
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignmentHistories.map((history) => (
+                  <tr key={history.historyId} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-mono font-medium text-blue-600">
+                        #{history.historyId}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">
+                        <div className="font-semibold text-gray-900">{history.replacedEmployeeName}</div>
+                        <div className="text-xs text-gray-500">{history.replacedEmployeeCode}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">
+                        <div className="font-semibold text-gray-900">{history.replacementEmployeeName}</div>
+                        <div className="text-xs text-gray-500">{history.replacementEmployeeCode}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-700">{history.customerName}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-gray-700">
+                        {history.reassignmentDates.map((date, idx) => (
+                          <div key={idx}>{formatDate(date)}</div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                          history.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {history.status === "ACTIVE" ? "Đang áp dụng" : "Đã hoàn tác"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-700">{history.createdByName}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-700">{formatDate(history.createdAt)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {history.status === "ACTIVE" ? (
+                        <button
+                          onClick={() => handleOpenRollbackModal(history)}
+                          className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center gap-1"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-3 h-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                            />
+                          </svg>
+                          Hoàn tác
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-500">
+                          Đã hoàn tác vào {history.rolledBackAt ? formatDate(history.rolledBackAt) : "N/A"}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -2325,6 +2661,139 @@ export default function CustomerDetail() {
                   </svg>
                 )}
                 {savingContract ? "Đang thêm..." : "Thêm hợp đồng"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rollback Modal */}
+      {showRollbackModal && selectedHistory && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Xác nhận hoàn tác điều động
+              </h2>
+              <button
+                onClick={() => setShowRollbackModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-6 h-6 text-yellow-600 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-yellow-800 mb-2">Thông tin điều động</h3>
+                    <div className="space-y-2 text-sm text-yellow-700">
+                      <p>
+                        <strong>Người bị thay:</strong> {selectedHistory.replacedEmployeeName} ({selectedHistory.replacedEmployeeCode})
+                      </p>
+                      <p>
+                        <strong>Người làm thay:</strong> {selectedHistory.replacementEmployeeName} ({selectedHistory.replacementEmployeeCode})
+                      </p>
+                      <p>
+                        <strong>Ngày điều động:</strong> {selectedHistory.reassignmentDates.map(d => formatDate(d)).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h3 className="font-semibold text-red-800 mb-2">Sau khi hoàn tác:</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                  <li>Chấm công của người làm thay sẽ bị xóa</li>
+                  <li>Chấm công của người bị thay được khôi phục</li>
+                  <li>Số ngày công được cập nhật lại</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowRollbackModal(false)}
+                disabled={rollingBack}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmRollback}
+                disabled={rollingBack}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {rollingBack ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                      />
+                    </svg>
+                    Xác nhận hoàn tác
+                  </>
+                )}
               </button>
             </div>
           </div>

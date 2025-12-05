@@ -25,7 +25,8 @@ export default function ServicesPage() {
   const [addForm, setAddForm] = useState({
     title: "",
     description: "",
-    price: 0,
+    price: "" as any,
+    vat: "" as any,
   });
 
   // Debounced search
@@ -72,15 +73,42 @@ export default function ServicesPage() {
     }).format(amount);
   };
 
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    // Parse to remove any existing formatting, then format again
+    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const parseFormattedNumber = (str: string) => {
+    // Remove both comma and dot separators (vi-VN uses dot as thousand separator)
+    return str.replace(/[,.]/g, "");
+  };
+
+  const handleNumberInput = (value: string) => {
+    // Chỉ cho phép số
+    return value.replace(/[^0-9]/g, '');
+  };
+
   const handleAddService = async () => {
     try {
+      // Parse formatted numbers correctly
+      const rawPrice = parseFormattedNumber(String(addForm.price || ''));
+      const servicePrice = Number(rawPrice) || 0;
+      const serviceVat = addForm.vat === "" ? 0 : Number(addForm.vat);
+
       // Validate required fields
-      if (!addForm.title || addForm.price <= 0) {
+      if (!addForm.title || servicePrice <= 0) {
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
 
-      await serviceService.create(addForm);
+      await serviceService.create({
+        title: addForm.title,
+        description: addForm.description,
+        price: servicePrice,
+        vat: serviceVat,
+      });
       toast.success("Đã thêm dịch vụ mới thành công");
       setShowAddModal(false);
       
@@ -88,7 +116,8 @@ export default function ServicesPage() {
       setAddForm({
         title: "",
         description: "",
-        price: 0,
+        price: "" as any,
+        vat: "" as any,
       });
       
       // Reload services list
@@ -410,18 +439,58 @@ export default function ServicesPage() {
                 />
               </div>
 
-              <div className="col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Giá dịch vụ (VND) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={addForm.price}
+                  onChange={(e) => {
+                    const rawValue = handleNumberInput(e.target.value);
+                    if (rawValue === "") {
+                      setAddForm({ ...addForm, price: "" });
+                      return;
+                    }
+                    setAddForm({ ...addForm, price: formatNumber(rawValue) });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập giá dịch vụ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VAT (%) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={addForm.vat}
                   onChange={(e) =>
-                    setAddForm({ ...addForm, price: Number(e.target.value) })
+                    setAddForm({ ...addForm, vat: e.target.value })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="500000"
+                  placeholder="Nhập VAT (%)"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tổng giá (Price + VAT)
+                </label>
+                <input
+                  type="text"
+                  value={(() => {
+                    const rawPrice = parseFormattedNumber(String(addForm.price || ''));
+                    const price = Number(rawPrice) || 0;
+                    const vat = addForm.vat === "" ? 0 : Number(addForm.vat);
+                    const total = price + (price * vat / 100);
+                    return total ? formatNumber(total) : "";
+                  })()}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
                 />
               </div>
             </div>

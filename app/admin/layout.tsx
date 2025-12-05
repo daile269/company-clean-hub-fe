@@ -10,18 +10,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    // Skip auth check for login page
-    if (pathname === "/admin/login") {
-      return;
-    }
-
-    // Check if user is logged in
-    if (!isLoading && !user) {
-      router.push("/admin/login");
-    }
-  }, [pathname, router, user, isLoading]);
-
   // If on login page, render children without admin layout
   if (pathname === "/admin/login") {
     return <>{children}</>;

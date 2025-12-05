@@ -23,6 +23,7 @@ export interface ApiService {
   title: string;
   description?: string;
   price: number;
+  vat: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,12 +36,9 @@ export interface ApiContract {
   services?: ApiService[];       // Danh sách dịch vụ từ backend
   startDate: string;
   endDate: string;
-  basePrice: number;
-  vat: number;
-  total: number;
-  extraCost: number;
-  discountCost: number;
   finalPrice: number;
+  contractType: string;
+  workingDaysPerWeek: string[];
   paymentStatus: string;
   description?: string;
   createdAt: string;
@@ -66,11 +64,6 @@ export const getAll = async (params: ContractPaginationParams): Promise<Contract
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
@@ -108,13 +101,10 @@ export const getByCustomerId = async (customerId: string): Promise<Contract[]> =
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
+      contractType: apiContract.contractType,
+      workingDaysPerWeek: apiContract.workingDaysPerWeek,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
@@ -145,19 +135,59 @@ export const getById = async (id: string): Promise<Contract> => {
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
+      contractType: apiContract.contractType,
+      workingDaysPerWeek: apiContract.workingDaysPerWeek,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
     };
   } catch (error) {
     console.error('Error fetching contract:', error);
+    throw error;
+  }
+};
+
+// Lấy thông tin hợp đồng liên quan đến một phân công (assignment)
+export const getByAssignmentId = async (assignmentId: number): Promise<any> => {
+  try {
+    const response = await apiService.get<any>(`/contracts/assignment/${assignmentId}`);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to fetch contract by assignment id');
+    }
+
+    const apiContract = response.data;
+
+    // Normalize/mapping so callers can rely on consistent keys
+    const mapped = {
+      id: apiContract.id,
+      customerId: apiContract.customerId,
+      customerName: apiContract.customerName,
+      services: apiContract.services,
+      startDate: apiContract.startDate,
+      endDate: apiContract.endDate,
+      workingDaysPerWeek: apiContract.workingDaysPerWeek,
+      contractType: apiContract.contractType,
+      // alias 'type' for older usages
+      type: apiContract.contractType,
+      finalPrice: apiContract.finalPrice,
+      // alias expected by some components
+      contractFinalPrice: apiContract.finalPrice,
+      paymentStatus: apiContract.paymentStatus,
+      description: apiContract.description,
+      // use explicit 'name' field if backend provides one, otherwise fall back to description
+      name: apiContract.name ?? apiContract.description ?? `HĐ #${apiContract.id}`,
+      // number of working days per week (if provided as array)
+      workDays: Array.isArray(apiContract.workingDaysPerWeek) ? apiContract.workingDaysPerWeek.length : undefined,
+      createdAt: apiContract.createdAt,
+      updatedAt: apiContract.updatedAt,
+    };
+
+    return mapped;
+  } catch (error) {
+    console.error('Error fetching contract by assignment id:', error);
     throw error;
   }
 };
@@ -171,11 +201,8 @@ export const create = async (contractData: any): Promise<Contract> => {
       serviceIds: contractData.serviceIds || [],
       startDate: contractData.startDate,
       endDate: contractData.endDate,
-      basePrice: contractData.basePrice,
-      vat: contractData.vat,
-      total: contractData.total,
-      extraCost: contractData.extraCost || 0,
-      discountCost: contractData.discountCost || 0,
+      workingDaysPerWeek: contractData.workingDaysPerWeek || [],
+      contractType: contractData.contractType || 'ONE_TIME',
       finalPrice: contractData.finalPrice,
       paymentStatus: contractData.paymentStatus || 'PENDING',
       description: contractData.description || '',
@@ -196,12 +223,9 @@ export const create = async (contractData: any): Promise<Contract> => {
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
+      contractType: apiContract.contractType,
+      workingDaysPerWeek: apiContract.workingDaysPerWeek,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
@@ -239,26 +263,6 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
         : contractData.endDate;
     }
     
-    if (contractData.basePrice !== undefined) {
-      payload.basePrice = contractData.basePrice;
-    }
-    
-    if (contractData.vat !== undefined) {
-      payload.vat = contractData.vat;
-    }
-    
-    if (contractData.total !== undefined) {
-      payload.total = contractData.total;
-    }
-    
-    if (contractData.extraCost !== undefined) {
-      payload.extraCost = contractData.extraCost;
-    }
-    
-    if (contractData.discountCost !== undefined) {
-      payload.discountCost = contractData.discountCost;
-    }
-    
     if (contractData.finalPrice !== undefined) {
       payload.finalPrice = contractData.finalPrice;
     }
@@ -270,7 +274,12 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
     if (contractData.description !== undefined) {
       payload.description = contractData.description;
     }
-
+    if (contractData.contractType !== undefined) {
+      payload.contractType = contractData.contractType;
+    }
+    if (contractData.workingDaysPerWeek !== undefined) {
+      payload.workingDaysPerWeek = contractData.workingDaysPerWeek;
+    }
     const response = await apiService.put<any>(`/contracts/${id}`, payload);
 
     if (!response.success || !response.data) {
@@ -286,13 +295,10 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
-      basePrice: apiContract.basePrice,
-      vat: apiContract.vat,
-      total: apiContract.total,
-      extraCost: apiContract.extraCost,
-      discountCost: apiContract.discountCost,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
+      contractType: apiContract.contractType,
+      workingDaysPerWeek: apiContract.workingDaysPerWeek,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
@@ -335,6 +341,7 @@ const contractService = {
   getAll,
   getById,
   getByCustomerId,
+  getByAssignmentId,
   create,
   update,
   delete: delete_,

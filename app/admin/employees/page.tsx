@@ -423,9 +423,6 @@ export default function EmployeesPage() {
                       Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Lương
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ngày cập nhật
                     </th>
                   </tr>
@@ -477,13 +474,6 @@ export default function EmployeesPage() {
                             ? "Hoạt động"
                             : "Không hoạt động"}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {employee.monthlySalary
-                          ? formatCurrency(employee.monthlySalary) + "/tháng"
-                          : employee.dailySalary
-                          ? formatCurrency(employee.dailySalary) + "/ngày"
-                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {employee.updatedAt

@@ -28,6 +28,9 @@ export default function ContractDetailPage() {
   const [savingContract, setSavingContract] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [savingInvoice, setSavingInvoice] = useState(false);
+  const [showUpdateStatusModal, setShowUpdateStatusModal] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [serviceForm, setServiceForm] = useState({
     title: "",
     description: "",
@@ -38,6 +41,10 @@ export default function ContractDetailPage() {
     invoiceMonth: new Date().getMonth() + 1,
     invoiceYear: new Date().getFullYear(),
     actualWorkingDays: "" as any,
+    notes: "",
+  });
+  const [statusUpdateForm, setStatusUpdateForm] = useState({
+    status: "PAID" as string,
     notes: "",
   });
 
@@ -396,6 +403,40 @@ export default function ContractDetailPage() {
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handleUpdateInvoiceStatus = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setStatusUpdateForm({
+      status: invoice.status,
+      notes: invoice.notes || "",
+    });
+    setShowUpdateStatusModal(true);
+  };
+
+  const handleSaveStatusUpdate = async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      setUpdatingStatus(true);
+      await invoiceService.update(selectedInvoice.id, {
+        status: statusUpdateForm.status,
+        notes: statusUpdateForm.notes,
+      });
+      toast.success("Đã cập nhật trạng thái hóa đơn");
+      setShowUpdateStatusModal(false);
+
+      // Reload invoices
+      if (contract) {
+        const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+        setInvoices(updatedInvoices);
+      }
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      toast.error("Không thể cập nhật trạng thái hóa đơn");
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -935,6 +976,9 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ghi chú
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -973,6 +1017,28 @@ export default function ContractDetailPage() {
                         <p className="text-sm text-gray-600 line-clamp-2">
                           {invoice.notes || "—"}
                         </p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleUpdateInvoiceStatus(invoice)}
+                          className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                            />
+                          </svg>
+                          Cập nhật
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1539,6 +1605,127 @@ export default function ContractDetailPage() {
                       />
                     </svg>
                     Tạo hóa đơn
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Invoice Status Modal */}
+      {showUpdateStatusModal && selectedInvoice && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Cập nhật trạng thái hóa đơn
+              </h2>
+              <button
+                onClick={() => setShowUpdateStatusModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Hóa đơn:</strong> {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/{selectedInvoice.invoiceYear}
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  <strong>Tổng tiền:</strong> {formatCurrency(selectedInvoice.totalAmount)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái *
+                </label>
+                <select
+                  value={statusUpdateForm.status}
+                  onChange={(e) =>
+                    setStatusUpdateForm({
+                      ...statusUpdateForm,
+                      status: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="UNPAID">Chưa thanh toán</option>
+                  <option value="PAID">Đã thanh toán</option>
+                  <option value="OVERDUE">Quá hạn</option>
+                  <option value="CANCELLED">Đã hủy</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ghi chú
+                </label>
+                <textarea
+                  value={statusUpdateForm.notes}
+                  onChange={(e) =>
+                    setStatusUpdateForm({ ...statusUpdateForm, notes: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập ghi chú cập nhật (VD: Đã thanh toán qua chuyển khoản)..."
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowUpdateStatusModal(false)}
+                disabled={updatingStatus}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveStatusUpdate}
+                disabled={updatingStatus}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingStatus ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Cập nhật
                   </>
                 )}
               </button>

@@ -546,6 +546,7 @@ export default function AssignmentDetail() {
                 >
                   <option value="IN_PROGRESS">Đang thực hiện</option>
                   <option value="COMPLETED">Hoàn thành</option>
+                  <option value="CANCELED">Đã hủy</option>
                 </select>
               </div>
 

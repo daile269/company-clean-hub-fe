@@ -80,6 +80,32 @@ class ApiService {
 
     return response.json();
   }
+  async getFile(endpoint: string): Promise<Blob> {
+    const token = this.getToken();
+console.log("3 Exporting Excel file...");
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: "GET",
+      headers,
+    }); 
+console.log("4 Exporting Excel file...",  response);
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== "undefined") {
+        localStorage.clear();
+        this.setToken(null);
+        window.location.href = "/login";
+      }
+
+      throw new Error("Lỗi khi tải file");
+    }
+
+    return response.blob();
+  }
 
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET' });

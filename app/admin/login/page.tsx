@@ -17,11 +17,9 @@ export default function LoginPage() {
 
     try {
       const response = await authService.login({ username, password });
-      console.log("Login response:", response);
       
       if (response.success && response.data) {
         console.log("Login successful, redirecting...");
-        console.log("Token saved:", localStorage.getItem('token'));
         
         // Try router.push with refresh
         router.push("/admin");

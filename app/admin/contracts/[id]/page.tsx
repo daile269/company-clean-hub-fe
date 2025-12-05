@@ -5,6 +5,7 @@ import { Contract, ContractDocument } from "@/types";
 import contractService from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
 import serviceService from "@/services/serviceService";
+import invoiceService, { Invoice, InvoiceCreateRequest } from "@/services/invoiceService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast from "react-hot-toast";
 
@@ -15,18 +16,29 @@ export default function ContractDetailPage() {
 
   const [contract, setContract] = useState<Contract | null>(null);
   const [documents, setDocuments] = useState<ContractDocument[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Contract>>({});
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [savingService, setSavingService] = useState(false);
+  const [savingContract, setSavingContract] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [savingInvoice, setSavingInvoice] = useState(false);
   const [serviceForm, setServiceForm] = useState({
     title: "",
     description: "",
     price: "" as any,
     vat: "" as any,
+  });
+  const [invoiceForm, setInvoiceForm] = useState({
+    invoiceMonth: new Date().getMonth() + 1,
+    invoiceYear: new Date().getFullYear(),
+    actualWorkingDays: "" as any,
+    notes: "",
   });
 
   // Load contract details
@@ -35,6 +47,7 @@ export default function ContractDetailPage() {
       try {
         setLoading(true);
         const data = await contractService.getById(contractId);
+        console.log("Loaded contract data:", data);
         setContract(data);
       } catch (error) {
         console.error("Error loading contract:", error);
@@ -52,7 +65,9 @@ export default function ContractDetailPage() {
     const loadDocuments = async () => {
       try {
         setLoadingDocuments(true);
-        const docs = await contractDocumentService.getContractDocuments(contractId);
+        const docs = await contractDocumentService.getContractDocuments(
+          contractId
+        );
         setDocuments(docs);
       } catch (error) {
         console.error("Error loading documents:", error);
@@ -62,6 +77,25 @@ export default function ContractDetailPage() {
     };
 
     loadDocuments();
+  }, [contractId]);
+
+  // Load invoices
+  useEffect(() => {
+    const loadInvoices = async () => {
+      try {
+        setLoadingInvoices(true);
+        const invoiceList = await invoiceService.getByContractId(
+          Number(contractId)
+        );
+        setInvoices(invoiceList);
+      } catch (error) {
+        console.error("Error loading invoices:", error);
+      } finally {
+        setLoadingInvoices(false);
+      }
+    };
+
+    loadInvoices();
   }, [contractId]);
 
   const getCustomerName = (customerName?: string) => {
@@ -94,6 +128,26 @@ export default function ContractDetailPage() {
     }).format(amount);
   };
 
+  const computeServicesBaseTotal = (services?: any[]) => {
+    if (!services || services.length === 0) return 0;
+    return services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  };
+
+  const computeServicesVatTotal = (services?: any[]) => {
+    if (!services || services.length === 0) return 0;
+    return services.reduce((sum, s) => {
+      const price = Number(s.price) || 0;
+      const vatPercent = Number(s.vat) || 0;
+      return sum + (price * vatPercent) / 100;
+    }, 0);
+  };
+
+  const computeServicesGrandTotal = (services?: any[]) => {
+    const base = computeServicesBaseTotal(services);
+    const vat = computeServicesVatTotal(services);
+    return base + vat;
+  };
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
@@ -107,7 +161,8 @@ export default function ContractDetailPage() {
   const formatNumber = (num: number | string) => {
     if (!num && num !== 0) return "";
     // Parse to remove any existing formatting, then format again
-    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    const rawValue =
+      typeof num === "string" ? parseFormattedNumber(num) : num.toString();
     return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
   };
 
@@ -118,7 +173,7 @@ export default function ContractDetailPage() {
 
   const handleNumberInput = (value: string) => {
     // Chỉ cho phép số
-    return value.replace(/[^0-9]/g, '');
+    return value.replace(/[^0-9]/g, "");
   };
 
   const handleEdit = () => {
@@ -129,26 +184,32 @@ export default function ContractDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!contract || !editForm) return;
-    
+
     try {
+      setSavingContract(true);
       // Get current service IDs from contract.services
-      const currentServiceIds = contract.services?.map(service => service.id) || [];
-      
+      const currentServiceIds =
+        contract.services?.map((service) => service.id) || [];
+
       // Calculate finalPrice from services
-      const finalPrice = contract.services?.reduce((sum, service) => {
-        return sum + service.price + service.vat;
-      }, 0) || 0;
-      
+      const finalPrice =
+        contract.services?.reduce((sum, service) => {
+          return sum + service.price + service.vat;
+        }, 0) || 0;
+
       const updateData = {
         customerId: contract.customerId,
         serviceIds: currentServiceIds,
         startDate: editForm.startDate,
         endDate: editForm.endDate,
+        workingDaysPerWeek:
+          editForm.workingDaysPerWeek || contract.workingDaysPerWeek || [],
+        contractType:
+          editForm.contractType || contract.contractType || "ONE_TIME",
         finalPrice: finalPrice,
         paymentStatus: editForm.paymentStatus,
         description: editForm.description,
       };
-      
       await contractService.update(contract.id, updateData);
       toast.success("Đã cập nhật hợp đồng thành công");
       setShowEditModal(false);
@@ -158,12 +219,14 @@ export default function ContractDetailPage() {
     } catch (error) {
       console.error("Error updating contract:", error);
       toast.error("Không thể cập nhật hợp đồng");
+    } finally {
+      setSavingContract(false);
     }
   };
 
   const handleDelete = async () => {
     if (!contract) return;
-    
+
     if (confirm("Xác nhận xóa hợp đồng này?")) {
       try {
         await contractService.delete(contract.id);
@@ -178,7 +241,12 @@ export default function ContractDetailPage() {
 
   const handleAddService = () => {
     setEditingService(null);
-    setServiceForm({ title: "", description: "", price: "" as any, vat: "" as any });
+    setServiceForm({
+      title: "",
+      description: "",
+      price: "" as any,
+      vat: "" as any,
+    });
     setShowServiceModal(true);
   };
 
@@ -195,7 +263,7 @@ export default function ContractDetailPage() {
 
   const handleSaveService = async () => {
     // Parse formatted numbers correctly
-    const rawPrice = parseFormattedNumber(String(serviceForm.price || ''));
+    const rawPrice = parseFormattedNumber(String(serviceForm.price || ""));
     const servicePrice = Number(rawPrice) || 0;
     const serviceVat = serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
 
@@ -223,17 +291,20 @@ export default function ContractDetailPage() {
           price: servicePrice,
           vat: serviceVat,
         });
-        
+
         // Then add service to contract
         if (contract && newService.id) {
-          await contractService.addServiceToContract(contract.id, newService.id);
+          await contractService.addServiceToContract(
+            contract.id,
+            newService.id
+          );
         }
-        
+
         toast.success("Đã thêm dịch vụ");
       }
-      
+
       setShowServiceModal(false);
-      
+
       // Reload contract data
       if (contract) {
         const updatedContract = await contractService.getById(contract.id);
@@ -241,9 +312,90 @@ export default function ContractDetailPage() {
       }
     } catch (error) {
       console.error("Error saving service:", error);
-      toast.error(editingService ? "Không thể cập nhật dịch vụ" : "Không thể thêm dịch vụ");
+      toast.error(
+        editingService ? "Không thể cập nhật dịch vụ" : "Không thể thêm dịch vụ"
+      );
     } finally {
       setSavingService(false);
+    }
+  };
+
+  const handleCreateInvoice = () => {
+    setInvoiceForm({
+      invoiceMonth: new Date().getMonth() + 1,
+      invoiceYear: new Date().getFullYear(),
+      actualWorkingDays: "" as any,
+      notes: "",
+    });
+    setShowInvoiceModal(true);
+  };
+
+  const handleSaveInvoice = async () => {
+    if (!contract) return;
+
+    try {
+      setSavingInvoice(true);
+      const invoiceData: InvoiceCreateRequest = {
+        contractId: Number(contract.id),
+        invoiceMonth: invoiceForm.invoiceMonth,
+        invoiceYear: invoiceForm.invoiceYear,
+        notes: invoiceForm.notes,
+      };
+
+      // For MONTHLY_ACTUAL contracts, actualWorkingDays is required
+      if (contract.contractType === "MONTHLY_ACTUAL") {
+        const workDays = invoiceForm.actualWorkingDays
+          ? Number(invoiceForm.actualWorkingDays)
+          : 0;
+        if (workDays <= 0) {
+          toast.error("Vui lòng nhập số ngày làm việc thực tế");
+          return;
+        }
+        invoiceData.actualWorkingDays = workDays;
+      }
+
+      await invoiceService.create(invoiceData);
+      toast.success("Đã tạo hóa đơn thành công");
+      setShowInvoiceModal(false);
+
+      // Reload invoices
+      const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+      setInvoices(updatedInvoices);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      toast.error("Không thể tạo hóa đơn");
+    } finally {
+      setSavingInvoice(false);
+    }
+  };
+
+  const getInvoiceStatusLabel = (status: string) => {
+    switch (status) {
+      case "PAID":
+        return "Đã thanh toán";
+      case "UNPAID":
+        return "Chưa thanh toán";
+      case "OVERDUE":
+        return "Quá hạn";
+      case "CANCELLED":
+        return "Đã hủy";
+      default:
+        return status;
+    }
+  };
+
+  const getInvoiceStatusColor = (status: string) => {
+    switch (status) {
+      case "PAID":
+        return "bg-green-100 text-green-800";
+      case "UNPAID":
+        return "bg-yellow-100 text-yellow-800";
+      case "OVERDUE":
+        return "bg-red-100 text-red-800";
+      case "CANCELLED":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -270,7 +422,7 @@ export default function ContractDetailPage() {
               Không tìm thấy hợp đồng
             </h2>
             <button
-              onClick={() => router.push("/admin/contracts")}
+              onClick={() => router.back()}
               className="text-blue-600 hover:text-blue-800"
             >
               ← Quay lại danh sách
@@ -282,9 +434,12 @@ export default function ContractDetailPage() {
   }
 
   const status = getContractStatus(contract);
-  const paymentStatusLabel = contract.paymentStatus === "PAID" ? "Đã thanh toán" :
-                             contract.paymentStatus === "PARTIAL" ? "Thanh toán 1 phần" :
-                             "Chưa thanh toán";
+  const paymentStatusLabel =
+    contract.paymentStatus === "PAID"
+      ? "Đã thanh toán"
+      : contract.paymentStatus === "PARTIAL"
+      ? "Thanh toán 1 phần"
+      : "Chưa thanh toán";
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -292,7 +447,7 @@ export default function ContractDetailPage() {
         {/* Header */}
         <div className="mb-6 flex justify-between items-center">
           <button
-            onClick={() => router.push("/admin/contracts")}
+            onClick={() => router.back()}
             className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
           >
             <svg
@@ -313,6 +468,26 @@ export default function ContractDetailPage() {
           </button>
 
           <div className="flex gap-3">
+            <button
+              onClick={handleCreateInvoice}
+              className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Xuất hóa đơn
+            </button>
             <button
               onClick={handleEdit}
               className="px-4 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
@@ -367,10 +542,14 @@ export default function ContractDetailPage() {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <p className="text-xs text-gray-500 mb-1">Mã hợp đồng</p>
-                  <p className="text-sm font-semibold text-gray-900">#{contract.id}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    #{contract.id}
+                  </p>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-gray-500 mb-1">Trạng thái hợp đồng</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Trạng thái hợp đồng
+                  </p>
                   <span
                     className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
                       status.color === "green"
@@ -390,7 +569,9 @@ export default function ContractDetailPage() {
               {contract.contractNumber && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Số hợp đồng</p>
-                  <p className="text-sm font-mono font-medium text-gray-900">{contract.contractNumber}</p>
+                  <p className="text-sm font-mono font-medium text-gray-900">
+                    {contract.contractNumber}
+                  </p>
                 </div>
               )}
 
@@ -404,40 +585,102 @@ export default function ContractDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Ngày bắt đầu</p>
-                  <p className="text-sm text-gray-900">{formatDate(contract.startDate)}</p>
+                  <p className="text-sm text-gray-900">
+                    {formatDate(contract.startDate)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Ngày kết thúc</p>
-                  <p className="text-sm text-gray-900">{formatDate(contract.endDate)}</p>
+                  <p className="text-sm text-gray-900">
+                    {formatDate(contract.endDate)}
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Trạng thái thanh toán</p>
-                <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                    contract.paymentStatus === "PAID"
-                      ? "bg-green-100 text-green-800"
-                      : contract.paymentStatus === "PARTIAL"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {paymentStatusLabel}
-                </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Trạng thái thanh toán
+                  </p>
+                  <span
+                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                      contract.paymentStatus === "PAID"
+                        ? "bg-green-100 text-green-800"
+                        : contract.paymentStatus === "PARTIAL"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {paymentStatusLabel}
+                  </span>
+                </div>
+
+                {contract.contractType && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Loại hợp đồng</p>
+                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {contract.contractType === "ONE_TIME"
+                        ? "Hợp đồng 1 lần (trọn gói)"
+                        : contract.contractType === "MONTHLY_FIXED"
+                        ? "Hợp đồng hàng tháng cố định"
+                        : contract.contractType === "MONTHLY_ACTUAL"
+                        ? "Hợp đồng hàng tháng theo ngày thực tế"
+                        : contract.contractType}
+                    </span>
+                  </div>
+                )}
               </div>
+
+              {contract.workingDaysPerWeek &&
+                contract.workingDaysPerWeek.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Ngày làm việc trong tuần
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {contract.workingDaysPerWeek.map((day: string) => (
+                        <span
+                          key={day}
+                          className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800"
+                        >
+                          {day === "MONDAY"
+                            ? "T2"
+                            : day === "TUESDAY"
+                            ? "T3"
+                            : day === "WEDNESDAY"
+                            ? "T4"
+                            : day === "THURSDAY"
+                            ? "T5"
+                            : day === "FRIDAY"
+                            ? "T6"
+                            : day === "SATURDAY"
+                            ? "T7"
+                            : day === "SUNDAY"
+                            ? "CN"
+                            : day}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
                   <p className="text-sm text-gray-900">
-                    {contract.createdAt ? formatDate(contract.createdAt) : "N/A"}
+                    {contract.createdAt
+                      ? formatDate(contract.createdAt)
+                      : "N/A"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Cập nhật lần cuối
+                  </p>
                   <p className="text-sm text-gray-900">
-                    {contract.updatedAt ? formatDate(contract.updatedAt) : "N/A"}
+                    {contract.updatedAt
+                      ? formatDate(contract.updatedAt)
+                      : "N/A"}
                   </p>
                 </div>
               </div>
@@ -445,7 +688,9 @@ export default function ContractDetailPage() {
               {contract.description && (
                 <div className="pt-3 border-t">
                   <p className="text-xs text-gray-500 mb-1">Mô tả</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{contract.description}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {contract.description}
+                  </p>
                 </div>
               )}
             </div>
@@ -458,16 +703,32 @@ export default function ContractDetailPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Giá cuối cùng</p>
+                <p className="text-xs text-gray-500 mb-1">Tổng giá cơ bản</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {formatCurrency(computeServicesBaseTotal(contract?.services))}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Tổng VAT</p>
+                <p className="text-xl font-semibold text-gray-700">
+                  {formatCurrency(computeServicesVatTotal(contract?.services))}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t">
+                <p className="text-xs text-gray-500 mb-1">Tổng cộng (Bao gồm VAT)</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(contract.finalPrice)}
+                  {formatCurrency(computeServicesGrandTotal(contract?.services))}
                 </p>
               </div>
 
               {contract.notes && (
                 <div className="pt-3 border-t">
                   <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{contract.notes}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {contract.notes}
+                  </p>
                 </div>
               )}
             </div>
@@ -558,7 +819,9 @@ export default function ContractDetailPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-bold text-blue-700">
-                          {formatCurrency(service.price + (service.price * service.vat) / 100)}
+                          {formatCurrency(
+                            service.price + (service.price * service.vat) / 100
+                          )}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -602,13 +865,121 @@ export default function ContractDetailPage() {
             documents={documents}
             onRefresh={async () => {
               try {
-                const docs = await contractDocumentService.getContractDocuments(contractId);
+                const docs = await contractDocumentService.getContractDocuments(
+                  contractId
+                );
                 setDocuments(docs);
               } catch (error) {
                 console.error("Error refreshing documents:", error);
               }
             }}
           />
+        </div>
+
+        {/* Invoices Section */}
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Hóa đơn ({invoices.length})
+            </h3>
+            <button
+              onClick={handleCreateInvoice}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Tạo hóa đơn
+            </button>
+          </div>
+
+          {loadingInvoices ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p className="text-sm">Chưa có hóa đơn nào cho hợp đồng này</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Số HĐ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tháng/Năm
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tổng tiền
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ngày công
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ghi chú
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {invoices.map((invoice) => (
+                    <tr key={invoice.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-mono font-medium text-blue-600">
+                          {invoice.invoiceNumber || `#${invoice.id}`}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900">
+                          {invoice.invoiceMonth}/{invoice.invoiceYear}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(invoice.totalAmount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-700">
+                          {invoice.actualWorkingDays || "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
+                            invoice.status
+                          )}`}
+                        >
+                          {getInvoiceStatusLabel(invoice.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">
+                          {invoice.notes || "—"}
+                        </p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -728,6 +1099,62 @@ export default function ContractDetailPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại hợp đồng *
+                </label>
+                <select
+                  value={editForm.contractType || "ONE_TIME"}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, contractType: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
+                  <option value="MONTHLY_FIXED">
+                    Hợp đồng hàng tháng cố định
+                  </option>
+                  <option value="MONTHLY_ACTUAL">
+                    Hợp đồng hàng tháng theo ngày thực tế
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày làm việc trong tuần
+                </label>
+                <input
+                  type="text"
+                  value={
+                    editForm.workingDaysPerWeek &&
+                    editForm.workingDaysPerWeek.length > 0
+                      ? editForm.workingDaysPerWeek
+                          .map((day: string) =>
+                            day === "MONDAY"
+                              ? "T2"
+                              : day === "TUESDAY"
+                              ? "T3"
+                              : day === "WEDNESDAY"
+                              ? "T4"
+                              : day === "THURSDAY"
+                              ? "T5"
+                              : day === "FRIDAY"
+                              ? "T6"
+                              : day === "SATURDAY"
+                              ? "T7"
+                              : day === "SUNDAY"
+                              ? "CN"
+                              : day
+                          )
+                          .join(", ")
+                      : "Chưa có dữ liệu"
+                  }
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả
@@ -746,29 +1173,40 @@ export default function ContractDetailPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                disabled={savingContract}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Hủy
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
+                disabled={savingContract}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                Lưu thay đổi
+                {savingContract ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Lưu thay đổi
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -833,7 +1271,10 @@ export default function ContractDetailPage() {
                         setServiceForm({ ...serviceForm, price: "" });
                         return;
                       }
-                      setServiceForm({ ...serviceForm, price: formatNumber(rawValue) });
+                      setServiceForm({
+                        ...serviceForm,
+                        price: formatNumber(rawValue),
+                      });
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập giá dịch vụ"
@@ -865,10 +1306,13 @@ export default function ContractDetailPage() {
                 <input
                   type="text"
                   value={(() => {
-                    const rawPrice = parseFormattedNumber(String(serviceForm.price || ''));
+                    const rawPrice = parseFormattedNumber(
+                      String(serviceForm.price || "")
+                    );
                     const price = Number(rawPrice) || 0;
-                    const vat = serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
-                    const total = price + (price * vat / 100);
+                    const vat =
+                      serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
+                    const total = price + (price * vat) / 100;
                     return total ? formatNumber(total) : "";
                   })()}
                   disabled
@@ -883,7 +1327,10 @@ export default function ContractDetailPage() {
                 <textarea
                   value={serviceForm.description}
                   onChange={(e) =>
-                    setServiceForm({ ...serviceForm, description: e.target.value })
+                    setServiceForm({
+                      ...serviceForm,
+                      description: e.target.value,
+                    })
                   }
                   rows={4}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -927,6 +1374,171 @@ export default function ContractDetailPage() {
                       />
                     </svg>
                     {editingService ? "Lưu thay đổi" : "Thêm dịch vụ"}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && contract && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Tạo hóa đơn mới
+              </h2>
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Hợp đồng:</strong> #{contract.id} - {contract.customerName}
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  <strong>Loại:</strong> {contract.contractType === "ONE_TIME" ? "Hợp đồng 1 lần (trọn gói)" : contract.contractType === "MONTHLY_FIXED" ? "Hợp đồng hàng tháng cố định" : "Hợp đồng hàng tháng theo ngày thực tế"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tháng *
+                  </label>
+                  <select
+                    value={invoiceForm.invoiceMonth}
+                    onChange={(e) =>
+                      setInvoiceForm({
+                        ...invoiceForm,
+                        invoiceMonth: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <option key={month} value={month}>
+                        Tháng {month}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Năm *
+                  </label>
+                  <input
+                    type="number"
+                    value={invoiceForm.invoiceYear}
+                    onChange={(e) =>
+                      setInvoiceForm({
+                        ...invoiceForm,
+                        invoiceYear: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="2020"
+                    max="2100"
+                  />
+                </div>
+              </div>
+
+              {contract.contractType === "MONTHLY_ACTUAL" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số ngày làm việc thực tế *
+                  </label>
+                  <input
+                    type="number"
+                    value={invoiceForm.actualWorkingDays}
+                    onChange={(e) =>
+                      setInvoiceForm({
+                        ...invoiceForm,
+                        actualWorkingDays: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số ngày làm việc thực tế"
+                    min="1"
+                    max="31"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Bắt buộc cho hợp đồng theo ngày thực tế
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ghi chú
+                </label>
+                <textarea
+                  value={invoiceForm.notes}
+                  onChange={(e) =>
+                    setInvoiceForm({ ...invoiceForm, notes: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập ghi chú cho hóa đơn..."
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                disabled={savingInvoice}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveInvoice}
+                disabled={savingInvoice}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingInvoice ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Tạo hóa đơn
                   </>
                 )}
               </button>

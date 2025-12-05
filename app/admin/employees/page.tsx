@@ -32,6 +32,7 @@ export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null
   );
+  const [addLoading, setAddLoading] = useState(false);
 
   const router = useRouter();
 
@@ -147,6 +148,7 @@ export default function EmployeesPage() {
     }
 
     try {
+      setAddLoading(true);
       const response = await employeeService.create(addForm);
       if (response.success) {
         toast.success("Đã thêm nhân viên mới thành công");
@@ -172,6 +174,8 @@ export default function EmployeesPage() {
     } catch (error: any) {
       console.error("Error adding employee:", error);
       toast.error(error.message || "Có lỗi xảy ra khi thêm nhân viên");
+    } finally {
+      setAddLoading(false);
     }
   };
 
@@ -244,7 +248,7 @@ export default function EmployeesPage() {
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Loại nhân viên
                 </label>
@@ -264,7 +268,7 @@ export default function EmployeesPage() {
                     Nhân viên thời vụ
                   </option>
                 </select>
-              </div>
+              </div> */}
 
               {/* <div className="flex items-end">
                 <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
@@ -646,8 +650,11 @@ export default function EmployeesPage() {
                     Thêm nhân viên mới
                   </h2>
                   <button
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      if (!addLoading) setShowAddModal(false);
+                    }}
                     className="text-gray-400 hover:text-gray-600"
+                    disabled={addLoading}
                   >
                     <svg
                       className="w-6 h-6"
@@ -820,30 +827,61 @@ export default function EmployeesPage() {
 
                 <div className="mt-6 flex justify-end gap-3">
                   <button
-                    onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    onClick={() => {
+                      if (!addLoading) setShowAddModal(false);
+                    }}
+                    disabled={addLoading}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Hủy
                   </button>
                   <button
                     onClick={handleAddEmployee}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                    disabled={addLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    Thêm nhân viên
+                    {addLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Đang thêm...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m8-8H4"
+                          />
+                        </svg>
+                        Thêm nhân viên
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

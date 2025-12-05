@@ -30,6 +30,15 @@ export default function CustomerDetail() {
   const [showReassignmentModal, setShowReassignmentModal] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  // Paginated employees for selection in reassignment modal
+  const [employeesPage, setEmployeesPage] = useState<any>({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    currentPage: 0,
+    pageSize: 10,
+  });
+  const [employeesPageLoading, setEmployeesPageLoading] = useState(false);
   const [searchEmployee, setSearchEmployee] = useState("");
   const [assignedEmployees, setAssignedEmployees] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
@@ -56,6 +65,8 @@ export default function CustomerDetail() {
     serviceDescription: "",
     startDate: "",
     endDate: "",
+    workingDaysPerWeek: [] as string[],
+    contractType: "ONE_TIME",
     finalPrice: 0,
     paymentStatus: "PENDING",
     description: "",
@@ -63,16 +74,16 @@ export default function CustomerDetail() {
 
   const [assignmentForm, setAssignmentForm] = useState<{
     employeeId: number | null;
+    contractId: number | null;
     assignmentType: string;
-    daysOfWeek: string[];
     allowance: number | string;
     startDate: string;
     salaryAtTime: number | string;
     description: string;
   }>({
     employeeId: null,
+    contractId: null,
     assignmentType: "FIXED_BY_CONTRACT",
-    daysOfWeek: [],
     allowance: "",
     startDate: new Date().toISOString().split("T")[0],
     salaryAtTime: "",
@@ -265,8 +276,37 @@ export default function CustomerDetail() {
     }
   };
 
+  const loadEmployeesPage = async (
+    page: number = 0,
+    pageSize: number = employeesPage.pageSize,
+    keyword: string | null = null
+  ) => {
+    try {
+      setEmployeesPageLoading(true);
+      const q = keyword !== null ? keyword : searchEmployee;
+      const response = await employeeService.getAll({
+        keyword: q,
+        page,
+        pageSize,
+      });
+      setEmployeesPage({
+        content: response.content,
+        totalElements: response.totalElements,
+        totalPages: response.totalPages,
+        currentPage: response.currentPage,
+        pageSize: response.pageSize,
+      });
+    } catch (error) {
+      console.error("Error loading paginated employees:", error);
+      toast.error("Không thể tải danh sách nhân viên");
+    } finally {
+      setEmployeesPageLoading(false);
+    }
+  };
+
   const handleOpenAssignmentModal = async () => {
     setShowAssignmentModal(true);
+    await loadContracts();
     await loadNotAssignedEmployees();
   };
 
@@ -274,8 +314,8 @@ export default function CustomerDetail() {
     setShowReassignmentModal(true);
     // Load assigned employees for "replaced" column
     await loadAssignedEmployees();
-    // Load not-assigned employees for "replacement" column
-    await loadNotAssignedEmployees();
+    // Load paginated system employees for "replacement" column
+    await loadEmployeesPage(0);
   };
 
   const loadNotAssignedEmployees = async () => {
@@ -302,22 +342,29 @@ export default function CustomerDetail() {
       toast.error("Vui lòng chọn nhân viên");
       return;
     }
-    if (!assignmentForm.daysOfWeek || assignmentForm.daysOfWeek.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một ngày làm việc trong tuần");
+    if (!assignmentForm.contractId) {
+      toast.error("Vui lòng chọn hợp đồng");
       return;
     }
 
     setSavingAssignment(true);
     try {
+      // Parse formatted currency strings (e.g. "5.000.000") to raw numbers
+      const salaryRaw = assignmentForm.salaryAtTime
+        ? Number(parseFormattedNumber(String(assignmentForm.salaryAtTime)))
+        : undefined;
+      const allowanceRaw = assignmentForm.allowance
+        ? Number(parseFormattedNumber(String(assignmentForm.allowance)))
+        : undefined;
+
       const assignmentData: AssignmentCreateRequest = {
         employeeId: assignmentForm.employeeId,
-        customerId: Number(customer.id),
+        contractId: assignmentForm.contractId,
         startDate: assignmentForm.startDate,
         status: "IN_PROGRESS",
         assignmentType: assignmentForm.assignmentType,
-        salaryAtTime: assignmentForm.salaryAtTime ? Number(assignmentForm.salaryAtTime) : 0,
-        workingDaysPerWeek: assignmentForm.daysOfWeek,
-        additionalAllowance: assignmentForm.allowance ? Number(assignmentForm.allowance) : 0,
+        salaryAtTime: salaryRaw,
+        additionalAllowance: allowanceRaw,
         description: assignmentForm.description,
       };
       console.log("Assignment data:", assignmentData);
@@ -329,8 +376,8 @@ export default function CustomerDetail() {
         // Reset form
         setAssignmentForm({
           employeeId: null,
+          contractId: null,
           assignmentType: "FIXED_BY_CONTRACT",
-          daysOfWeek: [],
           allowance: "",
           startDate: new Date().toISOString().split("T")[0],
           salaryAtTime: "",
@@ -338,6 +385,7 @@ export default function CustomerDetail() {
         });
         // Reload assigned employees list
         loadAssignedEmployees();
+        loadAllAssignedEmployeesForCustomer();
       } else {
         toast.error(response.message || "Phân công thất bại");
       }
@@ -362,11 +410,15 @@ export default function CustomerDetail() {
 
     setSavingReassignment(true);
     try {
+      const reassignmentSalaryRaw = reassignmentForm.salaryAtTime
+        ? Number(parseFormattedNumber(String(reassignmentForm.salaryAtTime)))
+        : undefined;
+
       const reassignmentData: TemporaryReassignmentRequest = {
         replacementEmployeeId: reassignmentForm.replacementEmployeeId,
         replacedEmployeeId: reassignmentForm.replacedEmployeeId,
         dates: reassignmentForm.selectedDates,
-        salaryAtTime: reassignmentForm.salaryAtTime ? Number(reassignmentForm.salaryAtTime) : undefined,
+        salaryAtTime: reassignmentSalaryRaw,
         description: reassignmentForm.description,
       };
 
@@ -441,6 +493,8 @@ export default function CustomerDetail() {
         serviceIds: [serviceResponse.id],
         startDate: contractForm.startDate,
         endDate: contractForm.endDate,
+        workingDaysPerWeek: contractForm.workingDaysPerWeek,
+        contractType: contractForm.contractType,
         finalPrice: calculatedFinalPrice,
         paymentStatus: contractForm.paymentStatus,
         description: contractForm.description,
@@ -462,6 +516,8 @@ export default function CustomerDetail() {
         serviceDescription: "",
         startDate: "",
         endDate: "",
+        workingDaysPerWeek: [],
+        contractType: "ONE_TIME",
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
@@ -1161,46 +1217,31 @@ export default function CustomerDetail() {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Ngày làm việc trong tuần *
+                    Hợp đồng *
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { value: "MONDAY", label: "Thứ 2" },
-                      { value: "TUESDAY", label: "Thứ 3" },
-                      { value: "WEDNESDAY", label: "Thứ 4" },
-                      { value: "THURSDAY", label: "Thứ 5" },
-                      { value: "FRIDAY", label: "Thứ 6" },
-                      { value: "SATURDAY", label: "Thứ 7" },
-                      { value: "SUNDAY", label: "CN" },
-                    ].map((day) => (
-                      <label
-                        key={day.value}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={
-                            assignmentForm.daysOfWeek?.includes(day.value) ||
-                            false
-                          }
-                          onChange={(e) => {
-                            const currentDays = assignmentForm.daysOfWeek || [];
-                            const newDays = e.target.checked
-                              ? [...currentDays, day.value]
-                              : currentDays.filter((d) => d !== day.value);
-                            setAssignmentForm({
-                              ...assignmentForm,
-                              daysOfWeek: newDays,
-                            });
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-xs text-gray-700">
-                          {day.label}
-                        </span>
-                      </label>
+                  <select
+                    value={assignmentForm.contractId || ""}
+                    onChange={(e) =>
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        contractId: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn hợp đồng</option>
+                    {contracts.map((contract) => (
+                      <option key={contract.id} value={contract.id}>
+                        HĐ #{contract.id} - {contract.services?.map((s: any) => s.title).join(', ')} ({formatDate(contract.startDate)} - {formatDate(contract.endDate)})
+                      </option>
                     ))}
-                  </div>
+                  </select>
+                  {loadingContracts && (
+                    <p className="text-xs text-gray-500 mt-1">Đang tải danh sách hợp đồng...</p>
+                  )}
+                  {!loadingContracts && contracts.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">Chưa có hợp đồng nào cho khách hàng này</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -1213,26 +1254,11 @@ export default function CustomerDetail() {
                       const rawValue = handleNumberInput(e.target.value);
                       setAssignmentForm({
                         ...assignmentForm,
-                        salaryAtTime: rawValue,
-                      });
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value) {
-                        setAssignmentForm({
-                          ...assignmentForm,
-                          salaryAtTime: formatNumber(e.target.value),
-                        });
-                      }
-                    }}
-                    onFocus={(e) => {
-                      const rawValue = parseFormattedNumber(e.target.value);
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        salaryAtTime: rawValue,
+                        salaryAtTime: rawValue ? formatNumber(rawValue) : "",
                       });
                     }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Sẽ lấy từ lương nhân viên"
+                    placeholder="Nhập lương theo phân công (VD: 5.000.000)"
                   />
                 </div>
                 <div>
@@ -1246,22 +1272,7 @@ export default function CustomerDetail() {
                       const rawValue = handleNumberInput(e.target.value);
                       setAssignmentForm({
                         ...assignmentForm,
-                        allowance: rawValue,
-                      });
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value) {
-                        setAssignmentForm({
-                          ...assignmentForm,
-                          allowance: formatNumber(e.target.value),
-                        });
-                      }
-                    }}
-                    onFocus={(e) => {
-                      const rawValue = parseFormattedNumber(e.target.value);
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        allowance: rawValue,
+                        allowance: rawValue ? formatNumber(rawValue) : "",
                       });
                     }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1755,22 +1766,7 @@ export default function CustomerDetail() {
                       const rawValue = handleNumberInput(e.target.value);
                       setReassignmentForm({
                         ...reassignmentForm,
-                        salaryAtTime: rawValue,
-                      });
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value) {
-                        setReassignmentForm({
-                          ...reassignmentForm,
-                          salaryAtTime: formatNumber(e.target.value),
-                        });
-                      }
-                    }}
-                    onFocus={(e) => {
-                      const rawValue = parseFormattedNumber(e.target.value);
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        salaryAtTime: rawValue,
+                        salaryAtTime: rawValue ? formatNumber(rawValue) : "",
                       });
                     }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -1798,19 +1794,7 @@ export default function CustomerDetail() {
               </div>
             </div>
 
-            {/* Search */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Tìm kiếm nhân viên..."
-                value={searchEmployee}
-                onChange={(e) => {
-                  setSearchEmployee(e.target.value);
-                  loadEmployees();
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
+            {/* Search (moved into replacement column) */}
 
             {/* Two Columns for Selection */}
             <div className="grid grid-cols-2 gap-6">
@@ -1873,6 +1857,14 @@ export default function CustomerDetail() {
                             <p className="text-xs text-gray-500">
                               {assignment.employeeCode}
                             </p>
+                            <p className="text-xs text-gray-400">
+                              {assignment.startDate && (
+                                <span>Phụ trách từ {formatDate(assignment.startDate)}</span>
+                              )}
+                              {assignment.workDays !== undefined && assignment.workDays !== null && (
+                                <span className="ml-2">• {assignment.workDays} ngày</span>
+                              )}
+                            </p>
                           </div>
                         </label>
                       ))
@@ -1884,67 +1876,106 @@ export default function CustomerDetail() {
               {/* Column 2: Nhân viên thay thế (không phụ trách) */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
-                  Nhân viên thay thế (chưa phụ trách)
+                  Nhân viên thay thế 
                   {reassignmentForm.replacementEmployeeId && (
                     <span className="ml-2 text-xs text-green-600">
                       ✓ Đã chọn
                     </span>
                   )}
                 </h3>
-                {loadingNotAssigned ? (
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân viên..."
+                      value={searchEmployee}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSearchEmployee(v);
+                        // pass the value directly so loader uses current input (avoids stale state)
+                        loadEmployeesPage(0, employeesPage.pageSize, v);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                {employeesPageLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {notAssignedEmployees.length === 0 ? (
-                      <p className="text-center text-gray-500 py-8 text-sm">
-                        Không có nhân viên khả dụng
-                      </p>
-                    ) : (
-                      notAssignedEmployees.map((employee) => (
-                        <label
-                          key={`replacement-${employee.id}`}
-                          className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                            reassignmentForm.replacementEmployeeId ===
-                            Number(employee.id)
-                              ? "border-green-500 bg-green-50"
-                              : "border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={
+                  <>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {(!employeesPage || employeesPage.content.length === 0) ? (
+                        <p className="text-center text-gray-500 py-8 text-sm">
+                          Không có nhân viên khả dụng
+                        </p>
+                      ) : (
+                        employeesPage.content.map((employee: any) => (
+                          <label
+                            key={`replacement-${employee.id}`}
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
                               reassignmentForm.replacementEmployeeId ===
                               Number(employee.id)
-                            }
-                            onChange={(e) => {
-                              setReassignmentForm({
-                                ...reassignmentForm,
-                                replacementEmployeeId: e.target.checked
-                                  ? Number(employee.id)
-                                  : null,
-                              });
-                            }}
-                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-green-600">
-                              {employee.name.charAt(0)}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-gray-900 truncate">
-                              {employee.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {employee.employeeCode}
-                            </p>
-                          </div>
-                        </label>
-                      ))
-                    )}
-                  </div>
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                reassignmentForm.replacementEmployeeId ===
+                                Number(employee.id)
+                              }
+                              onChange={(e) => {
+                                setReassignmentForm({
+                                  ...reassignmentForm,
+                                  replacementEmployeeId: e.target.checked
+                                    ? Number(employee.id)
+                                    : null,
+                                });
+                              }}
+                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            />
+                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-green-600">
+                                {employee.name?.charAt(0) || "N"}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-gray-900 truncate">
+                                {employee.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {employee.employeeCode}
+                              </p>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Pagination controls */}
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        Trang {employeesPage.currentPage + 1} / {Math.max(1, employeesPage.totalPages)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => loadEmployeesPage(Math.max(0, employeesPage.currentPage - 1), employeesPage.pageSize)}
+                          disabled={employeesPage.currentPage <= 0}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          onClick={() => loadEmployeesPage(Math.min(employeesPage.totalPages - 1, employeesPage.currentPage + 1), employeesPage.pageSize)}
+                          disabled={employeesPage.currentPage >= employeesPage.totalPages - 1}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -2155,6 +2186,70 @@ export default function CustomerDetail() {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại hợp đồng *
+                </label>
+                <select
+                  value={contractForm.contractType}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      contractType: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
+                  <option value="MONTHLY_FIXED">Hợp đồng hàng tháng cố định</option>
+                  <option value="MONTHLY_ACTUAL">Hợp đồng hàng tháng theo ngày thực tế</option>
+                </select>
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày làm việc trong tuần
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { value: "MONDAY", label: "Thứ 2" },
+                    { value: "TUESDAY", label: "Thứ 3" },
+                    { value: "WEDNESDAY", label: "Thứ 4" },
+                    { value: "THURSDAY", label: "Thứ 5" },
+                    { value: "FRIDAY", label: "Thứ 6" },
+                    { value: "SATURDAY", label: "Thứ 7" },
+                    { value: "SUNDAY", label: "CN" },
+                  ].map((day) => (
+                    <label
+                      key={day.value}
+                      className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={contractForm.workingDaysPerWeek.includes(day.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setContractForm({
+                              ...contractForm,
+                              workingDaysPerWeek: [...contractForm.workingDaysPerWeek, day.value],
+                            });
+                          } else {
+                            setContractForm({
+                              ...contractForm,
+                              workingDaysPerWeek: contractForm.workingDaysPerWeek.filter(
+                                (d) => d !== day.value
+                              ),
+                            });
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{day.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div>

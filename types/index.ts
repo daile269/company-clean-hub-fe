@@ -85,6 +85,8 @@ export interface Contract {
   contractNumber?: string;       // Số hợp đồng
   startDate: Date;
   endDate: Date;
+  workingDaysPerWeek?: string[]; // Ngày làm việc trong tuần: ["MONDAY", "TUESDAY", ...]
+  contractType?: string;         // Loại hợp đồng: ONE_TIME, MONTHLY_FIXED, MONTHLY_ACTUAL
   finalPrice: number;            // Giá cuối cùng (tổng giá các service)
   paymentStatus: string;         // Trạng thái thanh toán
   description?: string;

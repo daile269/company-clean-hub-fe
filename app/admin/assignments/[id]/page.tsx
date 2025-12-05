@@ -7,6 +7,7 @@ import {
   Assignment,
   AssignmentCreateRequest,
 } from "@/services/assignmentService";
+import contractService from "@/services/contractService";
 
 export default function AssignmentDetail() {
   const params = useParams();
@@ -17,6 +18,7 @@ export default function AssignmentDetail() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Assignment>>({});
+  const [contractDetails, setContractDetails] = useState<any>(null);
 
   // Load assignment data from API
   useEffect(() => {
@@ -30,11 +32,37 @@ export default function AssignmentDetail() {
       setLoading(true);
       const data = await assignmentService.getById(Number(id!));
       setAssignment(data);
+      // fetch contract details related to this assignment (if backend exposes that endpoint)
+      if (data && data.id !== undefined && data.id !== null) {
+        try {
+          await loadContractDetails(data.id);
+        } catch (err) {
+          // non-fatal: keep assignment loaded even if contract details fail
+          console.warn(
+            "Failed to load contract details for assignment",
+            data.id,
+            err
+          );
+        }
+      } else {
+        // ensure contractDetails is cleared when no assignment id available
+        setContractDetails(null);
+      }
     } catch (error) {
       console.error("Error loading assignment:", error);
       toast.error("Không thể tải thông tin phân công");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadContractDetails = async (assignmentId: number) => {
+    try {
+      const data = await contractService.getByAssignmentId(assignmentId);
+      setContractDetails(data);
+    } catch (err) {
+      console.error("Error fetching contract details via service:", err);
+      setContractDetails(null);
     }
   };
 
@@ -90,6 +118,10 @@ export default function AssignmentDetail() {
     return d.toISOString().split("T")[0];
   };
 
+  const parseFormattedNumber = (str: string) => {
+    return String(str).replace(/[,.]/g, "");
+  };
+
   const handleEdit = () => {
     setEditForm({ ...assignment });
     setShowEditModal(true);
@@ -99,19 +131,31 @@ export default function AssignmentDetail() {
     if (!editForm || !assignment) return;
 
     try {
-      const updateData: Partial<AssignmentCreateRequest> = {
-        startDate: editForm.startDate,
-        status: editForm.status,
-        salaryAtTime: editForm.salaryAtTime,
-        workingDaysPerWeek: editForm.workingDaysPerWeek,
-        additionalAllowance: editForm.additionalAllowance,
-        description: editForm.description,
+      // Build full payload matching backend AssignmentRequest
+      const payload: Partial<AssignmentCreateRequest> & {
+        previousContractId?: number;
+      } = {
+        employeeId: editForm.employeeId ?? assignment.employeeId,
+        contractId:
+          (editForm as any).contractId ?? (assignment as any).contractId,
+        startDate: editForm.startDate ?? assignment.startDate,
+        status: editForm.status ?? assignment.status,
+        assignmentType: editForm.assignmentType ?? assignment.assignmentType,
+        salaryAtTime:
+          editForm.salaryAtTime !== undefined && editForm.salaryAtTime !== null
+            ? Number(parseFormattedNumber(String(editForm.salaryAtTime)))
+            : undefined,
+        additionalAllowance:
+          editForm.additionalAllowance !== undefined &&
+          editForm.additionalAllowance !== null
+            ? Number(parseFormattedNumber(String(editForm.additionalAllowance)))
+            : undefined,
+        description: editForm.description ?? assignment.description,
+        // include previous contract id so backend can act accordingly if needed
+        previousContractId: (assignment as any).contractId ?? undefined,
       };
 
-      const response = await assignmentService.update(
-        assignment.id,
-        updateData
-      );
+      const response = await assignmentService.update(assignment.id, payload);
 
       if (response.success) {
         toast.success("Đã cập nhật thông tin phân công thành công");
@@ -279,15 +323,15 @@ export default function AssignmentDetail() {
               </div>
             </div>
             <div>
-                <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
-                <p className="text-sm text-gray-900">
-                  {assignment.assignmentType === "TEMPORARY"
-                          ? "Thay thế tạm thời"
-                          : assignment.assignmentType === "REGULAR"
-                          ? "Cố định"
-                          : "N/A"}
-                </p>
-              </div>
+              <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+              <p className="text-sm text-gray-900">
+                {assignment.assignmentType === "TEMPORARY"
+                  ? "Thay thế tạm thời"
+                  : assignment.assignmentType === "REGULAR"
+                  ? "Cố định"
+                  : "N/A"}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày bắt đầu</p>
@@ -358,17 +402,61 @@ export default function AssignmentDetail() {
             </div>
 
             <div className="pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-1">
-                Tổng thu nhập dự kiến
-              </p>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
+              <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(
-                  assignment.salaryAtTime * (assignment.workDays / 30)
+                  (assignment.additionalAllowance ?? 0) as number
                 )}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
-                (Tính theo: Lương × Số ngày / 30)
+            </div>
+
+            <div className="pt-3 border-t">
+              <p className="text-xs font-semibold text-gray-900 mb-1">
+                Hợp đồng
               </p>
+
+              {((contractDetails && contractDetails.name) ||
+                (assignment as any)?.contractName) && (
+                <p className="text-sm text-gray-700 mt-1">
+                  Tên hợp đồng:{" "}
+                  {(contractDetails && contractDetails.name) ??
+                    (assignment as any).contractName}
+                </p>
+              )}
+
+              {((contractDetails && contractDetails.type) ||
+                (assignment as any)?.contractType) && (
+                <p className="text-sm text-gray-700 mt-1">
+                  Loại hợp đồng:{" "}
+                  {(contractDetails && contractDetails.type) ??
+                    (assignment as any).contractType}
+                </p>
+              )}
+
+              {((contractDetails && contractDetails.workDays !== undefined) ||
+                (assignment as any)?.contractWorkDays) && (
+                <p className="text-sm text-gray-700 mt-1">
+                  Số ngày làm:{" "}
+                  {(contractDetails && contractDetails.workDays) ??
+                    (assignment as any).contractWorkDays}{" "}
+                  ngày
+                </p>
+              )}
+
+              {((contractDetails && contractDetails.finalPrice) ||
+                (assignment as any)?.contractFinalPrice ||
+                (assignment as any)?.contract?.finalPrice) && (
+                <p className="text-sm text-gray-700 mt-1">
+                  Giá hợp đồng:{" "}
+                  {formatCurrency(
+                    Number(
+                      ((contractDetails && contractDetails.finalPrice) ??
+                        (assignment as any).contractFinalPrice ??
+                        (assignment as any).contract?.finalPrice) as number
+                    )
+                  )}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -489,6 +577,23 @@ export default function AssignmentDetail() {
                     setEditForm({
                       ...editForm,
                       salaryAtTime: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phụ cấp (VND)
+                </label>
+                <input
+                  type="number"
+                  value={editForm.additionalAllowance || 0}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      additionalAllowance: Number(e.target.value),
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -30,6 +30,15 @@ export default function CustomerDetail() {
   const [showReassignmentModal, setShowReassignmentModal] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  // Paginated employees for selection in reassignment modal
+  const [employeesPage, setEmployeesPage] = useState<any>({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    currentPage: 0,
+    pageSize: 10,
+  });
+  const [employeesPageLoading, setEmployeesPageLoading] = useState(false);
   const [searchEmployee, setSearchEmployee] = useState("");
   const [assignedEmployees, setAssignedEmployees] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
@@ -51,15 +60,13 @@ export default function CustomerDetail() {
     customerId: "",
     serviceIds: [] as number[],
     serviceName: "",
-    servicePrice: 0,
+    servicePrice: "" as any,
+    serviceVat: "" as any,
     serviceDescription: "",
     startDate: "",
     endDate: "",
-    basePrice: 0,
-    vat: 0,
-    total: 0,
-    extraCost: 0,
-    discountCost: 0,
+    workingDaysPerWeek: [] as string[],
+    contractType: "ONE_TIME",
     finalPrice: 0,
     paymentStatus: "PENDING",
     description: "",
@@ -67,19 +74,19 @@ export default function CustomerDetail() {
 
   const [assignmentForm, setAssignmentForm] = useState<{
     employeeId: number | null;
+    contractId: number | null;
     assignmentType: string;
-    daysOfWeek: string[];
-    allowance: number;
+    allowance: number | string;
     startDate: string;
-    salaryAtTime: number;
+    salaryAtTime: number | string;
     description: string;
   }>({
     employeeId: null,
+    contractId: null,
     assignmentType: "FIXED_BY_CONTRACT",
-    daysOfWeek: [],
-    allowance: 0,
+    allowance: "",
     startDate: new Date().toISOString().split("T")[0],
-    salaryAtTime: 0,
+    salaryAtTime: "",
     description: "",
   });
   const [reassignmentForm, setReassignmentForm] = useState<{
@@ -88,7 +95,7 @@ export default function CustomerDetail() {
     fromDate: string;
     toDate: string;
     selectedDates: string[];
-    salaryAtTime?: number;
+    salaryAtTime?: number | string;
     description: string;
   }>({
     replacementEmployeeId: null,
@@ -96,7 +103,7 @@ export default function CustomerDetail() {
     fromDate: new Date().toISOString().split("T")[0],
     toDate: new Date().toISOString().split("T")[0],
     selectedDates: [],
-    salaryAtTime: 0,
+    salaryAtTime: "",
     description: "",
   });
 
@@ -269,8 +276,37 @@ export default function CustomerDetail() {
     }
   };
 
+  const loadEmployeesPage = async (
+    page: number = 0,
+    pageSize: number = employeesPage.pageSize,
+    keyword: string | null = null
+  ) => {
+    try {
+      setEmployeesPageLoading(true);
+      const q = keyword !== null ? keyword : searchEmployee;
+      const response = await employeeService.getAll({
+        keyword: q,
+        page,
+        pageSize,
+      });
+      setEmployeesPage({
+        content: response.content,
+        totalElements: response.totalElements,
+        totalPages: response.totalPages,
+        currentPage: response.currentPage,
+        pageSize: response.pageSize,
+      });
+    } catch (error) {
+      console.error("Error loading paginated employees:", error);
+      toast.error("Không thể tải danh sách nhân viên");
+    } finally {
+      setEmployeesPageLoading(false);
+    }
+  };
+
   const handleOpenAssignmentModal = async () => {
     setShowAssignmentModal(true);
+    await loadContracts();
     await loadNotAssignedEmployees();
   };
 
@@ -278,8 +314,8 @@ export default function CustomerDetail() {
     setShowReassignmentModal(true);
     // Load assigned employees for "replaced" column
     await loadAssignedEmployees();
-    // Load not-assigned employees for "replacement" column
-    await loadNotAssignedEmployees();
+    // Load paginated system employees for "replacement" column
+    await loadEmployeesPage(0);
   };
 
   const loadNotAssignedEmployees = async () => {
@@ -306,22 +342,29 @@ export default function CustomerDetail() {
       toast.error("Vui lòng chọn nhân viên");
       return;
     }
-    if (!assignmentForm.daysOfWeek || assignmentForm.daysOfWeek.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một ngày làm việc trong tuần");
+    if (!assignmentForm.contractId) {
+      toast.error("Vui lòng chọn hợp đồng");
       return;
     }
 
     setSavingAssignment(true);
     try {
+      // Parse formatted currency strings (e.g. "5.000.000") to raw numbers
+      const salaryRaw = assignmentForm.salaryAtTime
+        ? Number(parseFormattedNumber(String(assignmentForm.salaryAtTime)))
+        : undefined;
+      const allowanceRaw = assignmentForm.allowance
+        ? Number(parseFormattedNumber(String(assignmentForm.allowance)))
+        : undefined;
+
       const assignmentData: AssignmentCreateRequest = {
         employeeId: assignmentForm.employeeId,
-        customerId: Number(customer.id),
+        contractId: assignmentForm.contractId,
         startDate: assignmentForm.startDate,
         status: "IN_PROGRESS",
         assignmentType: assignmentForm.assignmentType,
-        salaryAtTime: assignmentForm.salaryAtTime,
-        workingDaysPerWeek: assignmentForm.daysOfWeek,
-        additionalAllowance: assignmentForm.allowance,
+        salaryAtTime: salaryRaw,
+        additionalAllowance: allowanceRaw,
         description: assignmentForm.description,
       };
       console.log("Assignment data:", assignmentData);
@@ -333,15 +376,16 @@ export default function CustomerDetail() {
         // Reset form
         setAssignmentForm({
           employeeId: null,
+          contractId: null,
           assignmentType: "FIXED_BY_CONTRACT",
-          daysOfWeek: [],
-          allowance: 0,
+          allowance: "",
           startDate: new Date().toISOString().split("T")[0],
-          salaryAtTime: 0,
+          salaryAtTime: "",
           description: "",
         });
         // Reload assigned employees list
         loadAssignedEmployees();
+        loadAllAssignedEmployeesForCustomer();
       } else {
         toast.error(response.message || "Phân công thất bại");
       }
@@ -366,11 +410,15 @@ export default function CustomerDetail() {
 
     setSavingReassignment(true);
     try {
+      const reassignmentSalaryRaw = reassignmentForm.salaryAtTime
+        ? Number(parseFormattedNumber(String(reassignmentForm.salaryAtTime)))
+        : undefined;
+
       const reassignmentData: TemporaryReassignmentRequest = {
         replacementEmployeeId: reassignmentForm.replacementEmployeeId,
         replacedEmployeeId: reassignmentForm.replacedEmployeeId,
         dates: reassignmentForm.selectedDates,
-        salaryAtTime: reassignmentForm.salaryAtTime,
+        salaryAtTime: reassignmentSalaryRaw,
         description: reassignmentForm.description,
       };
 
@@ -388,7 +436,7 @@ export default function CustomerDetail() {
           fromDate: new Date().toISOString().split("T")[0],
           toDate: new Date().toISOString().split("T")[0],
           selectedDates: [],
-          salaryAtTime: 0,
+          salaryAtTime: "",
           description: "",
         });
         loadAssignedEmployees();
@@ -406,23 +454,30 @@ export default function CustomerDetail() {
   const handleAddContract = async () => {
     setSavingContract(true);
     try {
-      // Validate required fields
+      // Parse formatted numbers correctly
+      const rawPrice = parseFormattedNumber(String(contractForm.servicePrice || ''));
+      const servicePrice = Number(rawPrice) || 0;
+      const serviceVat = contractForm.serviceVat === "" ? 0 : Number(contractForm.serviceVat);
+      
       if (
         !contractForm.serviceName ||
-        contractForm.servicePrice <= 0 ||
+        servicePrice <= 0 ||
         !contractForm.startDate ||
-        !contractForm.endDate ||
-        contractForm.basePrice <= 0
+        !contractForm.endDate
       ) {
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
 
+      // Calculate finalPrice from service price + vat percentage
+      const calculatedFinalPrice = servicePrice + (servicePrice * serviceVat / 100);
+
       // Step 1: Create service first
       const serviceRequest: ServiceRequest = {
         title: contractForm.serviceName,
         description: contractForm.serviceDescription,
-        price: contractForm.servicePrice,
+        price: servicePrice,
+        vat: serviceVat,
       };
 
       const serviceResponse = await serviceService.create(serviceRequest);
@@ -438,12 +493,9 @@ export default function CustomerDetail() {
         serviceIds: [serviceResponse.id],
         startDate: contractForm.startDate,
         endDate: contractForm.endDate,
-        basePrice: contractForm.basePrice,
-        vat: contractForm.vat,
-        total: contractForm.total,
-        extraCost: contractForm.extraCost,
-        discountCost: contractForm.discountCost,
-        finalPrice: contractForm.finalPrice,
+        workingDaysPerWeek: contractForm.workingDaysPerWeek,
+        contractType: contractForm.contractType,
+        finalPrice: calculatedFinalPrice,
         paymentStatus: contractForm.paymentStatus,
         description: contractForm.description,
       };
@@ -459,15 +511,13 @@ export default function CustomerDetail() {
         customerId: "",
         serviceIds: [],
         serviceName: "",
-        servicePrice: 0,
+        servicePrice: "" as any,
+        serviceVat: "" as any,
         serviceDescription: "",
         startDate: "",
         endDate: "",
-        basePrice: 0,
-        vat: 0,
-        total: 0,
-        extraCost: 0,
-        discountCost: 0,
+        workingDaysPerWeek: [],
+        contractType: "ONE_TIME",
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
@@ -485,6 +535,23 @@ export default function CustomerDetail() {
       style: "currency",
       currency: "VND",
     }).format(amount);
+
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    // Parse to remove any existing formatting, then format again
+    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const parseFormattedNumber = (str: string) => {
+    // Remove both comma and dot separators (vi-VN uses dot as thousand separator)
+    return str.replace(/[,.]/g, "");
+  };
+
+  const handleNumberInput = (value: string) => {
+    // Chỉ cho phép số
+    return value.replace(/[^0-9]/g, '');
+  };
 
   return (
     <div className="p-6">
@@ -1150,62 +1217,48 @@ export default function CustomerDetail() {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Ngày làm việc trong tuần *
+                    Hợp đồng *
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { value: "MONDAY", label: "Thứ 2" },
-                      { value: "TUESDAY", label: "Thứ 3" },
-                      { value: "WEDNESDAY", label: "Thứ 4" },
-                      { value: "THURSDAY", label: "Thứ 5" },
-                      { value: "FRIDAY", label: "Thứ 6" },
-                      { value: "SATURDAY", label: "Thứ 7" },
-                      { value: "SUNDAY", label: "CN" },
-                    ].map((day) => (
-                      <label
-                        key={day.value}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={
-                            assignmentForm.daysOfWeek?.includes(day.value) ||
-                            false
-                          }
-                          onChange={(e) => {
-                            const currentDays = assignmentForm.daysOfWeek || [];
-                            const newDays = e.target.checked
-                              ? [...currentDays, day.value]
-                              : currentDays.filter((d) => d !== day.value);
-                            setAssignmentForm({
-                              ...assignmentForm,
-                              daysOfWeek: newDays,
-                            });
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-xs text-gray-700">
-                          {day.label}
-                        </span>
-                      </label>
+                  <select
+                    value={assignmentForm.contractId || ""}
+                    onChange={(e) =>
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        contractId: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn hợp đồng</option>
+                    {contracts.map((contract) => (
+                      <option key={contract.id} value={contract.id}>
+                        HĐ #{contract.id} - {contract.services?.map((s: any) => s.title).join(', ')} ({formatDate(contract.startDate)} - {formatDate(contract.endDate)})
+                      </option>
                     ))}
-                  </div>
+                  </select>
+                  {loadingContracts && (
+                    <p className="text-xs text-gray-500 mt-1">Đang tải danh sách hợp đồng...</p>
+                  )}
+                  {!loadingContracts && contracts.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">Chưa có hợp đồng nào cho khách hàng này</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Lương theo phân công (VND)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     value={assignmentForm.salaryAtTime}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
                       setAssignmentForm({
                         ...assignmentForm,
-                        salaryAtTime: Number(e.target.value),
-                      })
-                    }
+                        salaryAtTime: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Sẽ lấy từ lương nhân viên"
+                    placeholder="Nhập lương theo phân công (VD: 5.000.000)"
                   />
                 </div>
                 <div>
@@ -1213,14 +1266,15 @@ export default function CustomerDetail() {
                     Phụ cấp (VND)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     value={assignmentForm.allowance}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
                       setAssignmentForm({
                         ...assignmentForm,
-                        allowance: Number(e.target.value),
-                      })
-                    }
+                        allowance: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0"
                   />
@@ -1706,15 +1760,15 @@ export default function CustomerDetail() {
                     Lương tại thời điểm điều động (VND)
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    value={reassignmentForm.salaryAtTime ?? 0}
-                    onChange={(e) =>
+                    type="text"
+                    value={reassignmentForm.salaryAtTime}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
                       setReassignmentForm({
                         ...reassignmentForm,
-                        salaryAtTime: Number(e.target.value),
-                      })
-                    }
+                        salaryAtTime: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="0"
                   />
@@ -1740,19 +1794,7 @@ export default function CustomerDetail() {
               </div>
             </div>
 
-            {/* Search */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Tìm kiếm nhân viên..."
-                value={searchEmployee}
-                onChange={(e) => {
-                  setSearchEmployee(e.target.value);
-                  loadEmployees();
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
+            {/* Search (moved into replacement column) */}
 
             {/* Two Columns for Selection */}
             <div className="grid grid-cols-2 gap-6">
@@ -1815,6 +1857,14 @@ export default function CustomerDetail() {
                             <p className="text-xs text-gray-500">
                               {assignment.employeeCode}
                             </p>
+                            <p className="text-xs text-gray-400">
+                              {assignment.startDate && (
+                                <span>Phụ trách từ {formatDate(assignment.startDate)}</span>
+                              )}
+                              {assignment.workDays !== undefined && assignment.workDays !== null && (
+                                <span className="ml-2">• {assignment.workDays} ngày</span>
+                              )}
+                            </p>
                           </div>
                         </label>
                       ))
@@ -1826,67 +1876,106 @@ export default function CustomerDetail() {
               {/* Column 2: Nhân viên thay thế (không phụ trách) */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
-                  Nhân viên thay thế (chưa phụ trách)
+                  Nhân viên thay thế 
                   {reassignmentForm.replacementEmployeeId && (
                     <span className="ml-2 text-xs text-green-600">
                       ✓ Đã chọn
                     </span>
                   )}
                 </h3>
-                {loadingNotAssigned ? (
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân viên..."
+                      value={searchEmployee}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSearchEmployee(v);
+                        // pass the value directly so loader uses current input (avoids stale state)
+                        loadEmployeesPage(0, employeesPage.pageSize, v);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                {employeesPageLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {notAssignedEmployees.length === 0 ? (
-                      <p className="text-center text-gray-500 py-8 text-sm">
-                        Không có nhân viên khả dụng
-                      </p>
-                    ) : (
-                      notAssignedEmployees.map((employee) => (
-                        <label
-                          key={`replacement-${employee.id}`}
-                          className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                            reassignmentForm.replacementEmployeeId ===
-                            Number(employee.id)
-                              ? "border-green-500 bg-green-50"
-                              : "border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={
+                  <>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {(!employeesPage || employeesPage.content.length === 0) ? (
+                        <p className="text-center text-gray-500 py-8 text-sm">
+                          Không có nhân viên khả dụng
+                        </p>
+                      ) : (
+                        employeesPage.content.map((employee: any) => (
+                          <label
+                            key={`replacement-${employee.id}`}
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
                               reassignmentForm.replacementEmployeeId ===
                               Number(employee.id)
-                            }
-                            onChange={(e) => {
-                              setReassignmentForm({
-                                ...reassignmentForm,
-                                replacementEmployeeId: e.target.checked
-                                  ? Number(employee.id)
-                                  : null,
-                              });
-                            }}
-                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-green-600">
-                              {employee.name.charAt(0)}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-gray-900 truncate">
-                              {employee.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {employee.employeeCode}
-                            </p>
-                          </div>
-                        </label>
-                      ))
-                    )}
-                  </div>
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                reassignmentForm.replacementEmployeeId ===
+                                Number(employee.id)
+                              }
+                              onChange={(e) => {
+                                setReassignmentForm({
+                                  ...reassignmentForm,
+                                  replacementEmployeeId: e.target.checked
+                                    ? Number(employee.id)
+                                    : null,
+                                });
+                              }}
+                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            />
+                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-green-600">
+                                {employee.name?.charAt(0) || "N"}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-gray-900 truncate">
+                                {employee.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {employee.employeeCode}
+                              </p>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Pagination controls */}
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        Trang {employeesPage.currentPage + 1} / {Math.max(1, employeesPage.totalPages)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => loadEmployeesPage(Math.max(0, employeesPage.currentPage - 1), employeesPage.pageSize)}
+                          disabled={employeesPage.currentPage <= 0}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          onClick={() => loadEmployeesPage(Math.min(employeesPage.totalPages - 1, employeesPage.currentPage + 1), employeesPage.pageSize)}
+                          disabled={employeesPage.currentPage >= employeesPage.totalPages - 1}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1962,7 +2051,6 @@ export default function CustomerDetail() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tên dịch vụ *
                 </label>
@@ -1978,7 +2066,6 @@ export default function CustomerDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="VD: Dọn dẹp văn phòng"
                 />
-                </div>
               </div>
 
               <div>
@@ -1986,16 +2073,66 @@ export default function CustomerDetail() {
                   Giá dịch vụ (VND) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={contractForm.servicePrice}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const rawValue = handleNumberInput(e.target.value);
+                    if (rawValue === "") {
+                      setContractForm({
+                        ...contractForm,
+                        servicePrice: "",
+                        finalPrice: 0,
+                      });
+                      return;
+                    }
+                    const price = Number(rawValue) || 0;
+                    const vatValue = contractForm.serviceVat === "" ? 0 : Number(contractForm.serviceVat);
                     setContractForm({
                       ...contractForm,
-                      servicePrice: Number(e.target.value),
-                    })
-                  }
+                      servicePrice: formatNumber(rawValue),
+                      finalPrice: price + (price * vatValue / 100),
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="5000000"
+                  placeholder="Nhập giá dịch vụ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VAT (%) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={contractForm.serviceVat}
+                  onChange={(e) => {
+                    const vat = e.target.value === "" ? 0 : Number(e.target.value);
+                    // Parse formatted price to get raw number
+                    const priceStr = String(contractForm.servicePrice || '');
+                    const rawPrice = parseFormattedNumber(priceStr);
+                    const price = Number(rawPrice) || 0;
+                    setContractForm({
+                      ...contractForm,
+                      serviceVat: e.target.value,
+                      finalPrice: price + (price * vat / 100),
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập VAT (%)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tổng giá (Giá dịch vụ + VAT) (VNĐ)
+                </label>
+                <input
+                  type="text"
+                  value={contractForm.finalPrice ? formatNumber(contractForm.finalPrice) : ""}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
                 />
               </div>
 
@@ -2053,122 +2190,66 @@ export default function CustomerDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cơ bản (VND) *
+                  Loại hợp đồng *
                 </label>
-                <input
-                  type="number"
-                  value={contractForm.basePrice}
-                  onChange={(e) => {
-                    const basePrice = Number(e.target.value);
-                    const total = basePrice + contractForm.vat;
-                    const finalPrice =
-                      total +
-                      contractForm.extraCost -
-                      contractForm.discountCost;
+                <select
+                  value={contractForm.contractType}
+                  onChange={(e) =>
                     setContractForm({
                       ...contractForm,
-                      basePrice,
-                      total,
-                      finalPrice,
-                    });
-                  }}
+                      contractType: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="10000000"
-                />
+                >
+                  <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
+                  <option value="MONTHLY_FIXED">Hợp đồng hàng tháng cố định</option>
+                  <option value="MONTHLY_ACTUAL">Hợp đồng hàng tháng theo ngày thực tế</option>
+                </select>
               </div>
 
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (VND)
+                  Ngày làm việc trong tuần
                 </label>
-                <input
-                  type="number"
-                  value={contractForm.vat}
-                  onChange={(e) => {
-                    const vat = Number(e.target.value);
-                    const total = contractForm.basePrice + vat;
-                    const finalPrice =
-                      total +
-                      contractForm.extraCost -
-                      contractForm.discountCost;
-                    setContractForm({
-                      ...contractForm,
-                      vat,
-                      total,
-                      finalPrice,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="1000000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng (Base + VAT)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.total}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chi phí phát sinh (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.extraCost}
-                  onChange={(e) => {
-                    const extraCost = Number(e.target.value);
-                    const finalPrice =
-                      contractForm.total +
-                      extraCost -
-                      contractForm.discountCost;
-                    setContractForm({ ...contractForm, extraCost, finalPrice });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giảm giá (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.discountCost}
-                  onChange={(e) => {
-                    const discountCost = Number(e.target.value);
-                    const finalPrice =
-                      contractForm.total +
-                      contractForm.extraCost -
-                      discountCost;
-                    setContractForm({
-                      ...contractForm,
-                      discountCost,
-                      finalPrice,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="500000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cuối cùng (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contractForm.finalPrice}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-blue-600"
-                />
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { value: "MONDAY", label: "Thứ 2" },
+                    { value: "TUESDAY", label: "Thứ 3" },
+                    { value: "WEDNESDAY", label: "Thứ 4" },
+                    { value: "THURSDAY", label: "Thứ 5" },
+                    { value: "FRIDAY", label: "Thứ 6" },
+                    { value: "SATURDAY", label: "Thứ 7" },
+                    { value: "SUNDAY", label: "CN" },
+                  ].map((day) => (
+                    <label
+                      key={day.value}
+                      className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={contractForm.workingDaysPerWeek.includes(day.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setContractForm({
+                              ...contractForm,
+                              workingDaysPerWeek: [...contractForm.workingDaysPerWeek, day.value],
+                            });
+                          } else {
+                            setContractForm({
+                              ...contractForm,
+                              workingDaysPerWeek: contractForm.workingDaysPerWeek.filter(
+                                (d) => d !== day.value
+                              ),
+                            });
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{day.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div>

@@ -57,7 +57,11 @@ const groupAttendanceByAssignment = (
 
     return grouped;
 };
-
+const getStatusAssignment = (status: string | undefined) => {
+    if (status === undefined) return "Chưa cập nhật";
+    if (status === "COMPLETED") return "Hoàn thành";
+    if (status === "IN_PROGRESS") return "Đang thực hiện";
+}
 const getAttendancesForDate = (
     attendances: Attendance[],
     day: number
@@ -190,6 +194,9 @@ export default function AttendanceCalendar({
                         assignmentAllowanceInputs[assignmentId] ??
                         (assignment?.additionalAllowance ?? 0);
 
+                    // Kiểm tra status - nếu đang thực hiện thì hiển thị thông báo
+                    const isInProgress = assignment?.status === "IN_PROGRESS";
+
                     return (
                         <div key={assignmentId} className="flex gap-4 bg-white rounded-lg shadow p-4">
                             {/* Sidebar - Customer Info + Assignment allowance */}
@@ -216,7 +223,7 @@ export default function AttendanceCalendar({
                                             }).format(assignment.salaryAtTime || 0)}</p>
                                             <p className="text-gray-600">Ngày DK: {assignment.plannedDays || 0}</p>
                                             <p className="text-gray-600">Ngày TT: {assignment.workDays || 0}</p>
-                                            <p className="text-gray-600">Trạng thái: <span className="font-semibold">{assignment.status}</span></p>
+                                            <p className="text-gray-600">Trạng thái: <span className="font-semibold">{getStatusAssignment(assignment.status)}</span></p>
                                         </div>
                                     )}
                                 </div>
@@ -306,64 +313,169 @@ export default function AttendanceCalendar({
                                 )}
 
                                 {/* Legend */}
-                                <div className="mt-4 space-y-2 text-xs">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.bonus.dot}`}></div>
-                                        <span className="text-gray-600">{INDICATOR_TYPES.bonus.label}</span>
+                                {!isInProgress && (
+                                    <div className="mt-4 space-y-2 text-xs">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.bonus.dot}`}></div>
+                                            <span className="text-gray-600">{INDICATOR_TYPES.bonus.label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.penalty.dot}`}></div>
+                                            <span className="text-gray-600">{INDICATOR_TYPES.penalty.label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.supportCost.dot}`}></div>
+                                            <span className="text-gray-600">{INDICATOR_TYPES.supportCost.label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
+                                            <span className="text-gray-600">{INDICATOR_TYPES.overtimeAmount.label}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.penalty.dot}`}></div>
-                                        <span className="text-gray-600">{INDICATOR_TYPES.penalty.label}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.supportCost.dot}`}></div>
-                                        <span className="text-gray-600">{INDICATOR_TYPES.supportCost.label}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
-                                        <span className="text-gray-600">{INDICATOR_TYPES.overtimeAmount.label}</span>
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
-                            {/* Calendar */}
-                            <div className="flex-1 overflow-x-auto">
-                                <div className="bg-white rounded overflow-hidden border border-gray-200">
-                                    {/* Calendar Header */}
-                                    <div className="grid grid-cols-7 gap-0">
-                                        {dayNames.map((day) => (
-                                            <div
-                                                key={day}
-                                                className="bg-gray-100 border-r border-b border-gray-200 py-2 text-center font-semibold text-xs text-gray-700 min-w-16"
+                            {/* Main Content Area */}
+                            {isInProgress ? (
+                                // Hiển thị khi đang thực hiện
+                                <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center py-12 px-6 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-100 rounded-full mb-4">
+                                            <svg
+                                                className="w-8 h-8 text-yellow-600 animate-pulse"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
                                             >
-                                                {day}
-                                            </div>
-                                        ))}
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                                            Phân công đang thực hiện
+                                        </h3>
+                                        <p className="text-sm text-yellow-700 mb-4">
+                                            Lịch phân công này hiện đang trong quá trình thực hiện. Vui lòng chờ quá trình hoàn tất để có thể chấm công và tính lương.
+                                        </p>
+                                        <div className="inline-block px-4 py-2 bg-yellow-100 rounded text-xs font-medium text-yellow-800">
+                                            Trạng thái: Đang thực hiện
+                                        </div>
                                     </div>
+                                </div>
+                            ) : (
+                                // Hiển thị bảng lịch khi hoàn thành
+                                <div className="flex-1 overflow-x-auto">
+                                    <div className="bg-white rounded overflow-hidden border border-gray-200">
+                                        {/* Calendar Header */}
+                                        <div className="grid grid-cols-7 gap-0">
+                                            {dayNames.map((day) => (
+                                                <div
+                                                    key={day}
+                                                    className="bg-gray-100 border-r border-b border-gray-200 py-2 text-center font-semibold text-xs text-gray-700 min-w-16"
+                                                >
+                                                    {day}
+                                                </div>
+                                            ))}
+                                        </div>
 
-                                    {/* Calendar Grid */}
-                                    <div className="grid grid-cols-7 gap-0">
-                                        {calendarDays.map((day, index) => {
-                                            const dayAttendances = day
-                                                ? getAttendancesForDate(assignmentAttendances, day)
-                                                : [];
-                                            return (
-                                                <div key={index} className={`border-r border-b border-gray-200 p-1 min-w-16 min-h-16 flex flex-col items-center justify-center 
+                                        {/* Calendar Grid */}
+                                        <div className="grid grid-cols-7 gap-0">
+                                            {calendarDays.map((day, index) => {
+                                                const dayAttendances = day
+                                                    ? getAttendancesForDate(assignmentAttendances, day)
+                                                    : [];
+                                                return (
+                                                    <div key={index} className={`border-r border-b border-gray-200 p-1 min-w-16 min-h-16 flex flex-col items-center justify-center 
                                                         ${day ? "bg-white " : "bg-gray-50"} relative group cursor-pointer`}>
-                                                    {day && (
-                                                        <div className="w-full h-20 flex flex-col">
-                                                            {/* Ngày */}
-                                                            <div className="text-xs font-semibold text-gray-900 bg-gray-100 rounded px-1 py-0.5 text-center">
-                                                                {day}
-                                                            </div>
+                                                        {day && (
+                                                            <div className="w-full h-20 flex flex-col">
+                                                                {/* Ngày */}
+                                                                <div className="text-xs font-semibold text-gray-900 bg-gray-100 rounded px-1 py-0.5 text-center">
+                                                                    {day}
+                                                                </div>
 
-                                                            {/* Default view: Icon + dots */}
-                                                            <div className=" flex-1 flex items-center justify-center gap-3">
-                                                                {dayAttendances.length > 0 ? (
-                                                                    <>
-                                                                        {dayAttendances.some(att => att.bonus > 0 || att.penalty > 0 || att.overtimeAmount > 0|| att.supportCost >0) ? (
-                                                                            <>
-                                                                                {/* Left: Icon check */}
+                                                                {/* Default view: Icon + dots */}
+                                                                <div className=" flex-1 flex items-center justify-center gap-3">
+                                                                    {dayAttendances.length > 0 ? (
+                                                                        <>
+                                                                            {dayAttendances.some(att => att.bonus > 0 || att.penalty > 0 || att.overtimeAmount > 0|| att.supportCost >0) ? (
+                                                                                <>
+                                                                                    {/* Left: Icon check */}
+                                                                                    <div className="text-green-600 text-xl text-center">
+                                                                                        <span className="group-hover:hidden inline-block">
+                                                                                            <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
+                                                                                        </span>
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                onEditAttendance?.(editingAttendance || dayAttendances[0]);
+                                                                                                setEditingAttendance(null);
+                                                                                            }}
+                                                                                            className="group-hover:block hidden mt-1 bg-blue-500 text-white px-1 py-0.5 rounded text-xs hover:bg-blue-600 w-full"
+                                                                                        >
+                                                                                            Sửa
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    {/* Right: Dots */}
+                                                                                    {dayAttendances.map((att, idx) => (
+                                                                                        <div key={idx} className="flex flex-col  gap-0.5">
+                                                                                            {att.supportCost && att.supportCost > 0 ? (
+                                                                                                <div className="flex items-center gap-1 text-xs">
+                                                                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.supportCost.dot}`}></div>
+                                                                                                    <span className="group-hover:block hidden text-blue-600 font-semibold truncate">
+                                                                                                        {new Intl.NumberFormat("vi-VN", {
+                                                                                                            style: "currency",
+                                                                                                            currency: "VND",
+                                                                                                            maximumFractionDigits: 0,
+                                                                                                        }).format(att.supportCost)}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            ) : null}
+                                                                                            {att.bonus && att.bonus > 0 ? (
+                                                                                                <div className="flex items-center gap-1 text-xs">
+                                                                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.bonus.dot}`}></div>
+                                                                                                    <span className="group-hover:block hidden text-green-600 font-semibold truncate">
+                                                                                                        {new Intl.NumberFormat("vi-VN", {
+                                                                                                            style: "currency",
+                                                                                                            currency: "VND",
+                                                                                                            maximumFractionDigits: 0,
+                                                                                                        }).format(att.bonus)}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            ) : null}
+                                                                                            {att.penalty && att.penalty > 0 ? (
+                                                                                                <div className="flex items-center gap-1 text-xs">
+                                                                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.penalty.dot}`}></div>
+                                                                                                    <span className="group-hover:block hidden text-red-600 font-semibold truncate">
+                                                                                                        {new Intl.NumberFormat("vi-VN", {
+                                                                                                            style: "currency",
+                                                                                                            currency: "VND",
+                                                                                                            maximumFractionDigits: 0,
+                                                                                                        }).format(att.penalty)}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            ) : null}
+
+                                                                                            {att.overtimeAmount && att.overtimeAmount > 0 ? (
+                                                                                                <div className="flex items-center gap-1 text-xs">
+                                                                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
+                                                                                                    <span className="group-hover:block hidden text-purple-600 font-semibold truncate">
+                                                                                                        {new Intl.NumberFormat("vi-VN", {
+                                                                                                            style: "currency",
+                                                                                                            currency: "VND",
+                                                                                                            maximumFractionDigits: 0,
+                                                                                                        }).format(att.overtimeAmount)}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            ) : null}
+
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </>
+                                                                            ) : (
                                                                                 <div className="text-green-600 text-xl text-center">
                                                                                     <span className="group-hover:hidden inline-block">
                                                                                         <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
@@ -378,93 +490,23 @@ export default function AttendanceCalendar({
                                                                                         Sửa
                                                                                     </button>
                                                                                 </div>
-                                                                                {/* Right: Dots */}
-                                                                                {dayAttendances.map((att, idx) => (
-                                                                                    <div key={idx} className="flex flex-col  gap-0.5">
-                                                                                        {att.supportCost && att.supportCost > 0 ? (
-                                                                                            <div className="flex items-center gap-1 text-xs">
-                                                                                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.supportCost.dot}`}></div>
-                                                                                                <span className="group-hover:block hidden text-blue-600 font-semibold truncate">
-                                                                                                    {new Intl.NumberFormat("vi-VN", {
-                                                                                                        style: "currency",
-                                                                                                        currency: "VND",
-                                                                                                        maximumFractionDigits: 0,
-                                                                                                    }).format(att.supportCost)}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        ) : null}
-                                                                                        {att.bonus && att.bonus > 0 ? (
-                                                                                            <div className="flex items-center gap-1 text-xs">
-                                                                                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.bonus.dot}`}></div>
-                                                                                                <span className="group-hover:block hidden text-green-600 font-semibold truncate">
-                                                                                                    {new Intl.NumberFormat("vi-VN", {
-                                                                                                        style: "currency",
-                                                                                                        currency: "VND",
-                                                                                                        maximumFractionDigits: 0,
-                                                                                                    }).format(att.bonus)}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        ) : null}
-                                                                                        {att.penalty && att.penalty > 0 ? (
-                                                                                            <div className="flex items-center gap-1 text-xs">
-                                                                                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.penalty.dot}`}></div>
-                                                                                                <span className="group-hover:block hidden text-red-600 font-semibold truncate">
-                                                                                                    {new Intl.NumberFormat("vi-VN", {
-                                                                                                        style: "currency",
-                                                                                                        currency: "VND",
-                                                                                                        maximumFractionDigits: 0,
-                                                                                                    }).format(att.penalty)}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        ) : null}
-
-                                                                                        {att.overtimeAmount && att.overtimeAmount > 0 ? (
-                                                                                            <div className="flex items-center gap-1 text-xs">
-                                                                                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
-                                                                                                <span className="group-hover:block hidden text-purple-600 font-semibold truncate">
-                                                                                                    {new Intl.NumberFormat("vi-VN", {
-                                                                                                        style: "currency",
-                                                                                                        currency: "VND",
-                                                                                                        maximumFractionDigits: 0,
-                                                                                                    }).format(att.overtimeAmount)}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        ) : null}
-
-                                                                                    </div>
-                                                                                ))}
-                                                                            </>
-                                                                        ) : (
-                                                                            <div className="text-green-600 text-xl text-center">
-                                                                                <span className="group-hover:hidden inline-block">
-                                                                                    <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
-                                                                                </span>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        onEditAttendance?.(editingAttendance || dayAttendances[0]);
-                                                                                        setEditingAttendance(null);
-                                                                                    }}
-                                                                                    className="group-hover:block hidden mt-1 bg-blue-500 text-white px-1 py-0.5 rounded text-xs hover:bg-blue-600 w-full"
-                                                                                >
-                                                                                    Sửa
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </>
-                                                                ) : (
-                                                                    <div className="text-gray-300 text-lg">
-                                                                        <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
-                                                                    </div>
-                                                                )}
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        <div className="text-gray-300 text-lg">
+                                                                            <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     );
                 }

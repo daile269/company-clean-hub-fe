@@ -414,9 +414,7 @@ export default function PayrollPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tên nhân viên
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Loại hợp đồng
-                      </th>
+                
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tháng/Năm
                       </th>
@@ -445,11 +443,7 @@ export default function PayrollPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {payroll.employeeName}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                            {payroll.employmentType || "N/A"}
-                          </span>
-                        </td>
+                       
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           Tháng {payroll.month}/{payroll.year}
                         </td>

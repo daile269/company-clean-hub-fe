@@ -3,13 +3,12 @@ import { Employee } from "@/types";
 
 export interface AssignmentCreateRequest {
   employeeId: number;
-  customerId: number;
+  contractId: number;
   startDate: string;
-  status: string;
-  salaryAtTime: number;
-  assignmentType: string;
-  workingDaysPerWeek: string[];
-  additionalAllowance: number;
+  status?: string;
+  salaryAtTime?: number;
+  assignmentType?: string;
+  additionalAllowance?: number;
   description?: string;
 }
 
@@ -114,12 +113,11 @@ class AssignmentService {
   ): Promise<ApiResponse<Assignment>> {
     const payload = {
       employeeId: data.employeeId,
-      customerId: data.customerId,
+      contractId: data.contractId,
       startDate: data.startDate,
       status: data.status || "IN_PROGRESS",
       assignmentType: data.assignmentType,
       salaryAtTime: data.salaryAtTime,
-      workingDaysPerWeek: data.workingDaysPerWeek,
       additionalAllowance: data.additionalAllowance,
       description: data.description || "",
     };

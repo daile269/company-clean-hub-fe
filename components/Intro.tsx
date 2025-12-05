@@ -9,9 +9,8 @@ export default function Intro() {
   useEffect(() => {
     if (!ref.current) return;
 
-    // Respect prefers-reduced-motion
+    // Respect prefers-reduced-motion (client-side only)
     const prefersReduced =
-      typeof window !== "undefined" &&
       window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 

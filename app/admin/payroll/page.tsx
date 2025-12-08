@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import payrollService, { Payroll } from "@/services/payrollService";
-import { employeeService } from "@/services/employeeService";
 import PayrollCalculateModal from "@/components/PayrollCalculateModal";
 import PayrollExportModal from "@/components/PayrollExportModal";
 import toast, { Toaster } from "react-hot-toast";
@@ -16,9 +15,6 @@ export default function PayrollPage() {
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [filterYear, setFilterYear] = useState<string>("all");
   const [showCalculateModal, setShowCalculateModal] = useState(false);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [overlayMessage, setOverlayMessage] = useState("");
-  const [overlayVisible, setOverlayVisible] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -27,16 +23,7 @@ export default function PayrollPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const pageSize = 10;
 
-  // Load payrolls
-  const showOverlay = (message?: string) => {
-    setOverlayMessage(message || "Đang xử lý...");
-    setOverlayVisible(true);
-  };
 
-  const hideOverlay = () => {
-    setOverlayVisible(false);
-    setOverlayMessage("");
-  };
   const loadPayrolls = async (options?: { showOverlay?: boolean; message?: string }) => {
     const shouldShowOverlay = options?.showOverlay ?? true;
     try {
@@ -73,28 +60,9 @@ export default function PayrollPage() {
     }
   };
 
-  // Load employees from employee service
-  const loadEmployees = async () => {
-    try {
-      const response = await employeeService.getAll({ pageSize: 1000 });
-      if (response && response.content) {
-        const employeeList = response.content.map((emp) => ({
-          id: Number(emp.id),
-          name: emp.name,
-          employeeCode: emp.employeeCode,
-        }));
-        setEmployees(employeeList);
-      }
-    } catch (error) {
-      console.error("Failed to load employees:", error);
-      toast.error("Không thể tải danh sách nhân viên");
-    }
-  };
-
   // Load data on mount and when filters change
   useEffect(() => {
     loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." });
-    loadEmployees();
   }, [currentPage, filterMonth, filterYear, filterStatus]);
 
   // Debounce search
@@ -110,41 +78,6 @@ export default function PayrollPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa bảng lương này?")) return;
-
-    try {
-      showOverlay("Đang xóa bảng lương...");
-      await payrollService.deletePayroll(id);
-      setOverlayMessage("Đang tải danh sách bảng lương...");
-      await loadPayrolls({ showOverlay: false });
-      hideOverlay();
-      toast.success("Xóa bảng lương thành công");
-    } catch (error) {
-      console.error("Failed to delete payroll:", error);
-      hideOverlay();
-      toast.error("Không thể xóa bảng lương");
-    }
-  };
-
-  // Handle mark as paid
-  const handleMarkAsPaid = async (id: number) => {
-    if (!confirm("Xác nhận đã thanh toán lương?")) return;
-
-    try {
-      showOverlay("Đang cập nhật trạng thái thanh toán...");
-      await payrollService.markAsPaid(id);
-      setOverlayMessage("Đang tải danh sách bảng lương...");
-      await loadPayrolls({ showOverlay: false });
-      hideOverlay();
-      toast.success("Đã cập nhật trạng thái thanh toán");
-    } catch (error) {
-      console.error("Failed to mark as paid:", error);
-      hideOverlay();
-      toast.error("Không thể cập nhật trạng thái");
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -152,10 +85,7 @@ export default function PayrollPage() {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "N/A";
-    return new Intl.DateTimeFormat("vi-VN").format(new Date(dateString));
-  };
+
 
   const totalPayroll = payrolls.reduce((sum, p) => sum + p.finalSalary, 0);
   const paidPayrolls = payrolls.filter((p) => p.isPaid).length;
@@ -195,7 +125,6 @@ export default function PayrollPage() {
         onSuccess={() =>
           loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." })
         }
-        employees={employees}
       />
 
       <PayrollExportModal

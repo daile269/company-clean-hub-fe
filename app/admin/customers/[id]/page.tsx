@@ -45,10 +45,24 @@ export default function CustomerDetail() {
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [loadingAllAssignments, setLoadingAllAssignments] = useState(false);
   const [allAssignedEmployees, setAllAssignedEmployees] = useState<Assignment[]>([]);
-  const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>(
-    []
-  );
+  const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>([]);
+  const [notAssignedPage, setNotAssignedPage] = useState<any>({
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    currentPage: 0,
+    pageSize: 10,
+  });
   const [loadingNotAssigned, setLoadingNotAssigned] = useState(false);
+
+  // Modal-specific filters for not-assigned list
+  const [assignmentModalMonth, setAssignmentModalMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [assignmentModalYear, setAssignmentModalYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [notAssignedKeyword, setNotAssignedKeyword] = useState<string>("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [savingReassignment, setSavingReassignment] = useState(false);
 
@@ -164,6 +178,48 @@ export default function CustomerDetail() {
       loadAssignmentHistories(Number(contracts[0].id));
     }
   }, [contracts]);
+
+  const loadNotAssignedEmployees = async (
+    page = 0,
+    pageSize: number = notAssignedPage.pageSize,
+    keyword: string | null = null
+  ) => {
+    try {
+      setLoadingNotAssigned(true);
+      const q = keyword !== null ? keyword : notAssignedKeyword || undefined;
+      const response = await assignmentService.getNotAssignedByCustomerId(id!, {
+        page,
+        pageSize,
+        month: assignmentModalMonth,
+        year: assignmentModalYear,
+        keyword: q,
+      });
+      console.log("Not assigned employees (paginated):", response);
+      setNotAssignedEmployees(response.content || []);
+      setNotAssignedPage({
+        content: response.content || [],
+        totalElements: response.totalElements ?? 0,
+        totalPages: response.totalPages ?? 0,
+        currentPage: response.currentPage ?? 0,
+        pageSize: response.pageSize ?? pageSize,
+      });
+    } catch (error) {
+      console.error("Error loading not-assigned employees:", error);
+      toast.error("Không thể tải danh sách nhân viên");
+      setNotAssignedEmployees([]);
+      setNotAssignedPage({ content: [], totalElements: 0, totalPages: 0, currentPage: 0, pageSize });
+    } finally {
+      setLoadingNotAssigned(false);
+    }
+  };
+
+  // reload not-assigned list when modal shown or month/year change
+  useEffect(() => {
+    if (showAssignmentModal) {
+      loadNotAssignedEmployees(0, notAssignedPage.pageSize);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAssignmentModal, assignmentModalMonth, assignmentModalYear]);
 
   const loadCustomer = async () => {
     try {
@@ -446,7 +502,7 @@ export default function CustomerDetail() {
   const handleOpenAssignmentModal = async () => {
     setShowAssignmentModal(true);
     await loadContracts();
-    await loadNotAssignedEmployees();
+    await loadNotAssignedEmployees(0, notAssignedPage.pageSize);
   };
 
   const handleOpenReassignmentModal = async () => {
@@ -457,22 +513,6 @@ export default function CustomerDetail() {
     await loadEmployeesPage(0);
   };
 
-  const loadNotAssignedEmployees = async () => {
-    try {
-      setLoadingNotAssigned(true);
-      const data = await assignmentService.getNotAssignedByCustomerId(id!, {
-        page: 0,
-        pageSize: 100,
-      });
-      console.log("Not assigned employees:", data);
-      setNotAssignedEmployees(data);
-    } catch (error) {
-      console.error("Error loading not-assigned employees:", error);
-      toast.error("Không thể tải danh sách nhân viên");
-    } finally {
-      setLoadingNotAssigned(false);
-    }
-  };
 
 
   const handleAssignEmployee = async () => {
@@ -1779,71 +1819,138 @@ export default function CustomerDetail() {
               />
             </div>
 
-            {/* Employee List */}
+            {/* Employee List (with month/year filter + pagination) */}
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <select
+                  value={assignmentModalMonth}
+                  onChange={(e) => setAssignmentModalMonth(Number(e.target.value))}
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      Tháng {m}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={assignmentModalYear}
+                  onChange={(e) => setAssignmentModalYear(Number(e.target.value))}
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                    <option key={y} value={y}>
+                      Năm {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên..."
+                  value={notAssignedKeyword}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setNotAssignedKeyword(v);
+                    // immediate reload (could debounce)
+                    loadNotAssignedEmployees(0, notAssignedPage.pageSize, v);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                />
+
+                <button
+                  onClick={() => loadNotAssignedEmployees(0, notAssignedPage.pageSize)}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Áp dụng
+                </button>
+              </div>
+            </div>
+
             {loadingNotAssigned ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
             ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {notAssignedEmployees.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">
-                    Không tìm thấy nhân viên
-                  </p>
-                ) : (
-                  notAssignedEmployees.map((employee) => (
-                    <div
-                      key={employee.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="checkbox"
-                          checked={
-                            assignmentForm.employeeId === Number(employee.id)
-                          }
-                          onChange={(e) => {
-                            setAssignmentForm({
-                              ...assignmentForm,
-                              employeeId: e.target.checked
-                                ? Number(employee.id)
-                                : null,
-                            });
-                          }}
-                          className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-lg font-semibold text-blue-600">
-                            {employee.name.charAt(0)}
-                          </span>
+              <div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {(!notAssignedPage || notAssignedPage.content.length === 0) ? (
+                    <p className="text-center text-gray-500 py-8">Không tìm thấy nhân viên</p>
+                  ) : (
+                    notAssignedPage.content.map((employee: any) => (
+                      <div
+                        key={employee.id}
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <input
+                            type="checkbox"
+                            checked={assignmentForm.employeeId === Number(employee.id)}
+                            onChange={(e) => {
+                              setAssignmentForm({
+                                ...assignmentForm,
+                                employeeId: e.target.checked ? Number(employee.id) : null,
+                              });
+                            }}
+                            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-lg font-semibold text-blue-600">
+                              {employee.name?.charAt(0) ?? ""}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{employee.name}</p>
+                            <p className="text-sm text-gray-500">{employee?.employeeCode} • {employee.phone}</p>
+                            <p className="text-xs text-gray-400">
+                              {employee.employeeType === "FIXED_BY_CONTRACT"
+                                ? "Nhân viên chính tại chỗ"
+                                : employee.employeeType === "FIXED_BY_DAY"
+                                ? "Nhân viên chính điều động"
+                                : "Nhân viên thời vụ"}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {employee.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {employee?.employeeCode} • {employee.phone}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {employee.employeeType === "FIXED_BY_CONTRACT"
-                              ? "Nhân viên chính tại chỗ"
-                              : employee.employeeType === "FIXED_BY_DAY"
-                              ? "Nhân viên chính điều động"
-                              : "Nhân viên thời vụ"}
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {employee.monthlySalary
+                              ? formatCurrency(employee.monthlySalary) + "/tháng"
+                              : employee.dailySalary
+                              ? formatCurrency(employee.dailySalary) + "/ngày"
+                              : "N/A"}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {employee.monthlySalary
-                            ? formatCurrency(employee.monthlySalary) + "/tháng"
-                            : employee.dailySalary
-                            ? formatCurrency(employee.dailySalary) + "/ngày"
-                            : "N/A"}
-                        </p>
-                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Pagination controls */}
+                {notAssignedPage.totalPages > 0 && (
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      Trang {notAssignedPage.currentPage + 1} / {Math.max(1, notAssignedPage.totalPages)}
                     </div>
-                  ))
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => loadNotAssignedEmployees(Math.max(0, notAssignedPage.currentPage - 1), notAssignedPage.pageSize)}
+                        disabled={notAssignedPage.currentPage <= 0}
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                      >
+                        Trước
+                      </button>
+                      <button
+                        onClick={() => loadNotAssignedEmployees(Math.min(notAssignedPage.totalPages - 1, notAssignedPage.currentPage + 1), notAssignedPage.pageSize)}
+                        disabled={notAssignedPage.currentPage >= notAssignedPage.totalPages - 1}
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -2284,9 +2391,9 @@ export default function CustomerDetail() {
                         Chưa có nhân viên phụ trách
                       </p>
                     ) : (
-                      assignedEmployees.map((assignment) => (
+                      assignedEmployees.map((assignment, aIdx) => (
                         <label
-                          key={`replaced-${assignment.employeeId}`}
+                          key={`replaced-${assignment.id ?? assignment.employeeId ?? aIdx}`}
                           className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
                             reassignmentForm.replacedEmployeeId ===
                             assignment.employeeId

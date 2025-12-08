@@ -164,14 +164,41 @@ class AssignmentService {
     }
   }
 
-  async getAllByCustomerId(customerId: string): Promise<Assignment[]> {
+  async getAllByCustomerId(
+    customerId: string,
+    params?: {
+      contractType?: string;
+      status?: string;
+      month?: number;
+      year?: number;
+      page?: number;
+      pageSize?: number;
+    }
+  ): Promise<Assignment[]> {
     try {
-      const response = await apiService.get<any>(
-        `/assignments/customer/${customerId}/all`
-      );
+      const queryParams = new URLSearchParams();
+      
+      if (params?.contractType) {
+        queryParams.append("contractType", params.contractType);
+      }
+      if (params?.status) {
+        queryParams.append("status", params.status);
+      }
+      if (params?.month) {
+        queryParams.append("month", params.month.toString());
+      }
+      if (params?.year) {
+        queryParams.append("year", params.year.toString());
+      }
+      queryParams.append("page", (params?.page ?? 0).toString());
+      queryParams.append("pageSize", (params?.pageSize ?? 10).toString());
 
+      const response = await apiService.get<any>(
+        `/assignments/customer/${customerId}/all?${queryParams.toString()}`
+      );
+      console.log('Assignments by customer response:', response);
       if (response.success && response.data) {
-        return Array.isArray(response.data) ? response.data : [];
+        return Array.isArray(response.data.content) ? response.data.content : [];
       }
 
       return [];

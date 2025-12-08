@@ -118,7 +118,14 @@ export default function CustomerDetail() {
   // Filter states for Card 1
   const [filterAssignmentType, setFilterAssignmentType] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterMonth, setFilterMonth] = useState<number>(new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
   const [sortBy, setSortBy] = useState<string>("startDate_desc");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   // Load contracts for customer
   const loadContracts = async () => {
@@ -143,6 +150,13 @@ export default function CustomerDetail() {
       loadContracts();
     }
   }, [id]);
+
+  // Reload when filters or pagination changes
+  useEffect(() => {
+    if (id) {
+      loadAllAssignedEmployeesForCustomer();
+    }
+  }, [filterMonth, filterYear, filterAssignmentType, filterStatus, currentPage, pageSize]);
 
   // Load history when contracts are loaded
   useEffect(() => {
@@ -179,9 +193,19 @@ export default function CustomerDetail() {
   const loadAllAssignedEmployeesForCustomer = async () => {
     try {
       setLoadingAllAssignments(true);
-      const data = await assignmentService.getAllByCustomerId(id!);
+      const data = await assignmentService.getAllByCustomerId(id!, {
+        month: filterMonth,
+        year: filterYear,
+        status: filterStatus || undefined,
+        contractType: filterAssignmentType || undefined,
+        page: currentPage,
+        pageSize: pageSize
+      });
       console.log("All assigned employees:", data);
       setAllAssignedEmployees(data);
+      // Calculate total pages (assuming backend returns all data for now)
+      // If backend returns total count, update this logic
+      setTotalPages(Math.ceil(data.length / pageSize) || 1);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
     } finally {
@@ -1082,6 +1106,36 @@ export default function CustomerDetail() {
             Nhân viên đang phụ trách
           </h3>
           <div className="flex items-center gap-2">
+            {/* Month and Year filters */}
+            <select
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(Number(e.target.value))}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={1}>Tháng 1</option>
+              <option value={2}>Tháng 2</option>
+              <option value={3}>Tháng 3</option>
+              <option value={4}>Tháng 4</option>
+              <option value={5}>Tháng 5</option>
+              <option value={6}>Tháng 6</option>
+              <option value={7}>Tháng 7</option>
+              <option value={8}>Tháng 8</option>
+              <option value={9}>Tháng 9</option>
+              <option value={10}>Tháng 10</option>
+              <option value={11}>Tháng 11</option>
+              <option value={12}>Tháng 12</option>
+            </select>
+
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(Number(e.target.value))}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                <option key={year} value={year}>Năm {year}</option>
+              ))}
+            </select>
+
             {/* Filters */}
             <select
               value={filterAssignmentType}
@@ -1291,6 +1345,80 @@ export default function CustomerDetail() {
             </table>
           </div>
         )}
+
+        {/* Pagination */}
+        {!loadingAllAssignments && getFilteredAndSortedAssignments().length > 0 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Hiển thị</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="text-sm text-gray-600">kết quả</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={`page-${i}-${pageNum}`}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm rounded-lg ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              Trang {currentPage} / {totalPages}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Card 5: Lịch sử điều động */}
@@ -1398,8 +1526,8 @@ export default function CustomerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {assignmentHistories.map((history) => (
-                  <tr key={history.historyId} className="border-b hover:bg-gray-50">
+                {assignmentHistories.map((history, idx) => (
+                  <tr key={`history-${history.historyId ?? idx}`} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <span className="text-sm font-mono font-medium text-blue-600">
                         #{history.historyId}
@@ -1422,9 +1550,10 @@ export default function CustomerDetail() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-700">
-                        {history.reassignmentDates.map((date, idx) => (
-                          <div key={idx}>{formatDate(date)}</div>
-                        ))}
+                        {history.reassignmentDates.map((date, dIdx) => {
+                          const dateKey = typeof date === 'string' ? new Date(date).toISOString() : new Date(date).toISOString();
+                          return <div key={`reassign-${dateKey}-${dIdx}`}>{formatDate(date)}</div>;
+                        })}
                       </div>
                     </td>
                     <td className="px-4 py-3">

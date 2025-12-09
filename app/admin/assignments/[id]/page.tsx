@@ -257,7 +257,7 @@ export default function AssignmentDetail() {
             </svg>
             Sửa
           </button>
-          <button
+          {/* <button
             onClick={handleDelete}
             className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
           >
@@ -276,7 +276,7 @@ export default function AssignmentDetail() {
               />
             </svg>
             Xóa
-          </button>
+          </button> */}
         </div>
       </div>
 

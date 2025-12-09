@@ -36,6 +36,13 @@ export default function EmployeeDetail() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [showPayrollAdvanceInsuranceModal, setShowPayrollAdvanceInsuranceModal] = useState(false);
+  const [assignmentCustomerId, setAssignmentCustomerId] = useState<number | undefined>();
+  const [assignmentMonth, setAssignmentMonth] = useState<number>(new Date().getMonth() + 1);
+  const [assignmentYear, setAssignmentYear] = useState<number>(new Date().getFullYear());
+  const [assignmentPage, setAssignmentPage] = useState(0);
+  const [assignmentPageSize] = useState(10);
+  const [assignmentTotalPages, setAssignmentTotalPages] = useState(0);
+  const [assignmentTotalElements, setAssignmentTotalElements] = useState(0);
   useEffect(() => {
     if (id) {
       loadEmployee();
@@ -66,16 +73,26 @@ export default function EmployeeDetail() {
 
   useEffect(() => {
     if (id) loadAssignments();
-  }, [id]);
+  }, [id, assignmentCustomerId, assignmentMonth, assignmentYear, assignmentPage]);
 
   const loadAssignments = async () => {
     try {
       setLoadingAssignments(true);
-      const data = await assignmentService.getByEmployeeId(id!);
-      setAssignments(data || []);
+      const response = await assignmentService.getByEmployeeId(id!, {
+        customerId: assignmentCustomerId,
+        month: assignmentMonth,
+        year: assignmentYear,
+        page: assignmentPage,
+        pageSize: assignmentPageSize,
+      });
+      setAssignments(response.content || []);
+      setAssignmentTotalPages(response.totalPages);
+      setAssignmentTotalElements(response.totalElements);
     } catch (error) {
       console.error('Error loading assignments:', error);
       setAssignments([]);
+      setAssignmentTotalPages(0);
+      setAssignmentTotalElements(0);
     } finally {
       setLoadingAssignments(false);
     }
@@ -128,6 +145,44 @@ export default function EmployeeDetail() {
   const formatDateInput = (date: Date) => {
     const d = new Date(date);
     return d.toISOString().split("T")[0];
+  };
+
+  const getAssignmentStatusClass = (status?: string) => {
+    const s = (status || "").toUpperCase();
+    switch (s) {
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "IN_PROGRESS":
+      case "ACTIVE":
+        return "bg-blue-100 text-blue-800";
+      case "COMPLETED":
+        return "bg-green-100 text-green-800";
+      case "CANCELLED":
+      case "CANCELED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getAssignmentStatusLabel = (status?: string) => {
+    if (!status) return "";
+    const s = status.toUpperCase();
+    switch (s) {
+      case "PENDING":
+        return "Chờ xử lý";
+      case "IN_PROGRESS":
+      case "ACTIVE":
+        return "Đang thực hiện";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "CANCELLED":
+      case "CANCELED":
+        return "Đã hủy";
+      default:
+        // Fallback to raw status with capitalization
+        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    }
   };
 
   const handleEdit = () => {
@@ -549,9 +604,47 @@ export default function EmployeeDetail() {
 
       {/* Assignments */}
       <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-3">
-          Phân công
-        </h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl font-semibold">
+            Phân công
+          </h2>
+          <div className="flex gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Tháng:</label>
+              <select
+                value={assignmentMonth}
+                onChange={(e) => {
+                  setAssignmentMonth(Number(e.target.value));
+                  setAssignmentPage(0);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Năm:</label>
+              <select
+                value={assignmentYear}
+                onChange={(e) => {
+                  setAssignmentYear(Number(e.target.value));
+                  setAssignmentPage(0);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
         {loadingAssignments ? (
           <div className="flex justify-center py-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -576,11 +669,22 @@ export default function EmployeeDetail() {
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-medium">
-                        {customer?.name || a.customerId}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">
+                          {customer?.name || a.customerId}
+                        </p>
+                        {a.status && (
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getAssignmentStatusClass(
+                              a.status
+                            )}`}
+                          >
+                            {getAssignmentStatusLabel(a.status)}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500">
-                        { (a as any).workSchedule || a.description || (a.workDays ? `${a.workDays} ngày` : "") }
+                        {(a as any).workSchedule || a.description || (a.workDays ? `${a.workDays} ngày` : "")}
                       </p>
                     </div>
                     <div className="text-sm text-gray-400">
@@ -597,11 +701,36 @@ export default function EmployeeDetail() {
             })}
           </div>
         )}
+        
+        {/* Pagination */}
+        {!loadingAssignments && assignmentTotalPages > 1 && (
+          <div className="mt-4 flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng {assignmentTotalElements} phân công)
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAssignmentPage(Math.max(0, assignmentPage - 1))}
+                disabled={assignmentPage === 0}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setAssignmentPage(Math.min(assignmentTotalPages - 1, assignmentPage + 1))}
+                disabled={assignmentPage >= assignmentTotalPages - 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
 
       {/* Ratings */}
-      <div className="mt-6">
+      {/* <div className="mt-6">
         <h2 className="text-xl font-semibold mb-3">Đánh giá từ khách hàng</h2>
         {ratings.length === 0 ? (
           <p className="text-sm text-gray-500">Chưa có đánh giá</p>
@@ -633,7 +762,7 @@ export default function EmployeeDetail() {
             ))}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Edit Modal */}
       {showEditModal && editForm && (

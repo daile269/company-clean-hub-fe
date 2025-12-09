@@ -199,7 +199,7 @@ export default function AssignmentsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Hoàn thành</p>
+                  <p className="text-sm text-gray-600">Đã hoàn thành</p>
                   <p className="text-2xl font-bold text-green-600">
                     {assignments.filter((a) => a.status === "COMPLETED").length}
                   </p>
@@ -225,9 +225,9 @@ export default function AssignmentsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Không hoạt động</p>
+                  <p className="text-sm text-gray-600">Đã hủy</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {assignments.filter((a) => a.status === "INACTIVE").length}
+                    {assignments.filter((a) => a.status === "CANCELED").length}
                   </p>
                 </div>
                 <div className="bg-red-100 p-3 rounded-full">

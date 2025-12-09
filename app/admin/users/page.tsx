@@ -8,18 +8,18 @@ export default function UsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({
     username: "",
@@ -49,7 +49,7 @@ export default function UsersPage() {
           page: currentPage,
           pageSize: pageSize,
         });
-        
+
         setUsers(Array.isArray(data.content) ? data.content : []);
         setTotalElements(data.totalElements);
         setTotalPages(data.totalPages);
@@ -136,7 +136,7 @@ export default function UsersPage() {
         password: "",
         roleId: 2,
       });
-      
+
       // Reload users
       const data = await userService.getAll({
         keyword: searchKeyword,
@@ -147,7 +147,8 @@ export default function UsersPage() {
       setTotalElements(data.totalElements);
       setTotalPages(data.totalPages);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      const errorMessage =
+        error instanceof Error ? error.message : "Có lỗi xảy ra";
       toast.error(`Lỗi: ${errorMessage}`);
     }
   };
@@ -362,9 +363,26 @@ export default function UsersPage() {
             </select>
           </div>
 
-          <div className="flex items-end">
-            <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
-              Xuất Excel
+          <div className="flex items-end md:justify-end">
+            <button
+              className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+              title="Xuất Excel"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
+                />
+              </svg>
+              Xuất danh sách người dùng
             </button>
           </div>
         </div>
@@ -488,13 +506,18 @@ export default function UsersPage() {
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Hiển thị <span className="font-medium">{currentPage * pageSize + 1}</span> -{" "}
+                Hiển thị{" "}
+                <span className="font-medium">
+                  {currentPage * pageSize + 1}
+                </span>{" "}
+                -{" "}
                 <span className="font-medium">
                   {Math.min((currentPage + 1) * pageSize, totalElements)}
                 </span>{" "}
-                trong tổng số <span className="font-medium">{totalElements}</span> người dùng
+                trong tổng số{" "}
+                <span className="font-medium">{totalElements}</span> người dùng
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
@@ -535,7 +558,9 @@ export default function UsersPage() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
+                  }
                   disabled={currentPage === totalPages - 1}
                   className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -694,7 +719,7 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-      
+
       <Toaster position="top-right" />
     </div>
   );

@@ -94,14 +94,7 @@ export default function EmployeesPage() {
 
   const handleAddEmployee = async () => {
     // Validate required fields
-    if (!addForm.username || addForm.username.trim() === "") {
-      toast.error("Tên đăng nhập không được để trống");
-      return;
-    }
-    if (addForm.username.length < 3 || addForm.username.length > 50) {
-      toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
-      return;
-    }
+
     if (!addForm.employeeCode || addForm.employeeCode.trim() === "") {
       toast.error("Mã nhân viên không được để trống");
       return;
@@ -132,10 +125,6 @@ export default function EmployeesPage() {
     }
     if (addForm.idCard.length > 50) {
       toast.error("CCCD không được vượt quá 50 ký tự");
-      return;
-    }
-    if (addForm.address && addForm.address.length > 255) {
-      toast.error("Địa chỉ không được vượt quá 255 ký tự");
       return;
     }
     if (!addForm.name || addForm.name.trim() === "") {
@@ -281,8 +270,19 @@ export default function EmployeesPage() {
                   className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
                   title="Xuất Excel"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
+                    />
                   </svg>
                   Xuất danh sách nhân viên
                 </button>
@@ -554,7 +554,7 @@ export default function EmployeesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mã nhân viên *
+                      Mã nhân viên ( username đăng nhập) *
                     </label>
                     <input
                       type="text"
@@ -564,6 +564,20 @@ export default function EmployeesPage() {
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="VD: NV001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mật khẩu *
+                    </label>
+                    <input
+                      type="password"
+                      value={addForm.password || ""}
+                      onChange={(e) =>
+                        setAddForm({ ...addForm, password: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Mật khẩu"
                     />
                   </div>
 
@@ -581,7 +595,6 @@ export default function EmployeesPage() {
                       placeholder="Nhập họ tên"
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Số điện thoại *
@@ -611,41 +624,9 @@ export default function EmployeesPage() {
                     />
                   </div>
 
-                  {/* Email removed per request */}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tên đăng nhập *
-                    </label>
-                    <input
-                      type="text"
-                      value={addForm.username || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, username: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Tên đăng nhập"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mật khẩu *
-                    </label>
-                    <input
-                      type="password"
-                      value={addForm.password || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, password: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Mật khẩu"
-                    />
-                  </div>
-
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Địa chỉ *
+                      Địa chỉ
                     </label>
                     <input
                       type="text"

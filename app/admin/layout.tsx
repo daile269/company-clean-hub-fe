@@ -191,7 +191,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               Quản lý phân công
             </Link>
 
-            <Link
+            {/* <Link
               href="/admin/attendances"
               className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
             >
@@ -209,7 +209,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 />
               </svg>
               Quản lý chấm công
-            </Link>
+            </Link> */}
 
             {/* <Link
               href="/admin/contracts"

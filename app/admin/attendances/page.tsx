@@ -8,18 +8,22 @@ export default function AttendancesPage() {
   const router = useRouter();
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
 
   // Debounced search
   useEffect(() => {
@@ -43,7 +47,7 @@ export default function AttendancesPage() {
           page: currentPage,
           pageSize: pageSize,
         });
-        
+
         setAttendances(data.content);
         setTotalElements(data.totalElements);
         setTotalPages(data.totalPages);
@@ -89,27 +93,9 @@ export default function AttendancesPage() {
   return (
     <div>
       <Toaster position="top-right" />
-      
+
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý chấm công</h1>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Thêm chấm công
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -142,7 +128,9 @@ export default function AttendancesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Tổng giờ công</p>
-              <p className="text-2xl font-bold text-green-600">{stats.totalWorkHours}h</p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats.totalWorkHours}h
+              </p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <svg
@@ -166,7 +154,9 @@ export default function AttendancesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Có thưởng</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.withBonus}</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {stats.withBonus}
+              </p>
             </div>
             <div className="bg-purple-100 p-3 rounded-full">
               <svg
@@ -190,7 +180,9 @@ export default function AttendancesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Có phạt</p>
-              <p className="text-2xl font-bold text-red-600">{stats.withPenalty}</p>
+              <p className="text-2xl font-bold text-red-600">
+                {stats.withPenalty}
+              </p>
             </div>
             <div className="bg-red-100 p-3 rounded-full">
               <svg
@@ -214,7 +206,9 @@ export default function AttendancesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Tăng ca</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.overtime}</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {stats.overtime}
+              </p>
             </div>
             <div className="bg-orange-100 p-3 rounded-full">
               <svg
@@ -283,7 +277,10 @@ export default function AttendancesPage() {
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+              {Array.from(
+                { length: 5 },
+                (_, i) => new Date().getFullYear() - i
+              ).map((year) => (
                 <option key={year} value={year}>
                   {year}
                 </option>
@@ -291,9 +288,26 @@ export default function AttendancesPage() {
             </select>
           </div>
 
-          <div className="flex items-end">
-            <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
-              Xuất Excel
+          <div className="flex items-end md:justify-end">
+            <button
+              className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+              title="Xuất Excel"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
+                />
+              </svg>
+              Xuất danh sách chấm công
             </button>
           </div>
         </div>
@@ -369,7 +383,9 @@ export default function AttendancesPage() {
                   <tr
                     key={attendance.id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/admin/attendances/${attendance.id}`)}
+                    onClick={() =>
+                      router.push(`/admin/attendances/${attendance.id}`)
+                    }
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {attendance.employeeCode}
@@ -389,10 +405,14 @@ export default function AttendancesPage() {
                       {attendance.workHours}h
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                      {attendance.bonus > 0 ? formatCurrency(attendance.bonus) : "-"}
+                      {attendance.bonus > 0
+                        ? formatCurrency(attendance.bonus)
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                      {attendance.penalty > 0 ? formatCurrency(attendance.penalty) : "-"}
+                      {attendance.penalty > 0
+                        ? formatCurrency(attendance.penalty)
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -402,7 +422,9 @@ export default function AttendancesPage() {
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {attendance.isOvertime ? formatCurrency(attendance.overtimeAmount) : "Không"}
+                        {attendance.isOvertime
+                          ? formatCurrency(attendance.overtimeAmount)
+                          : "Không"}
                       </span>
                     </td>
                   </tr>
@@ -417,13 +439,18 @@ export default function AttendancesPage() {
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Hiển thị <span className="font-medium">{currentPage * pageSize + 1}</span> -{" "}
+                Hiển thị{" "}
+                <span className="font-medium">
+                  {currentPage * pageSize + 1}
+                </span>{" "}
+                -{" "}
                 <span className="font-medium">
                   {Math.min((currentPage + 1) * pageSize, totalElements)}
                 </span>{" "}
-                trong tổng số <span className="font-medium">{totalElements}</span> bản ghi
+                trong tổng số{" "}
+                <span className="font-medium">{totalElements}</span> bản ghi
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
@@ -464,7 +491,9 @@ export default function AttendancesPage() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
+                  }
                   disabled={currentPage === totalPages - 1}
                   className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

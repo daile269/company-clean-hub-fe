@@ -7,16 +7,14 @@ export default function Home() {
   return (
     <div className="bg-[#e4efe7]">
       {/* Hero Section */}
-    
+
       <section
         className="relative text-white w-full h-[20vh] md:h-[80vh] bg-cover bg-center bg-no-repeat overflow-hidden"
         style={{
           backgroundImage: `url('/banner-hd.jpg')`,
         }}
-      >
-       
-      </section>
-<img src="/banner-bg-5.png" alt="" />
+      ></section>
+      <img src="/banner-bg-5.png" alt="" />
       {/* Animated Intro (image + text) */}
       <Intro />
 

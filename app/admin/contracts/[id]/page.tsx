@@ -6,6 +6,7 @@ import contractService from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
 import serviceService from "@/services/serviceService";
 import invoiceService, { Invoice, InvoiceCreateRequest } from "@/services/invoiceService";
+import { apiService } from "@/services/api";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast from "react-hot-toast";
 
@@ -437,6 +438,35 @@ export default function ContractDetailPage() {
       toast.error("Không thể cập nhật trạng thái hóa đơn");
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleExportExcel = async (invoiceId: number) => {
+    try {
+      const toastId = toast.loading('Đang xuất Excel...');
+      const blob = await apiService.getFile(`/invoices/${invoiceId}/export/excel`);
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const inv = invoices.find(i => i.id === invoiceId);
+    const sanitize = (str: string) => str.replace(/[\\/:*?"<>|]/g, "_");
+    const filename =
+      `Hóa đơn ` +
+      `${sanitize(inv?.customerName || "Khách hàng")}_HĐ_` +
+      `${sanitize(String(inv?.contractId || invoiceId))}_` +
+      `${inv?.invoiceMonth || "MM"}-${inv?.invoiceYear || "YYYY"}.xlsx`;
+
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.dismiss(toastId);
+      toast.success('Đã xuất Excel');
+    } catch (error) {
+      console.error('Export Excel failed', error);
+      toast.error('Không thể xuất file Excel');
     }
   };
 
@@ -1019,26 +1049,48 @@ export default function ContractDetailPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => handleUpdateInvoiceStatus(invoice)}
-                          className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleUpdateInvoiceStatus(invoice)}
+                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                            />
-                          </svg>
-                          Cập nhật
-                        </button>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                              />
+                            </svg>
+                            Cập nhật
+                          </button>
+                          <button
+                            onClick={() => handleExportExcel(invoice.id)}
+                            className="text-green-600 hover:text-green-800 inline-flex items-center gap-1 ml-3"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            Xuất Excel
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -78,6 +78,8 @@ export default function CustomerDetail() {
     servicePrice: "" as any,
     serviceVat: "" as any,
     serviceDescription: "",
+    serviceEffectiveFrom: new Date().toISOString().split("T")[0],
+    serviceServiceType: "RECURRING",
     startDate: "",
     endDate: "",
     workingDaysPerWeek: [] as string[],
@@ -657,8 +659,10 @@ export default function CustomerDetail() {
         description: contractForm.serviceDescription,
         price: servicePrice,
         vat: serviceVat,
+        effectiveFrom: contractForm.serviceEffectiveFrom,
+        serviceType: contractForm.serviceServiceType || "RECURRING",
       };
-
+        
       const serviceResponse = await serviceService.create(serviceRequest);
       
       if (!serviceResponse || !serviceResponse.id) {
@@ -693,6 +697,8 @@ export default function CustomerDetail() {
         servicePrice: "" as any,
         serviceVat: "" as any,
         serviceDescription: "",
+        serviceEffectiveFrom: new Date().toISOString().split("T")[0],
+        serviceServiceType: "RECURRING",
         startDate: "",
         endDate: "",
         workingDaysPerWeek: [],
@@ -2621,6 +2627,16 @@ export default function CustomerDetail() {
               </button>
             </div>
 
+            {/* Service Section Header */}
+            <div className="mb-6 pb-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Thông tin dịch vụ
+              </h3>
+              <p className="text-sm text-gray-500">
+                Nhập thông tin dịch vụ mới cho hợp đồng
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2638,6 +2654,25 @@ export default function CustomerDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="VD: Dọn dẹp văn phòng"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại dịch vụ *
+                </label>
+                <select
+                  value={contractForm.serviceServiceType}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      serviceServiceType: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="RECURRING">Định kỳ (RECURRING)</option>
+                  <option value="ONE_TIME">Một lần (ONE_TIME)</option>
+                </select>
               </div>
 
               <div>
@@ -2698,6 +2733,23 @@ export default function CustomerDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày áp dụng giá *
+                </label>
+                <input
+                  type="date"
+                  value={contractForm.serviceEffectiveFrom}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      serviceEffectiveFrom: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tổng giá (Giá dịch vụ + VAT) (VNĐ)
                 </label>
                 <input
@@ -2725,7 +2777,16 @@ export default function CustomerDetail() {
                   placeholder="Chi tiết về dịch vụ..."
                 />
               </div>
+            </div>
 
+            {/* Contract Section Header */}
+            <div className="mt-6 mb-4 pt-6 border-t">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Thông tin hợp đồng
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ngày bắt đầu *

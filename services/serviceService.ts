@@ -73,6 +73,8 @@ export interface ServiceRequest {
   description?: string;
   price: number;
   vat: number;
+  effectiveFrom: string; // LocalDate from backend as ISO string
+  serviceType?: string; // Default: RECURRING
 }
 
 // Tạo dịch vụ mới
@@ -83,6 +85,8 @@ export const create = async (serviceData: ServiceRequest): Promise<ApiService> =
       description: serviceData.description || '',
       price: serviceData.price,
       vat: serviceData.vat,
+      effectiveFrom: serviceData.effectiveFrom,
+      serviceType: serviceData.serviceType || 'RECURRING',
     };
 
     const response = await apiService.post<any>('/services', payload);
@@ -117,6 +121,14 @@ export const update = async (id: string, serviceData: any): Promise<ApiService> 
     
     if (serviceData.vat !== undefined) {
       payload.vat = serviceData.vat;
+    }
+    
+    if (serviceData.effectiveFrom !== undefined) {
+      payload.effectiveFrom = serviceData.effectiveFrom;
+    }
+    
+    if (serviceData.serviceType !== undefined) {
+      payload.serviceType = serviceData.serviceType;
     }
     
     const response = await apiService.put<any>(`/services/${id}`, payload);

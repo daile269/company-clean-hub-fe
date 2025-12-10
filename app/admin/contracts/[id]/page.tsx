@@ -8,7 +8,7 @@ import serviceService from "@/services/serviceService";
 import invoiceService, { Invoice, InvoiceCreateRequest } from "@/services/invoiceService";
 import { apiService } from "@/services/api";
 import ContractDocuments from "@/components/ContractDocuments";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function ContractDetailPage() {
   const params = useParams();
@@ -32,11 +32,14 @@ export default function ContractDetailPage() {
   const [showUpdateStatusModal, setShowUpdateStatusModal] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [deletingInvoice, setDeletingInvoice] = useState<number | null>(null);
   const [serviceForm, setServiceForm] = useState({
     title: "",
     description: "",
     price: "" as any,
     vat: "" as any,
+    effectiveFrom: new Date().toISOString().split("T")[0],
+    serviceType: "RECURRING",
   });
   const [invoiceForm, setInvoiceForm] = useState({
     invoiceMonth: new Date().getMonth() + 1,
@@ -254,6 +257,8 @@ export default function ContractDetailPage() {
       description: "",
       price: "" as any,
       vat: "" as any,
+      effectiveFrom: new Date().toISOString().split("T")[0],
+      serviceType: "RECURRING",
     });
     setShowServiceModal(true);
   };
@@ -265,6 +270,8 @@ export default function ContractDetailPage() {
       description: service.description || "",
       price: service.price,
       vat: service.vat || 0,
+      effectiveFrom: service.effectiveFrom || new Date().toISOString().split("T")[0],
+      serviceType: service.serviceType || "RECURRING",
     });
     setShowServiceModal(true);
   };
@@ -289,6 +296,8 @@ export default function ContractDetailPage() {
           description: serviceForm.description,
           price: servicePrice,
           vat: serviceVat,
+          effectiveFrom: serviceForm.effectiveFrom,
+          serviceType: serviceForm.serviceType,
         });
         toast.success("Đã cập nhật dịch vụ");
       } else {
@@ -298,6 +307,8 @@ export default function ContractDetailPage() {
           description: serviceForm.description,
           price: servicePrice,
           vat: serviceVat,
+          effectiveFrom: serviceForm.effectiveFrom,
+          serviceType: serviceForm.serviceType,
         });
 
         // Then add service to contract
@@ -336,6 +347,29 @@ export default function ContractDetailPage() {
       notes: "",
     });
     setShowInvoiceModal(true);
+  };
+
+  const handleDeleteInvoice = async (invoiceId: number) => {
+    if (!contract) return;
+
+    if (!confirm('Xác nhận xóa hóa đơn này?')) return;
+
+    try {
+      setDeletingInvoice(invoiceId);
+      const toastId = toast.loading('Đang xóa hóa đơn...');
+      await invoiceService.delete(invoiceId);
+      toast.dismiss(toastId);
+      toast.success('Đã xóa hóa đơn thành công');
+
+      // Reload invoices
+      const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+      setInvoices(updatedInvoices);
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toast.error('Không thể xóa hóa đơn');
+    } finally {
+      setDeletingInvoice(null);
+    }
   };
 
   const handleSaveInvoice = async () => {
@@ -514,6 +548,7 @@ export default function ContractDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
+      <Toaster position="top-right" />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex justify-between items-center">
@@ -997,9 +1032,9 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tổng tiền
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ngày công
-                    </th>
+                    </th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
@@ -1029,11 +1064,11 @@ export default function ContractDetailPage() {
                           {formatCurrency(invoice.totalAmount)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      {/* <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-700">
                           {invoice.actualWorkingDays || "—"}
                         </span>
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
@@ -1070,6 +1105,7 @@ export default function ContractDetailPage() {
                             </svg>
                             Cập nhật
                           </button>
+
                           <button
                             onClick={() => handleExportExcel(invoice.id)}
                             className="text-green-600 hover:text-green-800 inline-flex items-center gap-1 ml-3"
@@ -1089,6 +1125,32 @@ export default function ContractDetailPage() {
                               />
                             </svg>
                             Xuất Excel
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteInvoice(invoice.id)}
+                            disabled={deletingInvoice === invoice.id}
+                            className="text-red-600 hover:text-red-800 inline-flex items-center gap-1 ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingInvoice === invoice.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
+                                />
+                              </svg>
+                            )}
+                            <span>Xóa</span>
                           </button>
                         </div>
                       </td>
@@ -1373,6 +1435,38 @@ export default function ContractDetailPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Nhập tên dịch vụ"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Loại dịch vụ *
+                  </label>
+                  <select
+                    value={serviceForm.serviceType}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, serviceType: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="RECURRING">Định kỳ (RECURRING)</option>
+                    <option value="ONE_TIME">Một lần (ONE_TIME)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày áp dụng giá *
+                  </label>
+                  <input
+                    type="date"
+                    value={serviceForm.effectiveFrom}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, effectiveFrom: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -108,6 +108,40 @@ export const getByEmployeeAndMonth = async (
   }
 };
 
+// Lấy danh sách attendance theo assignmentId với phân trang và filter tháng/năm
+export const getByAssignmentId = async (
+  assignmentId: string | number,
+  params: { month?: number; year?: number; page?: number; pageSize?: number }
+): Promise<AttendancePaginationResponse> => {
+  try {
+    const month = params.month;
+    const year = params.year;
+    const page = params.page ?? 0;
+    const pageSize = params.pageSize ?? 20;
+
+    let url = `/assignments/${assignmentId}/attendances?page=${page}&pageSize=${pageSize}`;
+    if (month !== undefined) url += `&month=${month}`;
+    if (year !== undefined) url += `&year=${year}`;
+
+    const response = await apiService.get<any>(url);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to fetch attendances by assignment');
+    }
+
+    return {
+      content: Array.isArray(response.data.content) ? response.data.content : [],
+      totalElements: response.data.totalElements || 0,
+      totalPages: response.data.totalPages || 0,
+      currentPage: response.data.page ?? page,
+      pageSize: response.data.pageSize ?? pageSize,
+    };
+  } catch (error) {
+    console.error('Error fetching attendances by assignment:', error);
+    throw error;
+  }
+};
+
 // Lấy chi tiết attendance theo ID
 export const getById = async (id: string): Promise<Attendance> => {
   try {
@@ -177,6 +211,7 @@ const attendanceService = {
   update,
   delete: deleteAttendance,
   getByEmployeeAndMonth,
+  getByAssignmentId,
 };
 
 export default attendanceService;

@@ -10,9 +10,8 @@ export enum UserRole {
 
 // Enum cho loại nhân viên
 export enum EmployeeType {
-  FIXED_BY_CONTRACT = 'FIXED_BY_CONTRACT',        // nhân viên chính tại chỗ
-  FIXED_BY_DAY = 'FIXED_BY_DAY',        // nhân viên chính điều động
-  TEMPORARY = 'TEMPORARY'         // nhân viên thời vụ
+  COMPANY_STAFF = 'COMPANY_STAFF',        // Nhân viên văn phòng / công ty
+  CONTRACT_STAFF = 'CONTRACT_STAFF',      // Nhân viên làm theo hợp đồng khách hàng
 }
 
 // Enum cho loại lịch làm việc
@@ -123,7 +122,8 @@ export interface Employee {
   employeeType: EmployeeType;
   monthlySalary?: number;        // Lương tháng (NV chính thức)
   dailySalary?: number;          // Lương ngày (NV tạm thời)
-  socialInsurance?: number;      // Bảo hiểm xã hội
+  allowance?: number;            // Phụ cấp (COMPANY_STAFF)
+  socialInsurance?: number;      // Bảo hiểm xã hội / Lương đóng bảo hiểm (insuranceSalary)
   healthInsurance?: number;      // Bảo hiểm y tế
   roleId?: number;
   roleName?: string;               // Tên vai trò
@@ -150,12 +150,14 @@ export interface ApiEmployee {
   name: string;
   bankAccount: string;
   bankName: string;
-  employmentType: string;        // FIXED_BY_CONTRACT, TEMPORARY, etc.
+  employmentType: string;        // CONTRACT_STAFF, COMPANY_STAFF, etc.
   baseSalary: number;
   dailySalary: number;
+  monthlySalary: number | null;  // COMPANY_STAFF only
+  allowance: number | null;      // COMPANY_STAFF only
+  insuranceSalary: number | null; // COMPANY_STAFF only (maps to socialInsurance)
   socialInsurance: number;
   healthInsurance: number;
-  allowance: number | null;
   description: string | null;
   createdAt: string | null;
   updatedAt: string | null;

@@ -57,12 +57,41 @@ export default function CompanyStaffDetailPage() {
   // Payroll advance insurance modal
   const [showPayrollAdvanceInsuranceModal, setShowPayrollAdvanceInsuranceModal] = useState(false);
 
+  // Work schedule assignment modal
+  const [showWorkScheduleModal, setShowWorkScheduleModal] = useState(false);
+  const [savingWorkSchedule, setSavingWorkSchedule] = useState(false);
+  const [workScheduleForm, setWorkScheduleForm] = useState<{
+    startDate: string;
+    salaryAtTime: string;
+    additionalAllowance: string;
+    workingDaysPerWeek: string[];
+    description: string;
+  }>({
+    startDate: new Date().toISOString().split('T')[0],
+    salaryAtTime: '',
+    additionalAllowance: '',
+    workingDaysPerWeek: [],
+    description: '',
+  });
+
   const loadEmployee = async () => {
     if (!id) return;
     try {
       setLoading(true);
       const data = await employeeService.getById(id);
+      if (!data) {
+        // handle missing employee gracefully
+        setEmployee(null);
+        toast.error("Không tìm thấy nhân viên");
+        return;
+      }
       setEmployee(data);
+      // Pre-fill work schedule form with employee salary and allowance
+      setWorkScheduleForm((prev) => ({
+        ...prev,
+        salaryAtTime: data.monthlySalary ? formatNumber(data.monthlySalary) : "",
+        additionalAllowance: data.allowance ? formatNumber(data.allowance) : "",
+      }));
       // Load images
       const images = await employeeService.getEmployeeImages(id);
       setEmployeeImages(images);
@@ -246,6 +275,59 @@ export default function CompanyStaffDetailPage() {
     }
   };
 
+  const handleSaveWorkSchedule = async () => {
+    if (!workScheduleForm.startDate) {
+      toast.error("Vui lòng chọn ngày bắt đầu");
+      return;
+    }
+    if (workScheduleForm.workingDaysPerWeek.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một ngày làm việc trong tuần");
+      return;
+    }
+
+    setSavingWorkSchedule(true);
+    try {
+      const payload = {
+        employeeId: Number(id),
+        startDate: workScheduleForm.startDate,
+        scope: "COMPANY",
+        salaryAtTime: workScheduleForm.salaryAtTime
+          ? Number(parseFormattedNumber(workScheduleForm.salaryAtTime))
+          : undefined,
+        additionalAllowance: workScheduleForm.additionalAllowance
+          ? Number(parseFormattedNumber(workScheduleForm.additionalAllowance))
+          : undefined,
+        workingDaysPerWeek: workScheduleForm.workingDaysPerWeek,
+        assignmentType: "FIXED_BY_COMPANY",
+        description: workScheduleForm.description || undefined,
+      };
+
+      const response = await assignmentService.create(payload);
+
+      if (response.success) {
+        toast.success("Đã thêm lịch làm việc thành công");
+        setShowWorkScheduleModal(false);
+        // Reset form
+        setWorkScheduleForm({
+          startDate: new Date().toISOString().split('T')[0],
+          salaryAtTime: '',
+          additionalAllowance: '',
+          workingDaysPerWeek: [],
+          description: '',
+        });
+        // Reload assignments
+        loadAssignments();
+      } else {
+        toast.error(response.message || "Thêm lịch làm việc thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error creating work schedule:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi thêm lịch làm việc");
+    } finally {
+      setSavingWorkSchedule(false);
+    }
+  };
+
   const handleDeleteImage = async (imageId: string) => {
     try {
       setIsDeletingImage(true);
@@ -331,6 +413,26 @@ export default function CompanyStaffDetailPage() {
         <h1 className="text-2xl font-bold">Chi tiết nhân viên văn phòng</h1>
         {employee && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowWorkScheduleModal(true)}
+              className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Nhập lịch làm việc
+            </button>
             <button
               onClick={() => setShowPayrollAdvanceInsuranceModal(true)}
               className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2"
@@ -1284,6 +1386,208 @@ export default function CompanyStaffDetailPage() {
           // Optional: reload employee data or other updates
         }}
       />
+
+      {/* Work Schedule Modal */}
+      {showWorkScheduleModal && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Nhập lịch làm việc - {employee?.name}
+              </h2>
+              <button
+                onClick={() => setShowWorkScheduleModal(false)}
+                disabled={savingWorkSchedule}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày bắt đầu *
+                </label>
+                <input
+                  type="date"
+                  value={workScheduleForm.startDate}
+                  onChange={(e) =>
+                    setWorkScheduleForm({
+                      ...workScheduleForm,
+                      startDate: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày làm việc trong tuần *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'MONDAY', label: 'Thứ 2' },
+                    { value: 'TUESDAY', label: 'Thứ 3' },
+                    { value: 'WEDNESDAY', label: 'Thứ 4' },
+                    { value: 'THURSDAY', label: 'Thứ 5' },
+                    { value: 'FRIDAY', label: 'Thứ 6' },
+                    { value: 'SATURDAY', label: 'Thứ 7' },
+                    { value: 'SUNDAY', label: 'Chủ nhật' },
+                  ].map((day) => (
+                    <label
+                      key={day.value}
+                      className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={workScheduleForm.workingDaysPerWeek.includes(day.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setWorkScheduleForm({
+                              ...workScheduleForm,
+                              workingDaysPerWeek: [
+                                ...workScheduleForm.workingDaysPerWeek,
+                                day.value,
+                              ],
+                            });
+                          } else {
+                            setWorkScheduleForm({
+                              ...workScheduleForm,
+                              workingDaysPerWeek: workScheduleForm.workingDaysPerWeek.filter(
+                                (d) => d !== day.value
+                              ),
+                            });
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{day.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương (VND) - Từ hồ sơ nhân viên
+                  </label>
+                  <input
+                    type="text"
+                    value={workScheduleForm.salaryAtTime}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                    placeholder="VD: 10.000.000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phụ cấp (VND) - Từ hồ sơ nhân viên
+                  </label>
+                  <input
+                    type="text"
+                    value={workScheduleForm.additionalAllowance}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                    placeholder="VD: 1.000.000"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả
+                </label>
+                <textarea
+                  value={workScheduleForm.description}
+                  onChange={(e) =>
+                    setWorkScheduleForm({
+                      ...workScheduleForm,
+                      description: e.target.value,
+                    })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ghi chú về lịch làm việc..."
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowWorkScheduleModal(false)}
+                disabled={savingWorkSchedule}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveWorkSchedule}
+                disabled={savingWorkSchedule}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {savingWorkSchedule ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Lưu lịch làm việc
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

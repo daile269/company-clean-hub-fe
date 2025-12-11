@@ -576,6 +576,7 @@ export default function CustomerDetail() {
         employeeId: assignmentForm.employeeId,
         contractId: assignmentForm.contractId,
         startDate: assignmentForm.startDate,
+        scope: "CONTRACT",
         status: "IN_PROGRESS",
         assignmentType: assignmentForm.assignmentType,
         salaryAtTime: salaryRaw,

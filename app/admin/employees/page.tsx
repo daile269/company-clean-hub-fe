@@ -96,14 +96,7 @@ export default function EmployeesPage() {
 
   const handleAddEmployee = async () => {
     // Validate required fields
-    if (!addForm.username || addForm.username.trim() === "") {
-      toast.error("Tên đăng nhập không được để trống");
-      return;
-    }
-    if (addForm.username.length < 3 || addForm.username.length > 50) {
-      toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
-      return;
-    }
+
     if (!addForm.employeeCode || addForm.employeeCode.trim() === "") {
       toast.error("Mã nhân viên không được để trống");
       return;
@@ -134,10 +127,6 @@ export default function EmployeesPage() {
     }
     if (addForm.idCard.length > 50) {
       toast.error("CCCD không được vượt quá 50 ký tự");
-      return;
-    }
-    if (addForm.address && addForm.address.length > 255) {
-      toast.error("Địa chỉ không được vượt quá 255 ký tự");
       return;
     }
     if (!addForm.name || addForm.name.trim() === "") {
@@ -255,52 +244,6 @@ export default function EmployeesPage() {
 
       {!loading && (
         <>
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tìm kiếm
-                </label>
-                <input
-                  type="text"
-                  placeholder="Tên, mã NV, số điện thoại..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại nhân viên
-                </label>
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">Tất cả</option>
-                  <option value={EmployeeType.FIXED_BY_CONTRACT}>
-                    Nhân viên chính tại chỗ
-                  </option>
-                  <option value={EmployeeType.FIXED_BY_DAY}>
-                    Nhân viên chính điều động
-                  </option>
-                  <option value={EmployeeType.TEMPORARY}>
-                    Nhân viên thời vụ
-                  </option>
-                </select>
-              </div> */}
-
-              {/* <div className="flex items-end">
-                <button className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
-                  Xuất Excel
-                </button>
-              </div> */}
-            </div>
-          </div>
-
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <div className="bg-white rounded-lg shadow p-6">
@@ -328,56 +271,31 @@ export default function EmployeesPage() {
                 </div>
               </div>
             </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">
-                    Nhân viên chính tại chỗ{" "}
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {
-                      employees.filter(
-                        (e) => e.employeeType === EmployeeType.FIXED_BY_CONTRACT
-                      ).length
-                    }
-                  </p>
-                </div>
-                <div className="bg-green-100 p-3 rounded-full">
-                  <svg
-                    className="w-6 h-6 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
+          </div>
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tìm kiếm
+                </label>
+                <input
+                  type="text"
+                  placeholder="Tên, mã NV, số điện thoại..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-            </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">
-                    Nhân viên chính điều động
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {
-                      employees.filter(
-                        (e) => e.employeeType === EmployeeType.FIXED_BY_DAY
-                      ).length
-                    }
-                  </p>
-                </div>
-                <div className="bg-blue-100 p-3 rounded-full">
+              <div className="flex items-end md:justify-end">
+                <button
+                  className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                  title="Xuất Excel"
+                >
                   <svg
-                    className="w-6 h-6 text-blue-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -386,39 +304,11 @@ export default function EmployeesPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
                     />
                   </svg>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Nhân viên thời vụ</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {
-                      employees.filter(
-                        (e) => e.employeeType === EmployeeType.TEMPORARY
-                      ).length
-                    }
-                  </p>
-                </div>
-                <div className="bg-yellow-100 p-3 rounded-full">
-                  <svg
-                    className="w-6 h-6 text-yellow-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
+                  Xuất danh sách nhân viên
+                </button>
               </div>
             </div>
           </div>
@@ -440,7 +330,6 @@ export default function EmployeesPage() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       CCCD
-
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
@@ -484,7 +373,7 @@ export default function EmployeesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {employee.idCard}
-                      </td>  
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -688,7 +577,7 @@ export default function EmployeesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mã nhân viên *
+                      Mã nhân viên ( username đăng nhập) *
                     </label>
                     <input
                       type="text"
@@ -698,6 +587,20 @@ export default function EmployeesPage() {
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="VD: NV001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mật khẩu *
+                    </label>
+                    <input
+                      type="password"
+                      value={addForm.password || ""}
+                      onChange={(e) =>
+                        setAddForm({ ...addForm, password: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Mật khẩu"
                     />
                   </div>
 
@@ -715,7 +618,6 @@ export default function EmployeesPage() {
                       placeholder="Nhập họ tên"
                     />
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Số điện thoại *
@@ -745,41 +647,9 @@ export default function EmployeesPage() {
                     />
                   </div>
 
-                  {/* Email removed per request */}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tên đăng nhập *
-                    </label>
-                    <input
-                      type="text"
-                      value={addForm.username || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, username: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Tên đăng nhập"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mật khẩu *
-                    </label>
-                    <input
-                      type="password"
-                      value={addForm.password || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, password: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Mật khẩu"
-                    />
-                  </div>
-
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Địa chỉ *
+                      Địa chỉ
                     </label>
                     <input
                       type="text"

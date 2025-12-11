@@ -48,6 +48,14 @@ export interface AssignmentPaginationResponse {
   pageSize: number;
 }
 
+export interface EmployeePaginationResponse {
+  content: Employee[];
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 export interface TemporaryReassignmentRequest {
   replacementEmployeeId: number;
   replacedEmployeeId: number;
@@ -164,14 +172,41 @@ class AssignmentService {
     }
   }
 
-  async getAllByCustomerId(customerId: string): Promise<Assignment[]> {
+  async getAllByCustomerId(
+    customerId: string,
+    params?: {
+      contractType?: string;
+      status?: string;
+      month?: number;
+      year?: number;
+      page?: number;
+      pageSize?: number;
+    }
+  ): Promise<Assignment[]> {
     try {
-      const response = await apiService.get<any>(
-        `/assignments/customer/${customerId}/all`
-      );
+      const queryParams = new URLSearchParams();
+      
+      if (params?.contractType) {
+        queryParams.append("contractType", params.contractType);
+      }
+      if (params?.status) {
+        queryParams.append("status", params.status);
+      }
+      if (params?.month) {
+        queryParams.append("month", params.month.toString());
+      }
+      if (params?.year) {
+        queryParams.append("year", params.year.toString());
+      }
+      queryParams.append("page", (params?.page ?? 0).toString());
+      queryParams.append("pageSize", (params?.pageSize ?? 10).toString());
 
+      const response = await apiService.get<any>(
+        `/assignments/customer/${customerId}/all?${queryParams.toString()}`
+      );
+      console.log('Assignments by customer response:', response);
       if (response.success && response.data) {
-        return Array.isArray(response.data) ? response.data : [];
+        return Array.isArray(response.data.content) ? response.data.content : [];
       }
 
       return [];
@@ -183,41 +218,123 @@ class AssignmentService {
 
   async getNotAssignedByCustomerId(
     customerId: string,
-    params?: { page?: number; pageSize?: number }
-  ): Promise<Employee[]> {
+    params?: {
+      page?: number;
+      pageSize?: number;
+      month?: number;
+      year?: number;
+      keyword?: string;
+    }
+  ): Promise<EmployeePaginationResponse> {
     try {
       const queryParams = new URLSearchParams();
+      if (params?.keyword) {
+        queryParams.append("keyword", params.keyword);
+      }
       queryParams.append("page", (params?.page ?? 0).toString());
       queryParams.append("pageSize", (params?.pageSize ?? 100).toString());
+      if (params?.month) {
+        queryParams.append("month", params.month.toString());
+      }
+      if (params?.year) {
+        queryParams.append("year", params.year.toString());
+      }
 
       const response = await apiService.get<any>(
         `/assignments/customer/${customerId}/not-assigned?${queryParams.toString()}`
       );
 
       if (response.success && response.data) {
-        return Array.isArray(response.data.content)
+        // If backend returns a raw array
+        if (Array.isArray(response.data)) {
+          return {
+            content: response.data,
+            totalElements: response.data.length,
+            totalPages: 1,
+            currentPage: 0,
+            pageSize: response.data.length,
+          };
+        }
+
+        const content = Array.isArray(response.data.content)
           ? response.data.content
           : [];
+
+        return {
+          content,
+          totalElements: response.data.totalElements ?? 0,
+          totalPages: response.data.totalPages ?? 0,
+          currentPage: response.data.number ?? 0,
+          pageSize: response.data.size ?? (params?.pageSize ?? 100),
+        };
       }
 
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: params?.pageSize ?? 100,
+      };
     } catch (error) {
       console.error("Error fetching not assigned employees:", error);
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: params?.pageSize ?? 100,
+      };
     }
   }
 
-  async getByEmployeeId(employeeId: string): Promise<Assignment[]> {
+  async getByEmployeeId(
+    employeeId: string,
+    params?: {
+      customerId?: number;
+      month?: number;
+      year?: number;
+      page?: number;
+      pageSize?: number;
+    }
+  ): Promise<AssignmentPaginationResponse> {
     try {
+      const queryParams = new URLSearchParams();
+      
+      if (params?.customerId) {
+        queryParams.append("customerId", params.customerId.toString());
+      }
+      if (params?.month) {
+        queryParams.append("month", params.month.toString());
+      }
+      if (params?.year) {
+        queryParams.append("year", params.year.toString());
+      }
+      queryParams.append("page", (params?.page ?? 0).toString());
+      queryParams.append("pageSize", (params?.pageSize ?? 10).toString());
+
       const response = await apiService.get<any>(
-        `/assignments/employee/${employeeId}`
+        `/assignments/employee/${employeeId}?${queryParams.toString()}`
       );
+      
       if (response.success && response.data) {
         console.log('Assignments response:', response);
-        return Array.isArray(response.data) ? response.data : [];
+        return {
+          content: Array.isArray(response.data.content) ? response.data.content : [],
+          totalElements: response.data.totalElements || 0,
+          totalPages: response.data.totalPages || 0,
+          currentPage: response.data.page || 0,
+          pageSize: response.data.pageSize || 10,
+        };
       }
 
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: 10,
+      };
     } catch (error) {
       // Improved error logging to capture useful details from API errors
       try {
@@ -231,7 +348,13 @@ class AssignmentService {
       } catch (e) {
         console.error("Error fetching assignments (and failed to stringify error):", error);
       }
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: 10,
+      };
     }
   }
   async getAssignmentsByEmployeeId(employeeId: string,month: number, year:number): Promise<Assignment[]> {

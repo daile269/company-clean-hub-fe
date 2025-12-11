@@ -103,7 +103,7 @@ class EmployeeService {
   async create(employee: Partial<Employee>): Promise<ApiResponse<ApiEmployee>> {
     // Map frontend model to backend EmployeeRequest DTO
     const apiEmployee = {
-      username: employee.username,
+      username: employee.employeeCode,
       password: employee.password,
       employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,

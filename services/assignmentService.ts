@@ -224,6 +224,7 @@ class AssignmentService {
       month?: number;
       year?: number;
       keyword?: string;
+      employmentType?: string;
     }
   ): Promise<EmployeePaginationResponse> {
     try {
@@ -238,6 +239,9 @@ class AssignmentService {
       }
       if (params?.year) {
         queryParams.append("year", params.year.toString());
+      }
+      if (params?.employmentType) {
+        queryParams.append("employmentType", params.employmentType);
       }
 
       const response = await apiService.get<any>(

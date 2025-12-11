@@ -122,8 +122,24 @@ export default function AssignmentDetail() {
     return String(str).replace(/[,.]/g, "");
   };
 
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    const rawValue = typeof num === "string" ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const handleNumberInput = (value: string) => {
+    return value.replace(/[^0-9]/g, "");
+  };
+
   const handleEdit = () => {
-    setEditForm({ ...assignment });
+    setEditForm({
+      ...assignment,
+      salaryAtTime: formatNumber((assignment as any)?.salaryAtTime ?? 0) as any,
+      additionalAllowance: (assignment as any)?.additionalAllowance
+        ? (formatNumber((assignment as any).additionalAllowance) as any)
+        : "",
+    });
     setShowEditModal(true);
   };
 
@@ -572,14 +588,15 @@ export default function AssignmentDetail() {
                   Lương (VND) *
                 </label>
                 <input
-                  type="number"
-                  value={editForm.salaryAtTime || 0}
-                  onChange={(e) =>
+                  type="text"
+                  value={String(editForm.salaryAtTime ?? "")}
+                  onChange={(e) => {
+                    const raw = handleNumberInput(e.target.value);
                     setEditForm({
                       ...editForm,
-                      salaryAtTime: Number(e.target.value),
-                    })
-                  }
+                      salaryAtTime: formatNumber(raw) as any,
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -589,14 +606,15 @@ export default function AssignmentDetail() {
                   Phụ cấp (VND)
                 </label>
                 <input
-                  type="number"
-                  value={editForm.additionalAllowance || 0}
-                  onChange={(e) =>
+                  type="text"
+                  value={String(editForm.additionalAllowance ?? "")}
+                  onChange={(e) => {
+                    const raw = handleNumberInput(e.target.value);
                     setEditForm({
                       ...editForm,
-                      additionalAllowance: Number(e.target.value),
-                    })
-                  }
+                      additionalAllowance: formatNumber(raw) as any,
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

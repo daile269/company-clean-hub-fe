@@ -458,12 +458,12 @@ export default function PayrollDetailPage() {
                 Phân công cố định (Hợp đồng)
               </h4>
               <div className="text-xs text-gray-700 space-y-1 bg-blue-50 p-3 rounded">
-                <p><span className="  font-semibold">Lương ngày = </span></p>
-                <p className="ml-2">Lương hợp đồng ÷ Số ngày DK</p>
-                <p className="mt-2"><span className="  font-semibold">Lương thực = </span></p>
+                <p><span className="font-semibold">Lương ngày = </span></p>
+                <p className="ml-2">(Lương + Thưởng + Phụ cấp) ÷ Số ngày DK</p>
+                <p className="mt-2"><span className="font-semibold">Lương thực = </span></p>
                 <p className="ml-2">Lương ngày × Số ngày thực tế</p>
                 <div className="mt-2 pt-2 border-t border-blue-200">
-                  <p className="text-gray-600">Ví dụ: 30tr ÷ 26 ngày = ~1.15tr/ngày</p>
+                  <p className="text-gray-600">Ví dụ: (30tr + 0 + 0) ÷ 26 = ~1.15tr/ngày</p>
                 </div>
               </div>
             </div>
@@ -474,10 +474,10 @@ export default function PayrollDetailPage() {
                 Phân công cố định (Theo ngày)
               </h4>
               <div className="text-xs text-gray-700 space-y-1 bg-green-50 p-3 rounded">
-                <p><span className="  font-semibold">Lương thực = </span></p>
-                <p className="ml-2">Lương cố định (cố định theo ngày)</p>
+                <p><span className="font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
                 <div className="mt-2 pt-2 border-t border-green-200">
-                  <p className="text-gray-600">Lương được xác định sẵn cho phân công này</p>
+                  <p className="text-gray-600">Ví dụ: 500k/ngày × 20 ngày = 10tr</p>
                 </div>
               </div>
             </div>
@@ -488,8 +488,8 @@ export default function PayrollDetailPage() {
                 Phân công tạm thời
               </h4>
               <div className="text-xs text-gray-700 space-y-1 bg-orange-50 p-3 rounded">
-                <p><span className="  font-semibold">Lương thực = </span></p>
-                <p className="ml-2">Lương ngày × Số ngày làm việc</p>
+                <p><span className="font-semibold">Lương thực = </span></p>
+                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
                 <div className="mt-2 pt-2 border-t border-orange-200">
                   <p className="text-gray-600">Ví dụ: 500k/ngày × 20 ngày = 10tr</p>
                 </div>
@@ -503,14 +503,13 @@ export default function PayrollDetailPage() {
               Lương thực nhận cuối cùng
             </h4>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-700   leading-relaxed">
+              <p className="text-sm text-gray-700 leading-relaxed">
                 <span className="text-blue-600 font-semibold">Lương thực nhận =</span>
-
-                <span className="text-green-600">  Thưởng</span>
+                <span className="text-black"> Tổng lương</span>
+                <span className="text-green-600"> + Thưởng</span>
                 <span className="text-purple-600"> + Phụ cấp</span>
-                <span className="text-orange-600"> + Bảo hiểm</span>
                 <span className="text-red-600"> - Phạt</span>
-                <span className="text-yellow-600"> - Ứng trước</span>
+                <span className="text-yellow-600"> - Bảo hiểm - Ứng trước</span>
               </p>
             </div>
           </div>
@@ -555,6 +554,7 @@ export default function PayrollDetailPage() {
           attendances={attendances}
           month={payroll.month}
           year={payroll.year}
+          payrollCalculatedDate={payroll.createdAt}
           onSuccess={handleEditAttendanceSuccess}
           loading={attLoading}
           onEditAttendance={handleEditAttendance}

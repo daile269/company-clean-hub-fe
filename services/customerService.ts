@@ -1,5 +1,6 @@
 import { apiService, ApiResponse } from './api';
 import { Customer } from '@/types';
+import { Contract } from '@/types';
 
 export interface CustomerPaginationParams {
   keyword?: string;
@@ -144,6 +145,22 @@ class CustomerService {
 
   async delete(id: string): Promise<ApiResponse<void>> {
     return await apiService.delete<void>(`/customers/${id}`);
+  }
+
+  // Xuất danh sách khách hàng và hợp đồng ra file Excel với merge cells
+  async exportCustomersWithContractsToExcel(): Promise<void> {
+    try {
+      const blob = await apiService.getFile(`/customers/export/excel`);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Danh sách khách hàng.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting customers to Excel:', error);
+      throw error;
+    }
   }
 }
 

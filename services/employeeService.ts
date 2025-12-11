@@ -169,6 +169,22 @@ class EmployeeService {
 
     return apiService.postFormData<EmployeeImage[]>(`/employees/${employeeId}/images`, formData);
   }
+  // Xuất danh sách khách hàng và hợp đồng ra file Excel với merge cells
+  async exportEmployeesToExcel(): Promise<void> {
+    try {
+      const blob = await apiService.getFile(`/employees/export/excel`);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Danh sách nhân viên.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting employees to Excel:', error);
+      throw error;
+    }
+  }
+  
 }
 
 export interface EmployeeImage {

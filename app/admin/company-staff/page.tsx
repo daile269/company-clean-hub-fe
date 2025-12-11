@@ -4,20 +4,33 @@ import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
-import EmployeeExportModal from "@/components/EmployeeExportModal";
 
-export default function EmployeesPage() {
+export default function CompanyStaffPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState(""); // Keyword được gửi đến API
-  const [filterType, setFilterType] = useState<string>("all");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState<Partial<Employee>>({
+  const [addForm, setAddForm] = useState<{
+    employeeCode: string;
+    name: string;
+    phone: string;
+    username: string;
+    password: string;
+    address: string;
+    idCard: string;
+    bankAccount?: string;
+    bankName?: string;
+    roleId: number;
+    description?: string;
+    monthlySalary: string;
+    allowance: string;
+    socialInsurance: string;
+  }>({
     employeeCode: "",
     name: "",
     phone: "",
@@ -29,25 +42,37 @@ export default function EmployeesPage() {
     bankName: "",
     roleId: 2,
     description: "",
+    monthlySalary: "",
+    allowance: "",
+    socialInsurance: "",
   });
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  );
   const [addLoading, setAddLoading] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
 
   const router = useRouter();
 
-  // Load employees from API with pagination
+  // Format number utilities
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const parseFormattedNumber = (str: string) => {
+    return str.replace(/[,.]/g, "");
+  };
+
+  const handleNumberInput = (value: string) => {
+    return value.replace(/[^0-9]/g, '');
+  };
+
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, searchKeyword, filterType]);
+  }, [currentPage, searchKeyword]);
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchKeyword(searchTerm);
-      setCurrentPage(0); // Reset to first page when search changes
+      setCurrentPage(0);
     }, 500);
 
     return () => clearTimeout(timer);
@@ -60,7 +85,7 @@ export default function EmployeesPage() {
         keyword: searchKeyword,
         page: currentPage,
         pageSize: pageSize,
-        employmentType: 'CONTRACT_STAFF',
+        employmentType: 'COMPANY_STAFF',
       });
       setEmployees(response.content);
       setTotalPages(response.totalPages);
@@ -73,12 +98,6 @@ export default function EmployeesPage() {
     }
   };
 
-  // Client-side filter by employee type only
-  const filteredEmployees =
-    filterType === "all"
-      ? employees
-      : employees.filter((emp) => emp.employeeType === filterType);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -90,14 +109,7 @@ export default function EmployeesPage() {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
 
-  const formatDateInput = (date: Date) => {
-    const d = new Date(date);
-    return d.toISOString().split("T")[0];
-  };
-
   const handleAddEmployee = async () => {
-    // Validate required fields
-
     if (!addForm.employeeCode || addForm.employeeCode.trim() === "") {
       toast.error("Mã nhân viên không được để trống");
       return;
@@ -141,9 +153,19 @@ export default function EmployeesPage() {
 
     try {
       setAddLoading(true);
-      const response = await employeeService.create(addForm);
+      // Parse formatted numbers
+      const monthlySalary = addForm.monthlySalary ? Number(parseFormattedNumber(addForm.monthlySalary)) : 0;
+      const allowance = addForm.allowance ? Number(parseFormattedNumber(addForm.allowance)) : 0;
+      const socialInsurance = addForm.socialInsurance ? Number(parseFormattedNumber(addForm.socialInsurance)) : 0;
+
+      const response = await employeeService.createCompanyStaff({
+        ...addForm,
+        monthlySalary,
+        allowance,
+        socialInsurance,
+      });
       if (response.success) {
-        toast.success("Đã thêm nhân viên mới thành công");
+        toast.success("Đã thêm nhân viên văn phòng thành công");
         setShowAddModal(false);
         setAddForm({
           employeeCode: "",
@@ -157,8 +179,10 @@ export default function EmployeesPage() {
           bankName: "",
           roleId: 2,
           description: "",
+          monthlySalary: "",
+          allowance: "",
+          socialInsurance: "",
         });
-        // Reload employees
         loadEmployees();
       } else {
         toast.error(response.message || "Thêm nhân viên thất bại");
@@ -175,11 +199,9 @@ export default function EmployeesPage() {
     <div>
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
-
-       
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên làm việc theo hợp đồng của khách hàng</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên văn phòng</h1>
         <button
-          onClick={() => setShowExportModal(true)}
+          onClick={() => setShowAddModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
         >
           <svg
@@ -187,40 +209,18 @@ export default function EmployeesPage() {
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-
           >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Xuất Excel
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Thêm nhân viên
-          </button>
-        </div>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Thêm nhân viên
+        </button>
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-12">
           <svg
@@ -275,6 +275,7 @@ export default function EmployeesPage() {
               </div>
             </div>
           </div>
+
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -310,7 +311,7 @@ export default function EmployeesPage() {
                       d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
                     />
                   </svg>
-                  Xuất danh sách nhân viên
+                  Xuất danh sách
                 </button>
               </div>
             </div>
@@ -332,23 +333,23 @@ export default function EmployeesPage() {
                       Số điện thoại
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CCCD
+                      Lương cơ bản
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phụ cấp
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày cập nhật
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredEmployees.map((employee) => (
+                  {employees.map((employee) => (
                     <tr
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() =>
-                        router.push(`/admin/employees/${employee.id}`)
+                        router.push(`/admin/company-staff/${employee.id}`)
                       }
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -374,8 +375,11 @@ export default function EmployeesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {employee.phone}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.idCard}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {employee.monthlySalary ? formatCurrency(employee.monthlySalary) : '—'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {employee.allowance ? formatCurrency(employee.allowance) : '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -390,18 +394,13 @@ export default function EmployeesPage() {
                             : "Không hoạt động"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.updatedAt
-                          ? formatDate(employee.updatedAt)
-                          : "N/A"}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {filteredEmployees.length === 0 && (
+            {employees.length === 0 && (
               <div className="text-center py-12">
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
@@ -552,7 +551,7 @@ export default function EmployeesPage() {
               <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
                 <div className="flex justify-between items-start mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">
-                    Thêm nhân viên mới
+                    Thêm nhân viên văn phòng
                   </h2>
                   <button
                     onClick={() => {
@@ -580,7 +579,7 @@ export default function EmployeesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mã nhân viên ( username đăng nhập) *
+                      Mã nhân viên (username đăng nhập) *
                     </label>
                     <input
                       type="text"
@@ -662,6 +661,63 @@ export default function EmployeesPage() {
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Nhập địa chỉ"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Lương cơ bản (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={addForm.monthlySalary}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setAddForm({
+                          ...addForm,
+                          monthlySalary: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="VD: 10.000.000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phụ cấp (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={addForm.allowance}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setAddForm({
+                          ...addForm,
+                          allowance: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="VD: 1.000.000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bảo hiểm (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={addForm.socialInsurance}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setAddForm({
+                          ...addForm,
+                          socialInsurance: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="VD: 8.000.000"
                     />
                   </div>
 
@@ -775,11 +831,6 @@ export default function EmployeesPage() {
           )}
         </>
       )}
-
-      <EmployeeExportModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-      />
     </div>
   );
 }

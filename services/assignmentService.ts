@@ -3,12 +3,14 @@ import { Employee } from "@/types";
 
 export interface AssignmentCreateRequest {
   employeeId: number;
-  contractId: number;
+  contractId?: number | null;  // Optional for COMPANY scope
   startDate: string;
+  scope?: string;  // "CONTRACT" or "COMPANY"
   status?: string;
   salaryAtTime?: number;
   assignmentType?: string;
   additionalAllowance?: number;
+  workingDaysPerWeek?: string[];  // Required for COMPANY scope
   description?: string;
 }
 
@@ -145,10 +147,12 @@ class AssignmentService {
       employeeId: data.employeeId,
       contractId: data.contractId,
       startDate: data.startDate,
+      scope: data.scope,
       status: data.status || "IN_PROGRESS",
       assignmentType: data.assignmentType,
       salaryAtTime: data.salaryAtTime,
       additionalAllowance: data.additionalAllowance,
+      workingDaysPerWeek: data.workingDaysPerWeek,
       description: data.description || "",
     };
 
@@ -224,6 +228,7 @@ class AssignmentService {
       month?: number;
       year?: number;
       keyword?: string;
+      employmentType?: string;
     }
   ): Promise<EmployeePaginationResponse> {
     try {
@@ -238,6 +243,9 @@ class AssignmentService {
       }
       if (params?.year) {
         queryParams.append("year", params.year.toString());
+      }
+      if (params?.employmentType) {
+        queryParams.append("employmentType", params.employmentType);
       }
 
       const response = await apiService.get<any>(

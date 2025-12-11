@@ -7,6 +7,10 @@ import {
   Assignment,
   AssignmentCreateRequest,
 } from "@/services/assignmentService";
+import attendanceService, {
+  Attendance,
+  AttendancePaginationResponse,
+} from "@/services/attendanceService";
 import contractService from "@/services/contractService";
 
 export default function AssignmentDetail() {
@@ -19,6 +23,15 @@ export default function AssignmentDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Assignment>>({});
   const [contractDetails, setContractDetails] = useState<any>(null);
+  // Attendances (work days) states
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [loadingAttendances, setLoadingAttendances] = useState(false);
+  const [attMonth, setAttMonth] = useState<number>(new Date().getMonth() + 1);
+  const [attYear, setAttYear] = useState<number>(new Date().getFullYear());
+  const [attPage, setAttPage] = useState<number>(0);
+  const [attPageSize] = useState<number>(20);
+  const [attTotalPages, setAttTotalPages] = useState<number>(0);
+  const [attTotalElements, setAttTotalElements] = useState<number>(0);
 
   // Load assignment data from API
   useEffect(() => {
@@ -26,6 +39,13 @@ export default function AssignmentDetail() {
       loadAssignment();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (assignment && assignment.id) {
+      loadAttendances();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignment, attMonth, attYear, attPage]);
 
   const loadAssignment = async () => {
     try {
@@ -63,6 +83,31 @@ export default function AssignmentDetail() {
     } catch (err) {
       console.error("Error fetching contract details via service:", err);
       setContractDetails(null);
+    }
+  };
+
+  const loadAttendances = async () => {
+    if (!assignment || !assignment.id) return;
+    try {
+      setLoadingAttendances(true);
+      const res: AttendancePaginationResponse =
+        await attendanceService.getByAssignmentId(assignment.id, {
+          month: attMonth,
+          year: attYear,
+          page: attPage,
+          pageSize: attPageSize,
+        });
+      setAttendances(res.content || []);
+      setAttTotalElements(res.totalElements || 0);
+      setAttTotalPages(res.totalPages || 0);
+    } catch (error: any) {
+      console.error("Error loading attendances:", error);
+      toast.error(error.message || "Không thể tải danh sách ngày làm việc");
+      setAttendances([]);
+      setAttTotalElements(0);
+      setAttTotalPages(0);
+    } finally {
+      setLoadingAttendances(false);
     }
   };
 
@@ -122,8 +167,25 @@ export default function AssignmentDetail() {
     return String(str).replace(/[,.]/g, "");
   };
 
+  const formatNumber = (num: number | string) => {
+    if (!num && num !== 0) return "";
+    const rawValue =
+      typeof num === "string" ? parseFormattedNumber(num) : num.toString();
+    return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
+  };
+
+  const handleNumberInput = (value: string) => {
+    return value.replace(/[^0-9]/g, "");
+  };
+
   const handleEdit = () => {
-    setEditForm({ ...assignment });
+    setEditForm({
+      ...assignment,
+      salaryAtTime: formatNumber((assignment as any)?.salaryAtTime ?? 0) as any,
+      additionalAllowance: (assignment as any)?.additionalAllowance
+        ? (formatNumber((assignment as any).additionalAllowance) as any)
+        : "",
+    });
     setShowEditModal(true);
   };
 
@@ -139,6 +201,7 @@ export default function AssignmentDetail() {
         contractId:
           (editForm as any).contractId ?? (assignment as any).contractId,
         startDate: editForm.startDate ?? assignment.startDate,
+        scope: (editForm as any).scope ?? (assignment as any).scope,
         status: editForm.status ?? assignment.status,
         assignmentType: editForm.assignmentType ?? assignment.assignmentType,
         salaryAtTime:
@@ -150,6 +213,9 @@ export default function AssignmentDetail() {
           editForm.additionalAllowance !== null
             ? Number(parseFormattedNumber(String(editForm.additionalAllowance)))
             : undefined,
+        workingDaysPerWeek:
+          (editForm as any).workingDaysPerWeek ??
+          (assignment as any).workingDaysPerWeek,
         description: editForm.description ?? assignment.description,
         // include previous contract id so backend can act accordingly if needed
         previousContractId: (assignment as any).contractId ?? undefined,
@@ -462,6 +528,132 @@ export default function AssignmentDetail() {
         </div>
       </div>
 
+      {/* Attendances Card */}
+      <div className="mt-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Ngày làm việc
+            </h3>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Tháng</label>
+              <select
+                value={attMonth}
+                onChange={(e) => {
+                  setAttMonth(Number(e.target.value));
+                  setAttPage(0);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+
+              <label className="text-sm text-gray-600">Năm</label>
+              <select
+                value={attYear}
+                onChange={(e) => {
+                  setAttYear(Number(e.target.value));
+                  setAttPage(0);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                {Array.from(
+                  { length: 5 },
+                  (_, i) => new Date().getFullYear() - 2 + i
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  setAttPage(0);
+                  loadAttendances();
+                }}
+                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                Lọc
+              </button>
+            </div>
+          </div>
+
+          {loadingAttendances ? (
+            <div className="flex justify-center py-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : attendances.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Không có ngày làm việc trong tháng này
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-500">
+                    <th className="py-2">Ngày</th>
+                    <th className="py-2">Giờ làm</th>
+                    <th className="py-2">Thưởng</th>
+                    <th className="py-2">Phạt</th>
+                    <th className="py-2">Hỗ trợ</th>
+                    <th className="py-2">Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendances.map((a) => (
+                    <tr key={a.id} className="border-t">
+                      <td className="py-2">
+                        {new Intl.DateTimeFormat("vi-VN").format(
+                          new Date(a.date)
+                        )}
+                      </td>
+                      <td className="py-2">{a.workHours ?? 0}</td>
+                      <td className="py-2">{formatCurrency(a.bonus ?? 0)}</td>
+                      <td className="py-2">{formatCurrency(a.penalty ?? 0)}</td>
+                      <td className="py-2">
+                        {formatCurrency(a.supportCost ?? 0)}
+                      </td>
+                      <td className="py-2">{a.description ?? ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!loadingAttendances && attTotalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Trang {attPage + 1} / {attTotalPages} (Tổng {attTotalElements})
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAttPage(Math.max(0, attPage - 1))}
+                  disabled={attPage === 0}
+                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
+                >
+                  Trước
+                </button>
+                <button
+                  onClick={() =>
+                    setAttPage(Math.min(attTotalPages - 1, attPage + 1))
+                  }
+                  disabled={attPage >= attTotalPages - 1}
+                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Edit Modal */}
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -572,14 +764,15 @@ export default function AssignmentDetail() {
                   Lương (VND) *
                 </label>
                 <input
-                  type="number"
-                  value={editForm.salaryAtTime || 0}
-                  onChange={(e) =>
+                  type="text"
+                  value={String(editForm.salaryAtTime ?? "")}
+                  onChange={(e) => {
+                    const raw = handleNumberInput(e.target.value);
                     setEditForm({
                       ...editForm,
-                      salaryAtTime: Number(e.target.value),
-                    })
-                  }
+                      salaryAtTime: formatNumber(raw) as any,
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -589,14 +782,15 @@ export default function AssignmentDetail() {
                   Phụ cấp (VND)
                 </label>
                 <input
-                  type="number"
-                  value={editForm.additionalAllowance || 0}
-                  onChange={(e) =>
+                  type="text"
+                  value={String(editForm.additionalAllowance ?? "")}
+                  onChange={(e) => {
+                    const raw = handleNumberInput(e.target.value);
                     setEditForm({
                       ...editForm,
-                      additionalAllowance: Number(e.target.value),
-                    })
-                  }
+                      additionalAllowance: formatNumber(raw) as any,
+                    });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

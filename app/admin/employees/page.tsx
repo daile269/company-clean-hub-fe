@@ -176,19 +176,17 @@ export default function EmployeesPage() {
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
 
-       
         <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên làm việc theo hợp đồng của khách hàng</h1>
         <button
           onClick={() => setShowExportModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-
-          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -217,7 +215,6 @@ export default function EmployeesPage() {
             </svg>
             Thêm nhân viên
           </button>
-        </div>
       </div>
 
       {/* Loading State */}

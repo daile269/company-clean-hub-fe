@@ -169,6 +169,7 @@ export default function PayrollDetailPage() {
       "FIXED_BY_CONTRACT": "Phân công cố định (hợp đồng)",
       "FIXED_BY_DAY": "Phân công cố định (theo ngày)",
       "TEMPORARY": "Phân công tạm thời",
+      "FIXED_BY_COMPANY": "Phân công cố định (theo công ty)",
     };
     return typeMap[type] || type;
   };

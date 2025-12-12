@@ -230,7 +230,7 @@ export default function AttendanceCalendar({
             {Array.from(assignmentGroups.entries()).map(
                 ([assignmentId, assignmentAttendances]) => {
                     const firstAttendance = assignmentAttendances[0];
-                    const customerName = firstAttendance?.customerName || `Customer ${firstAttendance?.customerId ?? ""}`;
+                    const customerName = firstAttendance?.customerName || `Văn phòng`;
                     const employeeName = firstAttendance?.employeeName;
                     const assignment = assignmentsById.get(assignmentId) || null;
                     const allowanceValue =
@@ -278,7 +278,7 @@ export default function AttendanceCalendar({
                                 {assignment && (
                                     <div className="mt-3 p-2 bg-purple-50 rounded text-xs space-y-1">
                                         <p className="font-semibold text-purple-700">
-                                            Phụ cấp chung
+                                            Phụ cấp phân công
                                         </p>
                                         <input
                                             type="number"

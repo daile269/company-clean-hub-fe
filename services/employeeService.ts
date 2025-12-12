@@ -255,16 +255,19 @@ class EmployeeService {
       formData
     );
   }
-  // Xuất danh sách khách hàng và hợp đồng ra file Excel với merge cells
-  async exportEmployeesToExcel(): Promise<void> {
+  // Xuất danh sách nhân viên ra file Excel với merge cells theo loại nhân viên
+  async exportEmployeesToExcel(employmentType?: string): Promise<void> {
     try {
-      const blob = await apiService.getFile(`/employees/export/excel`);
-      const url = window.URL.createObjectURL(blob);
+      const url = employmentType 
+        ? `/employees/export/excel?employmentType=${employmentType}`
+        : `/employees/export/excel`;
+      const blob = await apiService.getFile(url);
+      const objUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = objUrl;
       link.download = `Danh sách nhân viên.xlsx`;
       link.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(objUrl);
     } catch (error) {
       console.error('Error exporting employees to Excel:', error);
       throw error;

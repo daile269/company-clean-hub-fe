@@ -6,18 +6,20 @@ import { toast } from "react-hot-toast";
 interface EmployeeExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  employmentType?: string;
 }
 
 export default function EmployeeExportModal({
   isOpen,
   onClose,
+  employmentType,
 }: EmployeeExportModalProps) {
   const [loading, setLoading] = useState(false);
 
   const handleExport = async () => {
     try {
       setLoading(true);
-      await employeeService.exportEmployeesToExcel();
+      await employeeService.exportEmployeesToExcel(employmentType);
       toast.success("Xuất file Excel thành công");
       onClose();
     } catch (error) {

@@ -255,6 +255,25 @@ class EmployeeService {
       formData
     );
   }
+  // Xuất danh sách nhân viên ra file Excel với merge cells theo loại nhân viên
+  async exportEmployeesToExcel(employmentType?: string): Promise<void> {
+    try {
+      const url = employmentType 
+        ? `/employees/export/excel?employmentType=${employmentType}`
+        : `/employees/export/excel`;
+      const blob = await apiService.getFile(url);
+      const objUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objUrl;
+      link.download = `Danh sách nhân viên.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(objUrl);
+    } catch (error) {
+      console.error('Error exporting employees to Excel:', error);
+      throw error;
+    }
+  }
+  
 }
 
 export interface EmployeeImage {

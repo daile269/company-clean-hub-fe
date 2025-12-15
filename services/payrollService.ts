@@ -25,7 +25,7 @@ export interface Payroll {
 }
 
 export interface PayrollCalculateRequest {
-  employeeId: number;
+  employeeId?: number;  // Optional - if not provided, calculate for all employees
   month: number;
   year: number;
   insuranceAmount?: number;  // Bảo hiểm (có thể null)
@@ -42,6 +42,44 @@ export interface PayrollFilterParams {
   month?: number;
   year?: number;
   isPaid?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PayrollAssignmentResponse {
+  payrollId: number;
+  employeeId: number;
+  employeeName: string;
+  bankName: string;
+  bankAccount: string;
+  phone: string;
+  assignmentType: string | null;
+  projectCompany: string | null;
+  baseSalary: number | null;
+  assignmentDays: number | null;
+  assignmentPlanedDays: number | null;
+  assignmentBonus: number | null;
+  assignmentPenalty: number | null;
+  assignmentAllowance: number | null;
+  assignmentInsurance: number | null;
+  assignmentAdvance: number | null;
+  assignmentSalary: number | null;
+  companyAllowance: number | null;
+  totalDays: number | null;
+  totalPlanedDays: number | null;
+  totalBonus: number | null;
+  totalPenalty: number | null;
+  totalAllowance: number | null;
+  totalInsurance: number | null;
+  totalAdvance: number | null;
+  finalSalary: number | null;
+  isTotalRow: boolean;
+}
+
+export interface PayrollAssignmentFilterParams {
+  keyword?: string;
+  month?: number;
+  year?: number;
   page?: number;
   pageSize?: number;
 }
@@ -175,8 +213,8 @@ console.log("Exporting Excel file...");
     }
   },
 
-  // Tính lương cho nhân viên
-  calculatePayroll: async (data: PayrollCalculateRequest): Promise<Payroll> => {
+  // Tính lương cho nhân viên (hoặc tất cả nếu không có employeeId)
+  calculatePayroll: async (data: PayrollCalculateRequest): Promise<PayrollAssignmentResponse[]> => {
     try {
       const response = await apiService.post<any>("/payrolls/calculate", data);
 
@@ -187,6 +225,53 @@ console.log("Exporting Excel file...");
       return response.data;
     } catch (error) {
       console.error('Error calculating payroll:', error);
+      throw error;
+    }
+  },
+
+  // Lấy danh sách bảng lương theo assignment với filter và phân trang
+  getPayrollAssignments: async (params: PayrollAssignmentFilterParams = {}): Promise<{
+    content: PayrollAssignmentResponse[];
+    page: number;
+    pageSize: number;
+    totalElements: number;
+    totalPages: number;
+    first: boolean;
+    last: boolean;
+  }> => {
+    try {
+      const {
+        keyword = "",
+        month,
+        year,
+        page = 0,
+        pageSize = 10,
+      } = params;
+
+      const queryParams = new URLSearchParams();
+      if (keyword) queryParams.append("keyword", keyword);
+      if (month !== undefined) queryParams.append("month", month.toString());
+      if (year !== undefined) queryParams.append("year", year.toString());
+      queryParams.append("page", page.toString());
+      queryParams.append("pageSize", pageSize.toString());
+
+      const response = await apiService.get<any>(`/payrolls/assignments/filter?${queryParams.toString()}`);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch payroll assignments');
+      }
+
+      return {
+        content: response.data.content,
+        page: response.data.page,
+        pageSize: response.data.pageSize,
+        totalElements: response.data.totalElements,
+        totalPages: response.data.totalPages,
+        first: response.data.first,
+        last: response.data.last,
+      };
+    } catch (error) {
+      console.error('Error fetching payroll assignments:', error);
       throw error;
     }
   },

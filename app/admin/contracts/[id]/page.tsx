@@ -441,6 +441,12 @@ export default function ContractDetailPage() {
     }
   };
 
+  const getContractAssignmentsPlandays = (contract: any): number => {
+    console.log("Calculating plandays for contract:", contract);
+    if (!contract || !contract.assignments || contract.assignments.length === 0) return 0;
+    return contract.assignments.reduce((sum: number, a: any) => sum + (Number(a?.planday) || 0), 0);
+  };
+
   const handleUpdateInvoiceStatus = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setStatusUpdateForm({
@@ -890,6 +896,9 @@ export default function ContractDetailPage() {
                       VAT
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Số ngày làm/tháng
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tổng
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -921,6 +930,11 @@ export default function ContractDetailPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-gray-700">
                           {service.vat}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-700">
+                          {getContractAssignmentsPlandays(contract)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

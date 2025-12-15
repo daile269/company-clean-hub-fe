@@ -34,6 +34,20 @@ export interface Assignment {
   createdAt?: string;
   updatedAt?: string;
   assignmentType?: string;
+  // Backend additional fields
+  contractId?: number;
+  contractDescription?: string;
+  scope?: string; // "CONTRACT" or "COMPANY"
+  // Optional nested contract object if backend returns it
+  contract?: {
+    id?: number;
+    name?: string;
+    type?: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    finalPrice?: number;
+  };
 }
 
 export interface AssignmentPaginationParams {
@@ -61,6 +75,7 @@ export interface EmployeePaginationResponse {
 export interface TemporaryReassignmentRequest {
   replacementEmployeeId: number;
   replacedEmployeeId: number;
+  replacedAssignmentId: number; // ID phân công của nhân viên bị thay (để xác định chính xác attendance cần điều động)
   dates: string[];
   salaryAtTime?: number;
   description?: string;
@@ -185,11 +200,15 @@ class AssignmentService {
       year?: number;
       page?: number;
       pageSize?: number;
+      contractId?: number;
     }
   ): Promise<Assignment[]> {
     try {
       const queryParams = new URLSearchParams();
       
+      if (params?.contractId) {
+        queryParams.append("contractId", params.contractId.toString());
+      }
       if (params?.contractType) {
         queryParams.append("contractType", params.contractType);
       }
@@ -206,10 +225,12 @@ class AssignmentService {
       queryParams.append("pageSize", (params?.pageSize ?? 10).toString());
 
       const response = await apiService.get<any>(
-        `/assignments/customer/${customerId}/all?${queryParams.toString()}`
+        `/assignments/customer/${customerId}/by-contract?${queryParams.toString()}`
       );
-      console.log('Assignments by customer response:', response);
+      console.log('Assignments by customer (by-contract) response:', response);
+      
       if (response.success && response.data) {
+        // Return grouped data instead of flattening
         return Array.isArray(response.data.content) ? response.data.content : [];
       }
 
@@ -433,6 +454,60 @@ class AssignmentService {
     } catch (error) {
       console.error("Error fetching assignment history:", error);
       return [];
+    }
+  }
+
+  async getHistoryByCustomerId(
+    customerId: string,
+    params?: {
+      contractId?: number;
+      page?: number;
+      pageSize?: number;
+    }
+  ): Promise<any> {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params?.contractId) {
+        queryParams.append("contractId", params.contractId.toString());
+      }
+      if (params?.page !== undefined) {
+        queryParams.append("page", params.page.toString());
+      }
+      if (params?.pageSize) {
+        queryParams.append("pageSize", params.pageSize.toString());
+      }
+
+      const response = await apiService.get<any>(
+        `/assignments/history/customer/${customerId}?${queryParams.toString()}`
+      );
+
+      if (response.success && response.data) {
+        return {
+          content: response.data.content || [],
+          page: response.data.page || 0,
+          pageSize: response.data.pageSize || 10,
+          totalElements: response.data.totalElements || 0,
+          totalPages: response.data.totalPages || 0,
+        };
+      }
+
+      return {
+        content: [],
+        page: 0,
+        pageSize: 10,
+        totalElements: 0,
+        totalPages: 0,
+      };
+    } catch (error) {
+      console.error("Error fetching assignment history by customer:", error);
+      return {
+        content: [],
+        page: 0,
+        pageSize: 10,
+        totalElements: 0,
+        totalPages: 0,
+      };
     }
   }
 

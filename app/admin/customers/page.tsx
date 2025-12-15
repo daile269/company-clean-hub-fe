@@ -21,7 +21,6 @@ export default function CustomersPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [addForm, setAddForm] = useState<Partial<Customer>>({
     code: "",
-    username: "",
     password: "",
     name: "",
     phone: "",
@@ -80,14 +79,7 @@ export default function CustomersPage() {
 
   const handleAddCustomer = async () => {
     // Validate required fields
-    if (!addForm.username || addForm.username.trim() === "") {
-      toast.error("Tên đăng nhập không được để trống");
-      return;
-    }
-    if (addForm.username.length < 3 || addForm.username.length > 50) {
-      toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
-      return;
-    }
+    // Username will be same as customer code (login username)
     if (!addForm.password || addForm.password.trim() === "") {
       toast.error("Mật khẩu không được để trống");
       return;
@@ -160,7 +152,6 @@ export default function CustomersPage() {
         setShowAddModal(false);
         setAddForm({
           code: "",
-          username: "",
           password: "",
           name: "",
           phone: "",
@@ -192,7 +183,7 @@ export default function CustomersPage() {
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý khách hàng</h1>
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
@@ -548,7 +539,7 @@ export default function CustomersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mã khách hàng *
+                      Mã khách hàng (username đăng nhập) *
                     </label>
                     <input
                       type="text"
@@ -573,21 +564,6 @@ export default function CustomersPage() {
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Tên công ty/tổ chức"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tên đăng nhập *
-                    </label>
-                    <input
-                      type="text"
-                      value={addForm.username || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, username: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Tên đăng nhập"
                     />
                   </div>
 

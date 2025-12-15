@@ -192,8 +192,8 @@ export default function LoginPage() {
             </p>
             <div className="space-y-2 text-xs">
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium text-gray-700">Accountant:</p>
-                <p className="text-gray-600">Username: accountant01</p>
+                <p className="font-medium text-gray-700">Quản lý tổng:</p>
+                <p className="text-gray-600">Username: qlt1</p>
                 <p className="text-gray-600">Password: Pass123456</p>
               </div>
             </div>

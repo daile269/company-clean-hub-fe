@@ -1,4 +1,5 @@
 import { apiService, ApiResponse } from './api';
+import { permissionService } from './permissionService';
 
 export interface LoginRequest {
   username: string;
@@ -37,6 +38,13 @@ class AuthService {
       this.saveAuthData(response.data);
       // Set token for all future requests
       apiService.setToken(response.data.token);
+      
+      // Fetch user permissions after successful login
+      try {
+        await permissionService.fetchUserPermissions();
+      } catch (error) {
+        console.error('Error fetching permissions:', error);
+      }
     }
     
     return response;
@@ -51,6 +59,8 @@ class AuthService {
       localStorage.removeItem('userRole');
       // Clear token from apiService
       apiService.setToken(null);
+      // Clear permissions
+      permissionService.clearPermissions();
       
       // Also remove from cookies
       document.cookie = 'token=; path=/; max-age=0';

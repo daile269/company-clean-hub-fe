@@ -106,7 +106,8 @@ class CustomerService {
   async create(customer: Partial<Customer>): Promise<ApiResponse<ApiCustomer>> {
     const apiCustomer = {
       customerCode: customer.code,
-      username: customer.username,
+      // Use the customer code as the login username (same as employees)
+      username: customer.code,
       password: customer.password,
       name: customer.name,
       address: customer.address,
@@ -126,7 +127,8 @@ class CustomerService {
   async update(id: string, customer: Partial<Customer>): Promise<ApiResponse<ApiCustomer>> {
     const apiCustomer = {
       customerCode: customer.code,
-      username: customer.username,
+      // Keep username synced to code
+      username: customer.code,
       password: customer.password || '123456',  // Default password if not provided
       name: customer.name,
       address: customer.address,

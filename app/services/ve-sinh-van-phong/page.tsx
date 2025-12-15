@@ -272,7 +272,7 @@ export default function VeSinhVanPhong() {
                 className="flex items-center gap-6 p-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-lg hover:shadow-2xl transition-all hover:scale-105"
               >
                 <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-2xl transition-all hover:scale-110 animate-pulse">
-                  <img src="/zalo.png" alt="Zalo" className="w-8 h-8" />
+                  <img src="/Icon_of_Zalo.svg.png" alt="Zalo" className="w-8 h-8" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">

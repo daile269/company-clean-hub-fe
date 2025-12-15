@@ -41,12 +41,10 @@ export default function CustomerDetail() {
   });
   const [employeesPageLoading, setEmployeesPageLoading] = useState(false);
   const [searchEmployee, setSearchEmployee] = useState("");
-  const [assignedEmployees, setAssignedEmployees] = useState<Assignment[]>([]);
+  const [assignedEmployees, setAssignedEmployees] = useState<any[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [loadingAllAssignments, setLoadingAllAssignments] = useState(false);
-  const [allAssignedEmployees, setAllAssignedEmployees] = useState<
-    Assignment[]
-  >([]);
+  const [allAssignedEmployees, setAllAssignedEmployees] = useState<any[]>([]);
   const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>(
     []
   );
@@ -115,6 +113,7 @@ export default function CustomerDetail() {
   const [reassignmentForm, setReassignmentForm] = useState<{
     replacementEmployeeId: number | null;
     replacedEmployeeId: number | null;
+    replacedAssignmentId: number | null;
     fromDate: string;
     toDate: string;
     selectedDates: string[];
@@ -123,6 +122,7 @@ export default function CustomerDetail() {
   }>({
     replacementEmployeeId: null,
     replacedEmployeeId: null,
+    replacedAssignmentId: null,
     fromDate: new Date().toISOString().split("T")[0],
     toDate: new Date().toISOString().split("T")[0],
     selectedDates: [],
@@ -131,16 +131,21 @@ export default function CustomerDetail() {
   });
 
   // Assignment history states
-  const [assignmentHistories, setAssignmentHistories] = useState<
-    AssignmentHistory[]
-  >([]);
+  const [assignmentHistories, setAssignmentHistories] = useState<any[]>([]);
   const [loadingHistories, setLoadingHistories] = useState(false);
   const [showRollbackModal, setShowRollbackModal] = useState(false);
   const [selectedHistory, setSelectedHistory] =
     useState<AssignmentHistory | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
+  const [historyContractFilter, setHistoryContractFilter] =
+    useState<string>("");
+  const [historyPage, setHistoryPage] = useState<number>(0);
+  const [historyPageSize, setHistoryPageSize] = useState<number>(10);
+  const [historyTotalPages, setHistoryTotalPages] = useState<number>(0);
 
   // Filter states for Card 1
+  const [assignmentContractFilter, setAssignmentContractFilter] =
+    useState<string>("");
   const [filterAssignmentType, setFilterAssignmentType] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterMonth, setFilterMonth] = useState<number>(
@@ -190,16 +195,16 @@ export default function CustomerDetail() {
     filterYear,
     filterAssignmentType,
     filterStatus,
-    currentPage,
-    pageSize,
+    assignmentContractFilter,
   ]);
 
-  // Load history when contracts are loaded
+  // Load history when customer is loaded
   useEffect(() => {
-    if (contracts.length > 0 && contracts[0]?.id) {
-      loadAssignmentHistories(Number(contracts[0].id));
+    if (id) {
+      loadAssignmentHistories();
     }
-  }, [contracts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, historyContractFilter, historyPage, historyPageSize]);
 
   const loadNotAssignedEmployees = async (
     page = 0,
@@ -209,15 +214,13 @@ export default function CustomerDetail() {
     try {
       setLoadingNotAssigned(true);
       const q = keyword !== null ? keyword : notAssignedKeyword || undefined;
-      const response = await assignmentService.getNotAssignedByCustomerId(id!, {
+      const response = await employeeService.getAll({
+        keyword: q,
         page,
         pageSize,
-        month: assignmentModalMonth,
-        year: assignmentModalYear,
-        keyword: q,
         employmentType: notAssignedEmploymentType || undefined,
       });
-      console.log("Not assigned employees (paginated):", response);
+      console.log("All employees (paginated):", response);
       setNotAssignedEmployees(response.content || []);
       setNotAssignedPage({
         content: response.content || [],
@@ -227,7 +230,7 @@ export default function CustomerDetail() {
         pageSize: response.pageSize ?? pageSize,
       });
     } catch (error) {
-      console.error("Error loading not-assigned employees:", error);
+      console.error("Error loading employees:", error);
       toast.error("Không thể tải danh sách nhân viên");
       setNotAssignedEmployees([]);
       setNotAssignedPage({
@@ -271,7 +274,10 @@ export default function CustomerDetail() {
   const loadAssignedEmployees = async () => {
     try {
       setLoadingAssignments(true);
-      const data = await assignmentService.getByCustomerId(id!);
+      const data = await assignmentService.getAllByCustomerId(id!, {});
+      console.log("=== LOADED ASSIGNMENTS BY CONTRACT ===");
+      console.log(JSON.stringify(data, null, 2));
+      console.log("======================================");
       setAssignedEmployees(data);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
@@ -288,14 +294,12 @@ export default function CustomerDetail() {
         year: filterYear,
         status: filterStatus || undefined,
         contractType: filterAssignmentType || undefined,
-        page: currentPage,
-        pageSize: pageSize,
+        contractId: assignmentContractFilter
+          ? Number(assignmentContractFilter)
+          : undefined,
       });
-      console.log("All assigned employees:", data);
+      console.log("All assigned employees (grouped):", data);
       setAllAssignedEmployees(data);
-      // Calculate total pages (assuming backend returns all data for now)
-      // If backend returns total count, update this logic
-      setTotalPages(Math.ceil(data.length / pageSize) || 1);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
     } finally {
@@ -303,14 +307,23 @@ export default function CustomerDetail() {
     }
   };
 
-  const loadAssignmentHistories = async (contractId: number) => {
+  const loadAssignmentHistories = async () => {
+    if (!id) return;
     try {
       setLoadingHistories(true);
-      const data = await assignmentService.getHistoryByContractId(contractId);
-      console.log("Assignment histories loaded:", data);
-      setAssignmentHistories(data);
+      const response = await assignmentService.getHistoryByCustomerId(id, {
+        contractId: historyContractFilter
+          ? Number(historyContractFilter)
+          : undefined,
+        page: historyPage,
+        pageSize: historyPageSize,
+      });
+      console.log("Assignment histories loaded:", response);
+      setAssignmentHistories(response.content || []);
+      setHistoryTotalPages(response.totalPages || 0);
     } catch (error) {
       console.error("Error loading assignment histories:", error);
+      setAssignmentHistories([]);
     } finally {
       setLoadingHistories(false);
     }
@@ -347,7 +360,7 @@ export default function CustomerDetail() {
         // Refresh both cards
         await Promise.all([
           loadAllAssignedEmployeesForCustomer(),
-          contracts[0]?.id && loadAssignmentHistories(Number(contracts[0].id)),
+          loadAssignmentHistories(),
         ]);
       } else {
         toast.error(response.message || "Không thể hoàn tác điều động");
@@ -394,8 +407,12 @@ export default function CustomerDetail() {
     );
   }
 
-  const formatDate = (date: Date | string) =>
-    new Intl.DateTimeFormat("vi-VN").format(new Date(date));
+  const formatDate = (date?: Date | string | null) => {
+    if (!date) return "-";
+    const d = new Date(date as any);
+    if (isNaN(d.getTime())) return "-";
+    return new Intl.DateTimeFormat("vi-VN").format(d);
+  };
 
   const formatDateInput = (date: Date) => {
     const d = new Date(date);
@@ -445,11 +462,8 @@ export default function CustomerDetail() {
   };
 
   const handleEdit = () => {
-    setEditForm({
-      ...customer!,
-      username: customer?.username || "",
-      password: customer?.password || "",
-    });
+    // Use customer data as editForm; username is derived from code on save
+    setEditForm({ ...customer! });
     setShowEditModal(true);
   };
 
@@ -639,10 +653,18 @@ export default function CustomerDetail() {
       const reassignmentData: TemporaryReassignmentRequest = {
         replacementEmployeeId: reassignmentForm.replacementEmployeeId,
         replacedEmployeeId: reassignmentForm.replacedEmployeeId,
+        replacedAssignmentId: reassignmentForm.replacedAssignmentId!,
         dates: reassignmentForm.selectedDates,
         salaryAtTime: reassignmentSalaryRaw,
         description: reassignmentForm.description,
       };
+
+      console.log("=== TEMPORARY REASSIGNMENT DATA ===");
+      console.log("Replacement Employee ID:", reassignmentData.replacementEmployeeId);
+      console.log("Replaced Employee ID:", reassignmentData.replacedEmployeeId);
+      console.log("Replaced Assignment ID:", reassignmentData.replacedAssignmentId);
+      console.log("Dates:", reassignmentData.dates);
+      console.log("===================================");
 
       const response = await assignmentService.temporaryReassignment(
         reassignmentData
@@ -655,6 +677,7 @@ export default function CustomerDetail() {
         setReassignmentForm({
           replacementEmployeeId: null,
           replacedEmployeeId: null,
+          replacedAssignmentId: null,
           fromDate: new Date().toISOString().split("T")[0],
           toDate: new Date().toISOString().split("T")[0],
           selectedDates: [],
@@ -683,13 +706,17 @@ export default function CustomerDetail() {
       const servicePrice = Number(rawPrice) || 0;
       const serviceVat =
         contractForm.serviceVat === "" ? 0 : Number(contractForm.serviceVat);
-
+      console.log(
+        "Creating contract with service price:",
+        contractForm.serviceName
+      );
       if (
         !contractForm.serviceName ||
         servicePrice <= 0 ||
         !contractForm.startDate ||
         !contractForm.endDate
       ) {
+        console.error("Missing required contract fields:", contractForm);
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
@@ -1039,7 +1066,15 @@ export default function CustomerDetail() {
               Làm mới
             </button>
             <button
-              onClick={() => setShowAddContractModal(true)}
+              onClick={() => {
+                setContractForm((prev) => ({
+                  ...prev,
+                  customerId: id || "",
+                  startDate: prev.serviceEffectiveFrom || prev.startDate,
+                  serviceServiceType: "RECURRING",
+                }));
+                setShowAddContractModal(true);
+              }}
               className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 inline-flex items-center gap-1"
             >
               <svg
@@ -1203,6 +1238,22 @@ export default function CustomerDetail() {
             Nhân viên đang phụ trách
           </h3>
           <div className="flex items-center gap-2">
+            {/* Contract filter */}
+            <select
+              value={assignmentContractFilter}
+              onChange={(e) => setAssignmentContractFilter(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tất cả hợp đồng</option>
+              {contracts.map((contract) => (
+                <option key={contract.id} value={contract.id}>
+                  HĐ #{contract.id} -{" "}
+                  {contract.description ||
+                    contract.services?.map((s: any) => s.title).join(", ")}
+                </option>
+              ))}
+            </select>
+
             {/* Month and Year filters */}
             <select
               value={filterMonth}
@@ -1239,7 +1290,7 @@ export default function CustomerDetail() {
             </select>
 
             {/* Filters */}
-            <select
+            {/* <select
               value={filterAssignmentType}
               onChange={(e) => setFilterAssignmentType(e.target.value)}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1248,9 +1299,9 @@ export default function CustomerDetail() {
               <option value="FIXED_BY_CONTRACT">Cố định HĐ</option>
               <option value="FIXED_BY_DAY">Cố định ngày</option>
               <option value="TEMPORARY">Tạm thời</option>
-            </select>
+            </select> */}
 
-            <select
+            {/* <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1259,16 +1310,16 @@ export default function CustomerDetail() {
               <option value="IN_PROGRESS">Đang thực hiện</option>
               <option value="COMPLETED">Hoàn thành</option>
               <option value="CANCELED">Đã hủy</option>
-            </select>
+            </select> */}
 
-            <select
+            {/* <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="startDate_desc">Mới nhất</option>
               <option value="startDate_asc">Cũ nhất</option>
-            </select>
+            </select> */}
 
             <button
               onClick={loadAllAssignedEmployeesForCustomer}
@@ -1315,7 +1366,7 @@ export default function CustomerDetail() {
               />
             </svg>
           </div>
-        ) : getFilteredAndSortedAssignments().length === 0 ? (
+        ) : allAssignedEmployees.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1334,202 +1385,150 @@ export default function CustomerDetail() {
             <p className="text-sm">Không có nhân viên phù hợp với bộ lọc</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Mã phân công
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Mã NV
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Tên nhân viên
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Loại phân công
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Ngày bắt đầu
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Trạng thái
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">
-                    Lương
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
-                    Ngày công
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Mô tả
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFilteredAndSortedAssignments().map((assignment) => (
-                  <tr
-                    key={assignment.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      router.push(`/admin/assignments/${assignment.id}`)
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter")
-                        router.push(`/admin/assignments/${assignment.id}`);
-                    }}
-                    className="border-b hover:bg-gray-50 cursor-pointer"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-mono font-medium text-blue-600">
-                        {assignment.id}
+          <div className="space-y-6">
+            {allAssignedEmployees.map(
+              (contractGroup: any, groupIdx: number) => (
+                <div
+                  key={`contract-${contractGroup.contractId}-${groupIdx}`}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  {/* Contract Header */}
+                  <div className="bg-blue-50 px-4 py-3 border-b">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-semibold text-blue-900">
+                          Hợp đồng #{contractGroup.contractId}
+                        </span>
+                        <span className="text-sm text-blue-700 ml-2">
+                          - {contractGroup.contractDescription || "N/A"}
+                        </span>
+                      </div>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                        {contractGroup.assignments?.length || 0} nhân viên
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-mono font-medium text-blue-600">
-                        {assignment.employeeCode}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {assignment.employeeName}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getAssignmentTypeBadge(
-                          assignment.assignmentType || ""
-                        )}`}
-                      >
-                        {getAssignmentTypeLabel(
-                          assignment.assignmentType || ""
+                    </div>
+                  </div>
+
+                  {/* Assignments Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                            Mã phân công
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                            Mã NV
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                            Tên nhân viên
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                            Loại phân công
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                            Ngày bắt đầu
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                            Trạng thái
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">
+                            Lương
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                            Ngày công
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(contractGroup.assignments || []).map(
+                          (assignment: any) => (
+                            <tr
+                              key={assignment.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() =>
+                                router.push(
+                                  `/admin/assignments/${assignment.id}`
+                                )
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter")
+                                  router.push(
+                                    `/admin/assignments/${assignment.id}`
+                                  );
+                              }}
+                              className="border-b hover:bg-gray-50 cursor-pointer"
+                            >
+                              <td className="px-4 py-3">
+                                <span className="text-sm font-mono font-medium text-blue-600">
+                                  {assignment.id}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="text-sm font-mono font-medium text-blue-600">
+                                  {assignment.employeeCode}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="text-sm font-semibold text-gray-900">
+                                  {assignment.employeeName}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getAssignmentTypeBadge(
+                                    assignment.assignmentType || ""
+                                  )}`}
+                                >
+                                  {getAssignmentTypeLabel(
+                                    assignment.assignmentType || ""
+                                  )}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="text-sm text-gray-700">
+                                  {formatDate(assignment.startDate)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                                    assignment.status === "IN_PROGRESS"
+                                      ? "bg-green-100 text-green-800"
+                                      : assignment.status === "CANCELED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {assignment.status === "IN_PROGRESS"
+                                    ? "Đang thực hiện"
+                                    : assignment.status === "CANCELED"
+                                    ? "Đã hủy"
+                                    : "Hoàn thành"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm font-semibold text-gray-900">
+                                  {formatCurrency(assignment.salaryAtTime)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-sm font-medium text-gray-700">
+                                  {assignment.workDays} ngày
+                                </span>
+                              </td>
+                            </tr>
+                          )
                         )}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-700">
-                        {formatDate(assignment.startDate)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                          assignment.status === "IN_PROGRESS"
-                            ? "bg-green-100 text-green-800"
-                            : assignment.status === "CANCELED"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {assignment.status === "IN_PROGRESS"
-                          ? "Đang thực hiện"
-                          : assignment.status === "CANCELED"
-                          ? "Đã hủy"
-                          : "Hoàn thành"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {formatCurrency(assignment.salaryAtTime)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-sm font-medium text-gray-700">
-                        {assignment.workDays} ngày
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-600 line-clamp-2">
-                        {assignment.description || "-"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         )}
-
-        {/* Pagination */}
-        {!loadingAllAssignments &&
-          getFilteredAndSortedAssignments().length > 0 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Hiển thị</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-                <span className="text-sm text-gray-600">kết quả</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Trước
-                </button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={`page-${i}-${pageNum}`}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 text-sm rounded-lg ${
-                          currentPage === pageNum
-                            ? "bg-blue-600 text-white"
-                            : "border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Sau
-                </button>
-              </div>
-
-              <div className="text-sm text-gray-600">
-                Trang {currentPage} / {totalPages}
-              </div>
-            </div>
-          )}
       </div>
 
       {/* Card 5: Lịch sử điều động */}
@@ -1538,29 +1537,45 @@ export default function CustomerDetail() {
           <h3 className="text-lg font-semibold text-gray-800">
             Lịch sử điều động
           </h3>
-          <button
-            onClick={() =>
-              contracts[0]?.id &&
-              loadAssignmentHistories(Number(contracts[0].id))
-            }
-            className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="flex items-center gap-2">
+            <select
+              value={historyContractFilter}
+              onChange={(e) => {
+                setHistoryContractFilter(e.target.value);
+                setHistoryPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Làm mới
-          </button>
+              <option value="">Tất cả hợp đồng</option>
+              {contracts.map((contract) => (
+                <option key={contract.id} value={contract.id}>
+                  HĐ #{contract.id} -{" "}
+                  {contract.description ||
+                    contract.services?.map((s: any) => s.title).join(", ")}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => loadAssignmentHistories()}
+              className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Làm mới
+            </button>
+          </div>
         </div>
 
         {loadingHistories ? (
@@ -1604,148 +1619,217 @@ export default function CustomerDetail() {
             <p className="text-sm">Chưa có lịch sử điều động nào</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Mã lịch sử
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Người bị thay
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Người làm thay
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Khách hàng
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Ngày điều động
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Trạng thái
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Người tạo
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                    Ngày tạo
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {assignmentHistories.map((history, idx) => (
-                  <tr
-                    key={`history-${history.historyId ?? idx}`}
-                    className="border-b hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-mono font-medium text-blue-600">
-                        #{history.historyId}
+          <div className="space-y-6">
+            {assignmentHistories.map((contractGroup: any, groupIdx: number) => (
+              <div
+                key={`contract-${contractGroup.contractId}-${groupIdx}`}
+                className="border rounded-lg overflow-hidden"
+              >
+                {/* Contract Header */}
+                <div className="bg-blue-50 px-4 py-3 border-b">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-semibold text-blue-900">
+                        Hợp đồng #{contractGroup.contractId}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">
-                        <div className="font-semibold text-gray-900">
-                          {history.replacedEmployeeName}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {history.replacedEmployeeCode}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">
-                        <div className="font-semibold text-gray-900">
-                          {history.replacementEmployeeName}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {history.replacementEmployeeCode}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-700">
-                        {history.customerName}
+                      <span className="text-sm text-blue-700 ml-2">
+                        - {contractGroup.contractDescription || "N/A"}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-700">
-                        {history.reassignmentDates.map((date, dIdx) => {
-                          const dateKey =
-                            typeof date === "string"
-                              ? new Date(date).toISOString()
-                              : new Date(date).toISOString();
-                          return (
-                            <div key={`reassign-${dateKey}-${dIdx}`}>
-                              {formatDate(date)}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                          history.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {history.status === "ACTIVE"
-                          ? "Đang áp dụng"
-                          : "Đã hoàn tác"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-700">
-                        {history.createdByName}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-gray-700">
-                        {formatDate(history.createdAt)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {history.status === "ACTIVE" ? (
-                        <button
-                          onClick={() => handleOpenRollbackModal(history)}
-                          className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center gap-1"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="w-3 h-3"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                    </div>
+                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                      {contractGroup.histories?.length || 0} lịch sử
+                    </span>
+                  </div>
+                </div>
+
+                {/* Histories Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Mã
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Người bị thay
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Người làm thay
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Ngày điều động
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Trạng thái
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Người tạo
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                          Ngày tạo
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                          Hành động
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(contractGroup.histories || []).map(
+                        (history: any, idx: number) => (
+                          <tr
+                            key={`history-${history.id}-${idx}`}
+                            className="border-b hover:bg-gray-50"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                            />
-                          </svg>
-                          Hoàn tác
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-500">
-                          Đã hoàn tác vào{" "}
-                          {history.rolledBackAt
-                            ? formatDate(history.rolledBackAt)
-                            : "N/A"}
-                        </span>
+                            <td className="px-4 py-3">
+                              <span className="text-sm font-mono font-medium text-blue-600">
+                                #{history.id}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm">
+                                <div className="font-semibold text-gray-900">
+                                  {history.replacedEmployeeName}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ID: {history.replacedEmployeeId}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm">
+                                <div className="font-semibold text-gray-900">
+                                  {history.replacementEmployeeName}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ID: {history.replacementEmployeeId}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm text-gray-700">
+                                {(history.reassignmentDates || []).map(
+                                  (date: string, dIdx: number) => (
+                                    <div key={`date-${dIdx}`}>
+                                      {formatDate(date)}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  history.status === "ACTIVE"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {history.status === "ACTIVE"
+                                  ? "Đang áp dụng"
+                                  : "Đã hoàn tác"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm text-gray-700">
+                                {history.createdByUsername}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm text-gray-700">
+                                {formatDate(history.createdAt)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {history.status === "ACTIVE" ? (
+                                <button
+                                  onClick={() =>
+                                    handleOpenRollbackModal(history)
+                                  }
+                                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center gap-1"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                    />
+                                  </svg>
+                                  Hoàn tác
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-500">
+                                  Đã hoàn tác{" "}
+                                  {history.rollbackAt
+                                    ? `(${formatDate(history.rollbackAt)})`
+                                    : ""}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+
+            {/* Pagination */}
+            {historyTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Hiển thị</span>
+                  <select
+                    value={historyPageSize}
+                    onChange={(e) => {
+                      setHistoryPageSize(Number(e.target.value));
+                      setHistoryPage(0);
+                    }}
+                    className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                  <span className="text-sm text-gray-600">kết quả</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setHistoryPage((prev) => Math.max(0, prev - 1))
+                    }
+                    disabled={historyPage === 0}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Trước
+                  </button>
+
+                  <span className="text-sm text-gray-600">
+                    Trang {historyPage + 1} / {historyTotalPages}
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      setHistoryPage((prev) =>
+                        Math.min(historyTotalPages - 1, prev + 1)
+                      )
+                    }
+                    disabled={historyPage >= historyTotalPages - 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1916,18 +2000,6 @@ export default function CustomerDetail() {
             </div>
 
             {/* Search */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Tìm kiếm nhân viên..."
-                value={searchEmployee}
-                onChange={(e) => {
-                  setSearchEmployee(e.target.value);
-                  loadEmployees();
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
 
             {/* Employee List (with month/year filter + pagination) */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -2566,70 +2638,85 @@ export default function CustomerDetail() {
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                   </div>
+                ) : assignedEmployees.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8 text-sm">
+                    Chưa có nhân viên phụ trách
+                  </p>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {assignedEmployees.length === 0 ? (
-                      <p className="text-center text-gray-500 py-8 text-sm">
-                        Chưa có nhân viên phụ trách
-                      </p>
-                    ) : (
-                      assignedEmployees.map((assignment, aIdx) => (
-                        <label
-                          key={`replaced-${
-                            assignment.id ?? assignment.employeeId ?? aIdx
-                          }`}
-                          className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                            reassignmentForm.replacedEmployeeId ===
-                            assignment.employeeId
-                              ? "border-purple-500 bg-purple-50"
-                              : "border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={
-                              reassignmentForm.replacedEmployeeId ===
-                              assignment.employeeId
-                            }
-                            onChange={(e) => {
-                              setReassignmentForm({
-                                ...reassignmentForm,
-                                replacedEmployeeId: e.target.checked
-                                  ? assignment.employeeId
-                                  : null,
-                              });
-                            }}
-                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          />
-                          <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-red-600">
-                              {assignment.employeeName?.charAt(0) || "N"}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-gray-900 truncate">
-                              {assignment.employeeName}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {assignment.employeeCode}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {assignment.startDate && (
-                                <span>
-                                  Phụ trách từ{" "}
-                                  {formatDate(assignment.startDate)}
-                                </span>
-                              )}
-                              {assignment.workDays !== undefined &&
-                                assignment.workDays !== null && (
-                                  <span className="ml-2">
-                                    • {assignment.workDays} ngày
-                                  </span>
-                                )}
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {assignedEmployees.map(
+                      (contractGroup: any, groupIdx: number) => (
+                        <div key={`contract-replaced-${contractGroup.contractId}-${groupIdx}`}>
+                          {/* Contract Header */}
+                          <div className="bg-blue-50 px-3 py-2 rounded-t-lg border border-blue-200">
+                            <p className="text-xs font-semibold text-blue-800">
+                              Hợp đồng {contractGroup.contractId}:  {contractGroup.contractDescription }
                             </p>
                           </div>
-                        </label>
-                      ))
+                          {/* Assignments under this contract */}
+                          <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
+                            {contractGroup.assignments && contractGroup.assignments.length > 0 ? (
+                              contractGroup.assignments.map((assignment: any, aIdx: number) => (
+                                <label
+                                  key={`replaced-${assignment.id ?? assignment.employeeId ?? aIdx}`}
+                                  className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
+                                    reassignmentForm.replacedAssignmentId === assignment.id
+                                      ? "border-purple-500 bg-purple-50"
+                                      : "border-gray-200 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={reassignmentForm.replacedAssignmentId === assignment.id}
+                                    onChange={(e) => {
+                                      console.log("Selected assignment:", {
+                                        id: assignment.id,
+                                        employeeId: assignment.employeeId,
+                                        employeeName: assignment.employeeName,
+                                        contractId: contractGroup.contractId,
+                                        contractDescription: contractGroup.contractDescription
+                                      });
+                                      setReassignmentForm({
+                                        ...reassignmentForm,
+                                        replacedEmployeeId: e.target.checked ? assignment.employeeId : null,
+                                        replacedAssignmentId: e.target.checked ? assignment.id : null,
+                                      });
+                                    }}
+                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                  />
+                                  <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-sm font-semibold text-red-600">
+                                      {assignment.employeeName?.charAt(0) || "N"}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-sm text-gray-900 truncate">
+                                      {assignment.employeeName}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {assignment.employeeCode}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                      {assignment.startDate && (
+                                        <span>
+                                          Phụ trách từ {formatDate(assignment.startDate)}
+                                        </span>
+                                      )}
+                                      {assignment.workDays !== undefined && assignment.workDays !== null && (
+                                        <span className="ml-2">• {assignment.workDays} ngày</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </label>
+                              ))
+                            ) : (
+                              <p className="text-center text-gray-400 py-4 text-xs">
+                                Chưa có nhân viên
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )
                     )}
                   </div>
                 )}
@@ -2828,166 +2915,6 @@ export default function CustomerDetail() {
               </button>
             </div>
 
-            {/* Service Section Header */}
-            <div className="mb-6 pb-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Thông tin dịch vụ
-              </h3>
-              <p className="text-sm text-gray-500">
-                Nhập thông tin dịch vụ mới cho hợp đồng
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={contractForm.serviceName}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      serviceName: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: Dọn dẹp văn phòng"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại dịch vụ *
-                </label>
-                <select
-                  value={contractForm.serviceServiceType}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      serviceServiceType: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="RECURRING">Định kỳ (RECURRING)</option>
-                  <option value="ONE_TIME">Một lần (ONE_TIME)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá dịch vụ (VND) *
-                </label>
-                <input
-                  type="text"
-                  value={contractForm.servicePrice}
-                  onChange={(e) => {
-                    const rawValue = handleNumberInput(e.target.value);
-                    if (rawValue === "") {
-                      setContractForm({
-                        ...contractForm,
-                        servicePrice: "",
-                        finalPrice: 0,
-                      });
-                      return;
-                    }
-                    const price = Number(rawValue) || 0;
-                    const vatValue =
-                      contractForm.serviceVat === ""
-                        ? 0
-                        : Number(contractForm.serviceVat);
-                    setContractForm({
-                      ...contractForm,
-                      servicePrice: formatNumber(rawValue),
-                      finalPrice: price + (price * vatValue) / 100,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập giá dịch vụ"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (%) *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={contractForm.serviceVat}
-                  onChange={(e) => {
-                    const vat =
-                      e.target.value === "" ? 0 : Number(e.target.value);
-                    // Parse formatted price to get raw number
-                    const priceStr = String(contractForm.servicePrice || "");
-                    const rawPrice = parseFormattedNumber(priceStr);
-                    const price = Number(rawPrice) || 0;
-                    setContractForm({
-                      ...contractForm,
-                      serviceVat: e.target.value,
-                      finalPrice: price + (price * vat) / 100,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập VAT (%)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày áp dụng giá *
-                </label>
-                <input
-                  type="date"
-                  value={contractForm.serviceEffectiveFrom}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      serviceEffectiveFrom: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng giá (Giá dịch vụ + VAT) (VNĐ)
-                </label>
-                <input
-                  type="text"
-                  value={
-                    contractForm.finalPrice
-                      ? formatNumber(contractForm.finalPrice)
-                      : ""
-                  }
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả dịch vụ
-                </label>
-                <textarea
-                  value={contractForm.serviceDescription}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      serviceDescription: e.target.value,
-                    })
-                  }
-                  rows={2}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Chi tiết về dịch vụ..."
-                />
-              </div>
-            </div>
-
             {/* Contract Section Header */}
             <div className="mt-6 mb-4 pt-6 border-t">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
@@ -3007,6 +2934,8 @@ export default function CustomerDetail() {
                     setContractForm({
                       ...contractForm,
                       startDate: e.target.value,
+                      // Keep serviceEffectiveFrom in sync with contract start date
+                      serviceEffectiveFrom: e.target.value,
                     })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -3143,6 +3072,141 @@ export default function CustomerDetail() {
               </div>
             </div>
 
+            {/* Service Section Header */}
+            <div className="mb-6 pb-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Thông tin dịch vụ trong hợp đồng
+              </h3>
+              <p className="text-sm text-gray-500">
+                Nhập thông tin dịch vụ mới cho hợp đồng
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên dịch vụ *
+                </label>
+                <input
+                  type="text"
+                  value={contractForm.serviceName}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      serviceName: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: Dọn dẹp văn phòng"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giá dịch vụ (VND) *
+                </label>
+                <input
+                  type="text"
+                  value={contractForm.servicePrice}
+                  onChange={(e) => {
+                    const rawValue = handleNumberInput(e.target.value);
+                    if (rawValue === "") {
+                      setContractForm({
+                        ...contractForm,
+                        servicePrice: "",
+                        finalPrice: 0,
+                      });
+                      return;
+                    }
+                    const price = Number(rawValue) || 0;
+                    const vatValue =
+                      contractForm.serviceVat === ""
+                        ? 0
+                        : Number(contractForm.serviceVat);
+                    setContractForm({
+                      ...contractForm,
+                      servicePrice: formatNumber(rawValue),
+                      finalPrice: price + (price * vatValue) / 100,
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập giá dịch vụ"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  VAT (%) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={contractForm.serviceVat}
+                  onChange={(e) => {
+                    const vat =
+                      e.target.value === "" ? 0 : Number(e.target.value);
+                    // Parse formatted price to get raw number
+                    const priceStr = String(contractForm.servicePrice || "");
+                    const rawPrice = parseFormattedNumber(priceStr);
+                    const price = Number(rawPrice) || 0;
+                    setContractForm({
+                      ...contractForm,
+                      serviceVat: e.target.value,
+                      finalPrice: price + (price * vat) / 100,
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập VAT (%)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ngày áp dụng giá
+                </label>
+                <input
+                  type="date"
+                  value={contractForm.serviceEffectiveFrom}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tổng giá (Giá dịch vụ + VAT) (VNĐ)
+                </label>
+                <input
+                  type="text"
+                  value={
+                    contractForm.finalPrice
+                      ? formatNumber(contractForm.finalPrice)
+                      : ""
+                  }
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả dịch vụ
+                </label>
+                <textarea
+                  value={contractForm.serviceDescription}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      serviceDescription: e.target.value,
+                    })
+                  }
+                  rows={2}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Chi tiết về dịch vụ..."
+                />
+              </div>
+            </div>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setShowAddContractModal(false)}

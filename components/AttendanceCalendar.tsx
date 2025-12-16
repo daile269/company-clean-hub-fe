@@ -22,9 +22,18 @@ const updateAssignment = async (assignment: Assignment, allowance: number) => {
         throw new Error("Assignment không hợp lệ");
     }
 
-    const payload = {
-        ...assignment,
+    // Build payload based on AssignmentCreateRequest structure
+    const payload: any = {
+        employeeId: assignment.employeeId,
+        contractId: assignment.contractId,
+        startDate: assignment.startDate,
+        scope: assignment.scope,
+        status: assignment.status,
+        assignmentType: assignment.assignmentType,
+        salaryAtTime: assignment.salaryAtTime,
         additionalAllowance: allowance,
+        workingDaysPerWeek: assignment.workingDaysPerWeek,
+        description: assignment.description,
     };
 
     return assignmentService.update(assignment.id, payload);

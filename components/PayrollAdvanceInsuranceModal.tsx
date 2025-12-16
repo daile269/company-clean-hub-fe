@@ -89,10 +89,22 @@ export default function PayrollAdvanceInsuranceModal({
         insuranceAmount: insuranceAmount || undefined,
       };
 
-      const response = await payrollService.calculatePayroll(createData);
-      setPayroll(response);
-      setAdvanceAmount(response.advanceTotal || 0);
-      setInsuranceAmount(response.insuranceTotal || 0);
+      const payrollAssignments = await payrollService.calculatePayroll(createData);
+      
+      // calculatePayroll returns array with 1 item for single employee
+      if (!payrollAssignments || payrollAssignments.length === 0) {
+        throw new Error("Không có dữ liệu bảng lương được trả về");
+      }
+
+      const payrollAssignment = payrollAssignments[0];
+      const payrollId = payrollAssignment.payrollId;
+
+      // Fetch full Payroll object using payrollId
+      const createdPayroll = await payrollService.getPayrollById(payrollId);
+      
+      setPayroll(createdPayroll);
+      setAdvanceAmount(createdPayroll.advanceTotal || 0);
+      setInsuranceAmount(createdPayroll.insuranceTotal || 0);
       toast.success("Tạo bảng lương thành công");
       setMode("view-payroll");
       onSuccess?.();

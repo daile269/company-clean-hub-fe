@@ -11,9 +11,8 @@ export default function PayrollPage() {
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterMonth, setFilterMonth] = useState<string>("all");
-  const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterMonth, setFilterMonth] = useState<string>((new Date().getMonth() + 1).toString());
+  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
   const [showCalculateModal, setShowCalculateModal] = useState(false);
 
   // Pagination state
@@ -23,19 +22,13 @@ export default function PayrollPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const pageSize = 10;
 
-
-  const loadPayrolls = async (options?: { showOverlay?: boolean; message?: string }) => {
-    const shouldShowOverlay = options?.showOverlay ?? true;
+  const loadPayrolls = async () => {
     try {
       setLoading(true);
-      // if (shouldShowOverlay) {
-      //   showOverlay(options?.message || "Đang tải danh sách bảng lương...");
-      // }
       const response = await payrollService.getPayrolls({
         keyword: searchTerm,
         month: filterMonth !== "all" ? Number(filterMonth) : undefined,
         year: filterYear !== "all" ? Number(filterYear) : undefined,
-        isPaid: filterStatus === "all" ? undefined : filterStatus === "paid",
         page: currentPage,
         pageSize,
       });
@@ -54,22 +47,19 @@ export default function PayrollPage() {
       toast.error("Không thể tải danh sách bảng lương");
     } finally {
       setLoading(false);
-      // if (shouldShowOverlay) {
-      //   hideOverlay();
-      // }
     }
   };
 
   // Load data on mount and when filters change
   useEffect(() => {
-    loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." });
-  }, [currentPage, filterMonth, filterYear, filterStatus]);
+    loadPayrolls();
+  }, [currentPage, filterMonth, filterYear]);
 
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       if (currentPage === 0) {
-        loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." });
+        loadPayrolls();
       } else {
         setCurrentPage(0);
       }
@@ -85,8 +75,6 @@ export default function PayrollPage() {
     }).format(amount);
   };
 
-
-
   const totalPayroll = payrolls.reduce((sum, p) => sum + p.finalSalary, 0);
   const paidPayrolls = payrolls.filter((p) => p.isPaid).length;
   const unpaidPayrolls = payrolls.filter((p) => !p.isPaid).length;
@@ -97,7 +85,7 @@ export default function PayrollPage() {
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => setShowCalculateModal(true)}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
           >
@@ -122,9 +110,7 @@ export default function PayrollPage() {
       <PayrollCalculateModal
         isOpen={showCalculateModal}
         onClose={() => setShowCalculateModal(false)}
-        onSuccess={() =>
-          loadPayrolls({ showOverlay: true, message: "Đang tải danh sách bảng lương..." })
-        }
+        onSuccess={() => loadPayrolls()}
       />
 
       <PayrollExportModal
@@ -250,7 +236,7 @@ export default function PayrollPage() {
         <>
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tìm kiếm
@@ -260,7 +246,7 @@ export default function PayrollPage() {
                   placeholder="Tên, mã nhân viên..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
@@ -274,18 +260,9 @@ export default function PayrollPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="all">Tất cả</option>
-                  <option value="1">Tháng 1</option>
-                  <option value="2">Tháng 2</option>
-                  <option value="3">Tháng 3</option>
-                  <option value="4">Tháng 4</option>
-                  <option value="5">Tháng 5</option>
-                  <option value="6">Tháng 6</option>
-                  <option value="7">Tháng 7</option>
-                  <option value="8">Tháng 8</option>
-                  <option value="9">Tháng 9</option>
-                  <option value="10">Tháng 10</option>
-                  <option value="11">Tháng 11</option>
-                  <option value="12">Tháng 12</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>Tháng {m}</option>
+                  ))}
                 </select>
               </div>
 
@@ -304,23 +281,8 @@ export default function PayrollPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái
-                </label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="paid">Đã thanh toán</option>
-                  <option value="unpaid">Chưa thanh toán</option>
-                </select>
-              </div>
-
               <div className="flex items-end">
-                <button 
+                <button
                   className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
                   onClick={() => setShowExportModal(true)}
                 >
@@ -333,75 +295,47 @@ export default function PayrollPage() {
           {/* Table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
-              <div className="min-w-full align-middle">
-                <table className="w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Mã NV
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tên nhân viên
-                      </th>
-                
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tháng/Năm
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ngày công
-                      </th>
-                      
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tổng lương
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Trạng thái
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên nhân viên</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tháng/Năm</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày công</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng lương</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
                   {payrolls.map((payroll) => (
-                    <tr 
-                      key={payroll.id} 
+                    <tr
+                      key={payroll.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => router.push(`/admin/payroll/${payroll.id}`)}
                     >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {payroll.employeeCode}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {payroll.employeeName}
-                        </td>
-                       
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Tháng {payroll.month}/{payroll.year}
-                        </td>
-                        
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {payroll.totalDays} ngày
-                        </td>
-                        
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900">
-                          {formatCurrency(payroll.finalSalary)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              payroll.isPaid
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{payroll.employeeCode}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{payroll.employeeName}</td>
+                      <td className="px-6 py-4 text-sm text-center text-gray-700">
+                        Tháng {payroll.month}/{payroll.year}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center text-gray-700">{payroll.totalDays}</td>
+                      <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
+                        {formatCurrency(payroll.finalSalary)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${payroll.isPaid
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                             }`}
-                          >
-                            {payroll.isPaid
-                              ? "Đã thanh toán"
-                              : "Chưa thanh toán"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        >
+                          {payroll.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {payrolls.length === 0 && (
@@ -430,21 +364,19 @@ export default function PayrollPage() {
 
             {/* Pagination */}
             {totalPages > 0 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
+              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <div className="flex-1 flex justify-between sm:!hidden">
                   <button
                     onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                     disabled={currentPage === 0}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                   >
                     Trước
                   </button>
                   <button
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
-                    }
+                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
                     disabled={currentPage >= totalPages - 1}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                   >
                     Sau
                   </button>
@@ -452,94 +384,55 @@ export default function PayrollPage() {
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-700">
-                      Hiển thị{" "}
-                      <span className="font-medium">
-                        {currentPage * pageSize + 1}
-                      </span>{" "}
-                      đến{" "}
-                      <span className="font-medium">
-                        {Math.min((currentPage + 1) * pageSize, totalElements)}
-                      </span>{" "}
-                      trong tổng số{" "}
-                      <span className="font-medium">{totalElements}</span> bảng
-                      lương
+                      Hiển thị <span className="font-medium">{currentPage * pageSize + 1}</span> đến{" "}
+                      <span className="font-medium">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> trong tổng số{" "}
+                      <span className="font-medium">{totalElements}</span> bản ghi
                     </p>
                   </div>
                   <div>
-                    <nav
-                      className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                      aria-label="Pagination"
-                    >
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                       <button
-                        onClick={() =>
-                          setCurrentPage(Math.max(0, currentPage - 1))
-                        }
+                        onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                         disabled={currentPage === 0}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                       >
                         <span className="sr-only">Trước</span>
-                        <svg
-                          className="h-5 w-5"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       </button>
-                      {Array.from(
-                        { length: Math.min(5, totalPages) },
-                        (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i;
-                          } else if (currentPage < 3) {
-                            pageNum = i;
-                          } else if (currentPage > totalPages - 4) {
-                            pageNum = totalPages - 5 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                currentPage === pageNum
-                                  ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                  : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i;
+                        } else if (currentPage < 3) {
+                          pageNum = i;
+                        } else if (currentPage > totalPages - 4) {
+                          pageNum = totalPages - 5 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
                               }`}
-                            >
-                              {pageNum + 1}
-                            </button>
-                          );
-                        }
-                      )}
+                          >
+                            {pageNum + 1}
+                          </button>
+                        );
+                      })}
                       <button
-                        onClick={() =>
-                          setCurrentPage(
-                            Math.min(totalPages - 1, currentPage + 1)
-                          )
-                        }
+                        onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
                         disabled={currentPage >= totalPages - 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                       >
                         <span className="sr-only">Sau</span>
-                        <svg
-                          className="h-5 w-5"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                            clipRule="evenodd"
-                          />
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                         </svg>
                       </button>
                     </nav>
@@ -549,9 +442,7 @@ export default function PayrollPage() {
             )}
           </div>
         </>
-      )
-    }
+      )}
     </div>
   );
 }
-      

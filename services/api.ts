@@ -6,6 +6,9 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
   code: number;
+  meta?: {
+    payrollId?: string | null;
+  };
 }
 
 class ApiService {
@@ -37,52 +40,53 @@ class ApiService {
     return this.token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    // Always get the latest token from localStorage or instance
-    const token = this.getToken();
-    
-    const headers: Record<string, string> = {};
+private async request<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
 
-    // Only add Content-Type if not FormData
-    if (!(options.body instanceof FormData)) {
-      headers['Content-Type'] = 'application/json';
-    }
+  const token = this.getToken();
+  const headers: Record<string, string> = {};
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      // Handle 401 Unauthorized - token expired or invalid
-      if (response.status === 401) {
-        if (typeof window !== 'undefined') {
-          localStorage.clear();
-          this.setToken(null);
-          window.location.href = '/login';
-        }
-      }
-
-      const error = await response.json().catch(() => ({
-        success: false,
-        message: 'Có lỗi xảy ra',
-        code: response.status,
-      }));
-      throw error;
-    }
-
-    return response.json();
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
   }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${this.baseURL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  const payrollId = response.headers.get('x-payroll-id');
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      success: false,
+      message: 'Có lỗi xảy ra',
+      code: response.status,
+    }));
+
+    throw {
+      ...error,
+      meta: payrollId ? { payrollId } : undefined,
+    };
+  }
+
+  const data = await response.json();
+
+  return {
+    ...data,
+    meta: payrollId ? { payrollId } : undefined,
+  };
+}
+
+
   async getFile(endpoint: string): Promise<Blob> {
     const token = this.getToken();
-console.log("3 Exporting Excel file...");
+    console.log("3 Exporting Excel file...");
     const headers: Record<string, string> = {};
 
     if (token) {
@@ -92,8 +96,8 @@ console.log("3 Exporting Excel file...");
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: "GET",
       headers,
-    }); 
-console.log("4 Exporting Excel file...",  response);
+    });
+    console.log("4 Exporting Excel file...", response);
     if (!response.ok) {
       if (response.status === 401 && typeof window !== "undefined") {
         localStorage.clear();
@@ -130,34 +134,34 @@ console.log("4 Exporting Excel file...",  response);
   }
 
   async postFormData<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
-  const token = this.getToken();
+    const token = this.getToken();
 
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  const response = await fetch(`${this.baseURL}${endpoint}`, {
-    method: 'POST',
-    body: formData,
-    headers,
-  });
-
-  if (!response.ok) {
-    if (response.status === 401 && typeof window !== 'undefined') {
-      localStorage.clear();
-      this.setToken(null);
-      window.location.href = '/login';
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    const error = await response.json().catch(() => ({
-      success: false,
-      message: 'Có lỗi xảy ra',
-      code: response.status,
-    }));
-    throw error;
-  }
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      body: formData,
+      headers,
+    });
 
-  return response.json();
-}
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
+        localStorage.clear();
+        this.setToken(null);
+        window.location.href = '/login';
+      }
+      const error = await response.json().catch(() => ({
+        success: false,
+        message: 'Có lỗi xảy ra',
+        code: response.status,
+      }));
+      throw error;
+    }
+
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService();

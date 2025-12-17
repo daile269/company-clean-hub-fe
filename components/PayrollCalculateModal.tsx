@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import payrollService from "@/services/payrollService";
 import { employeeService } from "@/services/employeeService";
 import { toast } from "react-hot-toast";
+import { useRouter } from 'next/navigation';
+
 
 interface PayrollCalculateModalProps {
   isOpen: boolean;
@@ -27,7 +29,7 @@ export default function PayrollCalculateModal({
     year: new Date().getFullYear(),
   });
   const [loading, setLoading] = useState(false);
-
+  const router = useRouter();
   // Employee selection states
   const [employees, setEmployees] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,8 +150,11 @@ export default function PayrollCalculateModal({
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Đã xảy ra lỗi khi tính lương");
-      console.error("Error:", error);
+      if (error.meta.payrollId === undefined){
+        toast.error(error.message || "Đã xảy ra lỗi khi tính lương")
+      }else {
+        router.push(`/admin/payroll/${error.meta.payrollId}`)
+      }
     } finally {
       setLoading(false);
     }

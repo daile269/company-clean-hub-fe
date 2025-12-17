@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import payrollService, { Payroll } from "@/services/payrollService";
+import payrollService, { Payroll, PayrollStatus } from "@/services/payrollService";
 import PayrollCalculateModal from "@/components/PayrollCalculateModal";
 import PayrollExportModal from "@/components/PayrollExportModal";
 import toast, { Toaster } from "react-hot-toast";
@@ -76,8 +76,26 @@ export default function PayrollPage() {
   };
 
   const totalPayroll = payrolls.reduce((sum, p) => sum + p.finalSalary, 0);
-  const paidPayrolls = payrolls.filter((p) => p.isPaid).length;
-  const unpaidPayrolls = payrolls.filter((p) => !p.isPaid).length;
+  const paidPayrolls = payrolls.filter((p) => p.status === 'PAID').length;
+  const unpaidPayrolls = payrolls.filter((p) => p.status === 'UNPAID' || p.status === 'PARTIAL_PAID').length;
+
+  const getStatusLabel = (status: PayrollStatus): string => {
+    switch (status) {
+      case 'UNPAID': return 'Chưa trả';
+      case 'PARTIAL_PAID': return 'Đã trả một phần';
+      case 'PAID': return 'Đã trả đủ';
+      default: return '';
+    }
+  };
+
+  const getStatusColor = (status: PayrollStatus): string => {
+    switch (status) {
+      case 'UNPAID': return 'bg-red-100 text-red-800';
+      case 'PARTIAL_PAID': return 'bg-orange-100 text-orange-800';
+      case 'PAID': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <div className="relative">
@@ -324,12 +342,9 @@ export default function PayrollPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${payroll.isPaid
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                            }`}
+                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payroll.status)}`}
                         >
-                          {payroll.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+                          {getStatusLabel(payroll.status)}
                         </span>
                       </td>
                     </tr>

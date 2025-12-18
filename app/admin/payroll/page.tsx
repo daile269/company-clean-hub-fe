@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import payrollService, { Payroll, PayrollStatus } from "@/services/payrollService";
 import PayrollCalculateModal from "@/components/PayrollCalculateModal";
 import PayrollExportModal from "@/components/PayrollExportModal";
+import { usePermission } from '@/hooks/usePermission';
 import toast, { Toaster } from "react-hot-toast";
 
 export default function PayrollPage() {
@@ -21,6 +22,11 @@ export default function PayrollPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
   const pageSize = 10;
+
+  // Permission checks
+  const canView = usePermission('PAYROLL_VIEW');
+  const canCreate = usePermission('PAYROLL_CREATE');
+  const canExport = usePermission(['PAYROLL_VIEW', 'PAYROLL_EXPORT'], true);
 
   const loadPayrolls = async () => {
     try {
@@ -97,39 +103,55 @@ export default function PayrollPage() {
     }
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem bảng lương
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowCalculateModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {canCreate && (
+            <button
+              onClick={() => setShowCalculateModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Tính lương
-          </button>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Tính lương
+            </button>
+          )}
         </div>
       </div>
 
-      <PayrollCalculateModal
-        isOpen={showCalculateModal}
-        onClose={() => setShowCalculateModal(false)}
-        onSuccess={() => loadPayrolls()}
-      />
+      {canCreate && (
+        <PayrollCalculateModal
+          isOpen={showCalculateModal}
+          onClose={() => setShowCalculateModal(false)}
+          onSuccess={() => loadPayrolls()}
+        />
+      )}
 
       <PayrollExportModal
         isOpen={showExportModal}
@@ -299,14 +321,16 @@ export default function PayrollPage() {
                 </select>
               </div>
 
-              <div className="flex items-end">
-                <button
-                  className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
-                  onClick={() => setShowExportModal(true)}
-                >
-                  Xuất Excel
-                </button>
-              </div>
+              {canExport && (
+                <div className="flex items-end">
+                  <button
+                    className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+                    onClick={() => setShowExportModal(true)}
+                  >
+                    Xuất Excel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

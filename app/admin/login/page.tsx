@@ -31,7 +31,7 @@ export default function LoginPage() {
             console.log("Router push failed, using window.location");
             window.location.replace("/admin");
           }
-        }, 500);
+        }, 800);
       } else {
         setError(response.message || "Đăng nhập thất bại");
         setLoading(false);
@@ -188,13 +188,19 @@ export default function LoginPage() {
           {/* Demo Credentials */}
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600 mb-3 font-medium">
-              Tài khoản demo:
+              Tài khoản thử nghiệm:
             </p>
             <div className="space-y-2 text-xs">
               <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium text-gray-700">Quản lý tổng:</p>
-                <p className="text-gray-600">Username: qlt1</p>
-                <p className="text-gray-600">Password: Pass123456</p>
+                <p className=" text-gray-700 font-bold">Tên đăng nhập cho các vai trò:</p>
+                <p className="text-gray-600">Quản lý tổng 1: qlt1</p>
+                <p className="text-gray-600">Quản lý tổng 2: qlt2</p>
+                <p className="text-gray-600">Quản lý vùng: qlv</p>
+                <p className="text-gray-600">User kế toán: accountant01</p>
+                <p className="text-gray-600">User nhân viên: NV007</p>
+                <p className="text-gray-600">User khách hàng: kh01</p>
+                <br />
+                <p className="text-gray-600 font-bold">Mật khẩu dùng chung: Pass123456</p>
               </div>
             </div>
           </div>

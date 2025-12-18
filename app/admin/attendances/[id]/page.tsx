@@ -3,6 +3,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import toast, { Toaster } from "react-hot-toast";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function AttendanceDetailPage({
   params,
@@ -11,6 +12,11 @@ export default function AttendanceDetailPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
+
+  // Permission checks
+  const canView = usePermission("ATTENDANCE_VIEW");
+  const canEdit = usePermission("ATTENDANCE_EDIT");
+  const canDelete = usePermission("ATTENDANCE_DELETE");
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -35,7 +41,7 @@ export default function AttendanceDetailPage({
   };
 
   const handleUpdate = async () => {
-    if (!editForm) return;
+    if (!editForm || !canEdit) return;
 
     try {
       await attendanceService.update(id, editForm);
@@ -49,6 +55,7 @@ export default function AttendanceDetailPage({
   };
 
   const handleDelete = async () => {
+    if (!canDelete) return;
     if (!confirm("Bạn có chắc chắn muốn xóa bản ghi chấm công này?")) return;
 
     try {

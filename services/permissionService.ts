@@ -1,3 +1,4 @@
+
 import { apiService, ApiResponse } from './api';
 
 export interface UserPermissionsResponse {
@@ -13,8 +14,7 @@ class PermissionService {
 
   // Fetch permissions from API
   async fetchUserPermissions(): Promise<ApiResponse<UserPermissionsResponse>> {
-    const response = await apiService.get<UserPermissionsResponse>('/users/permissions');
-    
+    const response = await apiService.get<UserPermissionsResponse>('/users/me/permissions');
     if (response.success && response.data) {
       this.setPermissions(response.data.permissions);
     }

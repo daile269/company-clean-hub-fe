@@ -10,10 +10,17 @@ import AttendanceEditModal from "@/components/AttendanceEditModal";
 import AttendanceCalendar from "@/components/AttendanceCalendar";
 import toast, { Toaster } from "react-hot-toast";
 import FullPageLoading from "@/components/shared/FullPageLoading";
+import { usePermission } from "@/hooks/usePermission";
 export default function PayrollDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+
+  // Permission checks
+  const canView = usePermission("PAYROLL_VIEW");
+  const canEdit = usePermission("PAYROLL_EDIT");
+  const canMarkPaid = usePermission("PAYROLL_MARK_PAID");
+  const canEditAttendance = usePermission("ATTENDANCE_EDIT");
 
   const [payroll, setPayroll] = useState<Payroll | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,6 +191,17 @@ export default function PayrollDetailPage() {
     return colorMap[type] || "bg-gray-100 text-gray-800";
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem chi tiết bảng lương
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!payroll) {
     return (
@@ -223,7 +241,7 @@ export default function PayrollDetailPage() {
           </h1>
         </div>
         <div className="flex gap-3">
-          {payroll.status !== 'PAID' && (
+          {payroll.status !== 'PAID' && canMarkPaid && (
             <button
               onClick={() => setShowPaymentModal(true)}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
@@ -244,25 +262,27 @@ export default function PayrollDetailPage() {
               Thanh toán lương
             </button>
           )}
-          <button
-            onClick={() => setShowUpdateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {canEdit && (
+            <button
+              onClick={() => setShowUpdateModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            Cập nhật & Tính lại
-          </button>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Cập nhật & Tính lại
+            </button>
+          )}
         </div>
       </div>
 
@@ -535,7 +555,7 @@ export default function PayrollDetailPage() {
       </div>
 
       {/* Update Modal */}
-      {payroll && (
+      {payroll && canEdit && (
         <PayrollUpdateModal
           isOpen={showUpdateModal}
           onClose={() => setShowUpdateModal(false)}
@@ -550,29 +570,33 @@ export default function PayrollDetailPage() {
       )}
 
       {/* Payment Modal */}
-      <PayrollPaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        payroll={payroll}
-        onSuccess={() => {
-          toast.success("Đã cập nhật thanh toán thành công!");
-          loadPayroll({});
-        }}
-      />
+      {canMarkPaid && (
+        <PayrollPaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          payroll={payroll}
+          onSuccess={() => {
+            toast.success("Đã cập nhật thanh toán thành công!");
+            loadPayroll({});
+          }}
+        />
+      )}
 
       {/* Edit Attendance Modal */}
-      <AttendanceEditModal
-        isOpen={showEditAttendanceModal}
-        onClose={() => {
-          setShowEditAttendanceModal(false);
-          setSelectedAttendance(null);
-        }}
-        onSuccess={handleEditAttendanceSuccess}
-        attendance={selectedAttendance}
-        onStartLoading={() => setLoading(true)}
-        onStopLoading={() => setLoading(false)}
-        onShowToast={(msg, type) => showToast(msg, type)}
-      />
+      {canEditAttendance && (
+        <AttendanceEditModal
+          isOpen={showEditAttendanceModal}
+          onClose={() => {
+            setShowEditAttendanceModal(false);
+            setSelectedAttendance(null);
+          }}
+          onSuccess={handleEditAttendanceSuccess}
+          attendance={selectedAttendance}
+          onStartLoading={() => setLoading(true)}
+          onStopLoading={() => setLoading(false)}
+          onShowToast={(msg, type) => showToast(msg, type)}
+        />
+      )}
 
       {/* Attendance Calendar for this payroll's employee/month */}
       <div className="mt-6">
@@ -586,7 +610,7 @@ export default function PayrollDetailPage() {
           payrollCalculatedDate={payroll.createdAt}
           onSuccess={handleEditAttendanceSuccess}
           loading={attLoading}
-          onEditAttendance={handleEditAttendance}
+          onEditAttendance={canEditAttendance ? handleEditAttendance : undefined}
           onAsyncStart={(message) =>
             showOverlay(message || "Đang cập nhật phụ cấp...")
           }

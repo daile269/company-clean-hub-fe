@@ -9,6 +9,7 @@ import invoiceService, { Invoice, InvoiceCreateRequest } from "@/services/invoic
 import { apiService } from "@/services/api";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function ContractDetailPage() {
   const params = useParams();
@@ -51,6 +52,15 @@ export default function ContractDetailPage() {
     status: "PAID" as string,
     notes: "",
   });
+
+  // Permission checks
+  const canView = usePermission("CONTRACT_VIEW");
+  const canEdit = usePermission("CONTRACT_EDIT");
+  const canCreate = usePermission("CONTRACT_CREATE");
+  const canDelete = usePermission("CONTRACT_DELETE");
+  const canManageCost = usePermission("COST_MANAGE");
+  const canCreateService = usePermission("SERVICE_CREATE");
+  const canEditService = usePermission("SERVICE_EDIT");
 
   // Load contract details
   useEffect(() => {
@@ -188,13 +198,13 @@ export default function ContractDetailPage() {
   };
 
   const handleEdit = () => {
-    if (!contract) return;
+    if (!contract || !canEdit) return;
     setEditForm({ ...contract });
     setShowEditModal(true);
   };
 
   const handleSaveEdit = async () => {
-    if (!contract || !editForm) return;
+    if (!contract || !editForm || !canEdit) return;
 
     try {
       setSavingContract(true);
@@ -236,7 +246,7 @@ export default function ContractDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!contract) return;
+    if (!contract || !canDelete) return;
 
     if (confirm("Xác nhận xóa hợp đồng này?")) {
       try {
@@ -251,6 +261,7 @@ export default function ContractDetailPage() {
   };
 
   const handleAddService = () => {
+    if (!canEdit) return;
     setEditingService(null);
     setServiceForm({
       title: "",
@@ -264,6 +275,7 @@ export default function ContractDetailPage() {
   };
 
   const handleEditService = (service: any) => {
+    if (!canEdit) return;
     setEditingService(service);
     setServiceForm({
       title: service.title,
@@ -277,6 +289,7 @@ export default function ContractDetailPage() {
   };
 
   const handleSaveService = async () => {
+    if (!canEdit) return;
     // Parse formatted numbers correctly
     const rawPrice = parseFormattedNumber(String(serviceForm.price || ""));
     const servicePrice = Number(rawPrice) || 0;
@@ -340,6 +353,7 @@ export default function ContractDetailPage() {
   };
 
   const handleCreateInvoice = () => {
+    if (!canManageCost) return;
     setInvoiceForm({
       invoiceMonth: new Date().getMonth() + 1,
       invoiceYear: new Date().getFullYear(),
@@ -350,7 +364,7 @@ export default function ContractDetailPage() {
   };
 
   const handleDeleteInvoice = async (invoiceId: number) => {
-    if (!contract) return;
+    if (!contract || !canManageCost) return;
 
     if (!confirm('Xác nhận xóa hóa đơn này?')) return;
 
@@ -373,7 +387,7 @@ export default function ContractDetailPage() {
   };
 
   const handleSaveInvoice = async () => {
-    if (!contract) return;
+    if (!contract || !canManageCost) return;
 
     try {
       setSavingInvoice(true);
@@ -448,6 +462,7 @@ export default function ContractDetailPage() {
   };
 
   const handleUpdateInvoiceStatus = (invoice: Invoice) => {
+    if (!canManageCost) return;
     setSelectedInvoice(invoice);
     setStatusUpdateForm({
       status: invoice.status,
@@ -509,6 +524,20 @@ export default function ContractDetailPage() {
       toast.error('Không thể xuất file Excel');
     }
   };
+
+  if (!canView) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Bạn không có quyền xem hợp đồng
+            </h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -580,10 +609,11 @@ export default function ContractDetailPage() {
           </button>
 
           <div className="flex gap-3">
-            <button
-              onClick={handleCreateInvoice}
-              className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
-            >
+            {canManageCost && (
+              <button
+                onClick={handleCreateInvoice}
+                className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+              >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="w-4 h-4"
@@ -600,6 +630,8 @@ export default function ContractDetailPage() {
               </svg>
               Xuất hóa đơn
             </button>
+            )}
+            {canEdit && (
             <button
               onClick={handleEdit}
               className="px-4 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
@@ -620,7 +652,9 @@ export default function ContractDetailPage() {
               </svg>
               Sửa
             </button>
-            {/* <button
+            )}
+            {canDelete && (
+             <button
               onClick={handleDelete}
               className="px-4 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
             >
@@ -639,7 +673,8 @@ export default function ContractDetailPage() {
                 />
               </svg>
               Xóa
-            </button> */}
+            </button> 
+            )}
           </div>
         </div>
 
@@ -853,6 +888,7 @@ export default function ContractDetailPage() {
             <h3 className="text-lg font-semibold text-gray-800">
               Dịch vụ trong hợp đồng
             </h3>
+            {canCreateService && (
             <button
               onClick={handleAddService}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
@@ -873,6 +909,7 @@ export default function ContractDetailPage() {
               </svg>
               Thêm dịch vụ
             </button>
+            )}
           </div>
 
           {contract.services && contract.services.length > 0 ? (
@@ -901,9 +938,11 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tổng
                     </th>
+                    {canEditService && (
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Thao tác
                     </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -944,6 +983,7 @@ export default function ContractDetailPage() {
                           )}
                         </span>
                       </td>
+                      {canEditService && (
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => handleEditService(service)}
@@ -966,6 +1006,7 @@ export default function ContractDetailPage() {
                           Sửa
                         </button>
                       </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1002,6 +1043,7 @@ export default function ContractDetailPage() {
             <h3 className="text-lg font-semibold text-gray-800">
               Hóa đơn ({invoices.length})
             </h3>
+            {canManageCost && (
             <button
               onClick={handleCreateInvoice}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
@@ -1022,6 +1064,7 @@ export default function ContractDetailPage() {
               </svg>
               Tạo hóa đơn
             </button>
+            )}
           </div>
 
           {loadingInvoices ? (

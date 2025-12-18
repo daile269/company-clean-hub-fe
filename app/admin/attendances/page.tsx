@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import toast, { Toaster } from "react-hot-toast";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function AttendancesPage() {
   const router = useRouter();
@@ -24,6 +25,10 @@ export default function AttendancesPage() {
   const [selectedYear, setSelectedYear] = useState<number>(
     new Date().getFullYear()
   );
+
+  // Permission checks
+  const canView = usePermission('ATTENDANCE_VIEW');
+  const canExport = usePermission(['ATTENDANCE_VIEW', 'ATTENDANCE_EXPORT'], true);
 
   // Debounced search
   useEffect(() => {
@@ -89,6 +94,18 @@ export default function AttendancesPage() {
     overtime: attendances.filter((a) => a.isOvertime).length,
     totalWorkHours: attendances.reduce((sum, a) => sum + a.workHours, 0),
   };
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem chấm công
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -288,28 +305,30 @@ export default function AttendancesPage() {
             </select>
           </div>
 
-          <div className="flex items-end md:justify-end">
-            <button
-              className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-              title="Xuất Excel"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+          {canExport && (
+            <div className="flex items-end md:justify-end">
+              <button
+                className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                title="Xuất Excel"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
-                />
-              </svg>
-              Xuất danh sách chấm công
-            </button>
-          </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
+                  />
+                </svg>
+                Xuất danh sách chấm công
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

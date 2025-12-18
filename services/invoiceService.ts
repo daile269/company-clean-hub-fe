@@ -61,33 +61,65 @@ const invoiceService = {
     }
   },
 
-  // Get invoice by ID
-  getById: async (id: number): Promise<Invoice> => {
+  // Get invoice by ID (returns detailed invoice with invoiceLines)
+  getById: async (id: number): Promise<any> => {
     try {
       const response = await apiService.get<any>(`/invoices/${id}`);
-      
+
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to fetch invoice');
       }
 
-      const apiInvoice = response.data;
-      return {
-        id: apiInvoice.id,
-        contractId: apiInvoice.contractId,
-        contractNumber: apiInvoice.contractNumber,
-        customerName: apiInvoice.customerName,
-        invoiceNumber: apiInvoice.invoiceNumber,
-        invoiceMonth: apiInvoice.invoiceMonth,
-        invoiceYear: apiInvoice.invoiceYear,
-        totalAmount: apiInvoice.totalAmount,
-        status: apiInvoice.status,
-        actualWorkingDays: apiInvoice.actualWorkingDays,
-        notes: apiInvoice.notes,
-        createdAt: new Date(apiInvoice.createdAt),
-        updatedAt: new Date(apiInvoice.updatedAt),
+      const d = response.data;
+
+      // Normalize API response to friendly shape for UI
+      const invoice = {
+        id: d.id,
+        contractId: d.contractId,
+        customerId: d.customerId,
+        customerName: d.customerName,
+        customerPhone: d.customerPhone,
+        customerAddress: d.customerAddress,
+        customerTaxCode: d.customerTaxCode,
+        invoiceNumber: d.invoiceNumber,
+        invoiceMonth: d.invoiceMonth,
+        invoiceYear: d.invoiceYear,
+        actualWorkingDays: d.actualWorkingDays,
+        subtotal: Number(d.subtotal ?? d.baseAmount ?? 0),
+        vatPercentage: d.vatPercentage ?? null,
+        vatAmount: Number(d.vatAmount ?? 0),
+        totalAmount: Number(d.totalAmount ?? d.total ?? 0),
+        invoiceType: d.invoiceType,
+        notes: d.notes,
+        status: d.status,
+        createdAt: d.createdAt ? new Date(d.createdAt) : null,
+        paidAt: d.paidAt ? new Date(d.paidAt) : null,
+        createdByUsername: d.createdByUsername,
+        invoiceLines: Array.isArray(d.invoiceLines)
+          ? d.invoiceLines.map((line: any) => ({
+              id: line.id,
+              serviceId: line.serviceId,
+              title: line.title,
+              description: line.description,
+              serviceType: line.serviceType,
+              unit: line.unit,
+              quantity: line.quantity,
+              price: Number(line.price ?? 0),
+              baseAmount: Number(line.baseAmount ?? 0),
+              vat: Number(line.vat ?? 0),
+              vatAmount: Number(line.vatAmount ?? 0),
+              totalAmount: Number(line.totalAmount ?? 0),
+              contractDays: line.contractDays,
+              actualDays: line.actualDays,
+              effectiveFrom: line.effectiveFrom ? new Date(line.effectiveFrom) : null,
+              createdAt: line.createdAt ? new Date(line.createdAt) : null,
+            }))
+          : [],
       };
+
+      return invoice;
     } catch (error) {
-      console.error('Error fetching invoice:', error);
+      console.error('Error fetching invoice detail:', error);
       throw error;
     }
   },
@@ -253,6 +285,18 @@ const invoiceService = {
       }
     } catch (error) {
       console.error('Error deleting invoice:', error);
+      throw error;
+    }
+  },
+
+  // Export invoice as Excel (returns Blob)
+  exportExcel: async (id: number): Promise<Blob> => {
+    try {
+      // apiService.getFile should return a Blob
+      const blob = await apiService.getFile(`/invoices/${id}/export/excel`);
+      return blob;
+    } catch (error) {
+      console.error('Error exporting invoice excel:', error);
       throw error;
     }
   },

@@ -1,11 +1,15 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Contract, ContractDocument } from "@/types";
 import contractService from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
 import serviceService from "@/services/serviceService";
-import invoiceService, { Invoice, InvoiceCreateRequest } from "@/services/invoiceService";
+import invoiceService, {
+  Invoice,
+  InvoiceCreateRequest,
+} from "@/services/invoiceService";
 import { apiService } from "@/services/api";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
@@ -44,7 +48,6 @@ export default function ContractDetailPage() {
   const [invoiceForm, setInvoiceForm] = useState({
     invoiceMonth: new Date().getMonth() + 1,
     invoiceYear: new Date().getFullYear(),
-    actualWorkingDays: "" as any,
     notes: "",
   });
   const [statusUpdateForm, setStatusUpdateForm] = useState({
@@ -141,22 +144,10 @@ export default function ContractDetailPage() {
 
   const computeServicesBaseTotal = (services?: any[]) => {
     if (!services || services.length === 0) return 0;
-    return services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
-  };
-
-  const computeServicesVatTotal = (services?: any[]) => {
-    if (!services || services.length === 0) return 0;
-    return services.reduce((sum, s) => {
-      const price = Number(s.price) || 0;
-      const vatPercent = Number(s.vat) || 0;
-      return sum + (price * vatPercent) / 100;
-    }, 0);
-  };
-
-  const computeServicesGrandTotal = (services?: any[]) => {
-    const base = computeServicesBaseTotal(services);
-    const vat = computeServicesVatTotal(services);
-    return base + vat;
+    return services.reduce(
+      (sum, s) => sum + (Number(s.baseAmount ?? s.price) || 0),
+      0
+    );
   };
 
   const formatDate = (date: Date) => {
@@ -235,21 +226,6 @@ export default function ContractDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!contract) return;
-
-    if (confirm("Xác nhận xóa hợp đồng này?")) {
-      try {
-        await contractService.delete(contract.id);
-        toast.success("Đã xóa hợp đồng thành công");
-        router.push("/admin/contracts");
-      } catch (error) {
-        console.error("Error deleting contract:", error);
-        toast.error("Không thể xóa hợp đồng");
-      }
-    }
-  };
-
   const handleAddService = () => {
     setEditingService(null);
     setServiceForm({
@@ -270,7 +246,8 @@ export default function ContractDetailPage() {
       description: service.description || "",
       price: service.price,
       vat: service.vat || 0,
-      effectiveFrom: service.effectiveFrom || new Date().toISOString().split("T")[0],
+      effectiveFrom:
+        service.effectiveFrom || new Date().toISOString().split("T")[0],
       serviceType: service.serviceType || "RECURRING",
     });
     setShowServiceModal(true);
@@ -290,8 +267,9 @@ export default function ContractDetailPage() {
     try {
       setSavingService(true);
       if (editingService) {
-        // Update existing service
-        await serviceService.update(editingService.id.toString(), {
+        // Update existing service via contract endpoint
+        await apiService.put(`/contracts/${contract?.id}/services`, {
+          serviceId: editingService.id,
           title: serviceForm.title,
           description: serviceForm.description,
           price: servicePrice,
@@ -343,7 +321,6 @@ export default function ContractDetailPage() {
     setInvoiceForm({
       invoiceMonth: new Date().getMonth() + 1,
       invoiceYear: new Date().getFullYear(),
-      actualWorkingDays: "" as any,
       notes: "",
     });
     setShowInvoiceModal(true);
@@ -352,21 +329,23 @@ export default function ContractDetailPage() {
   const handleDeleteInvoice = async (invoiceId: number) => {
     if (!contract) return;
 
-    if (!confirm('Xác nhận xóa hóa đơn này?')) return;
+    if (!confirm("Xác nhận xóa hóa đơn này?")) return;
 
     try {
       setDeletingInvoice(invoiceId);
-      const toastId = toast.loading('Đang xóa hóa đơn...');
+      const toastId = toast.loading("Đang xóa hóa đơn...");
       await invoiceService.delete(invoiceId);
       toast.dismiss(toastId);
-      toast.success('Đã xóa hóa đơn thành công');
+      toast.success("Đã xóa hóa đơn thành công");
 
       // Reload invoices
-      const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+      const updatedInvoices = await invoiceService.getByContractId(
+        Number(contract.id)
+      );
       setInvoices(updatedInvoices);
     } catch (error) {
-      console.error('Error deleting invoice:', error);
-      toast.error('Không thể xóa hóa đơn');
+      console.error("Error deleting invoice:", error);
+      toast.error("Không thể xóa hóa đơn");
     } finally {
       setDeletingInvoice(null);
     }
@@ -384,24 +363,16 @@ export default function ContractDetailPage() {
         notes: invoiceForm.notes,
       };
 
-      // For MONTHLY_ACTUAL contracts, actualWorkingDays is required
-      if (contract.contractType === "MONTHLY_ACTUAL") {
-        const workDays = invoiceForm.actualWorkingDays
-          ? Number(invoiceForm.actualWorkingDays)
-          : 0;
-        if (workDays <= 0) {
-          toast.error("Vui lòng nhập số ngày làm việc thực tế");
-          return;
-        }
-        invoiceData.actualWorkingDays = workDays;
-      }
+      // Note: `actualWorkingDays` is handled server-side now; do not include from UI.
 
       await invoiceService.create(invoiceData);
       toast.success("Đã tạo hóa đơn thành công");
       setShowInvoiceModal(false);
 
       // Reload invoices
-      const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+      const updatedInvoices = await invoiceService.getByContractId(
+        Number(contract.id)
+      );
       setInvoices(updatedInvoices);
     } catch (error) {
       console.error("Error creating invoice:", error);
@@ -441,12 +412,6 @@ export default function ContractDetailPage() {
     }
   };
 
-  const getContractAssignmentsPlandays = (contract: any): number => {
-    console.log("Calculating plandays for contract:", contract);
-    if (!contract || !contract.assignments || contract.assignments.length === 0) return 0;
-    return contract.assignments.reduce((sum: number, a: any) => sum + (Number(a?.planday) || 0), 0);
-  };
-
   const handleUpdateInvoiceStatus = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setStatusUpdateForm({
@@ -470,7 +435,9 @@ export default function ContractDetailPage() {
 
       // Reload invoices
       if (contract) {
-        const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+        const updatedInvoices = await invoiceService.getByContractId(
+          Number(contract.id)
+        );
         setInvoices(updatedInvoices);
       }
     } catch (error) {
@@ -483,19 +450,21 @@ export default function ContractDetailPage() {
 
   const handleExportExcel = async (invoiceId: number) => {
     try {
-      const toastId = toast.loading('Đang xuất Excel...');
-      const blob = await apiService.getFile(`/invoices/${invoiceId}/export/excel`);
+      const toastId = toast.loading("Đang xuất Excel...");
+      const blob = await apiService.getFile(
+        `/invoices/${invoiceId}/export/excel`
+      );
 
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const inv = invoices.find(i => i.id === invoiceId);
-    const sanitize = (str: string) => str.replace(/[\\/:*?"<>|]/g, "_");
-    const filename =
-      `Hóa đơn ` +
-      `${sanitize(inv?.customerName || "Khách hàng")}_HĐ_` +
-      `${sanitize(String(inv?.contractId || invoiceId))}_` +
-      `${inv?.invoiceMonth || "MM"}-${inv?.invoiceYear || "YYYY"}.xlsx`;
+      const inv = invoices.find((i) => i.id === invoiceId);
+      const sanitize = (str: string) => str.replace(/[\\/:*?"<>|]/g, "_");
+      const filename =
+        `Hóa đơn ` +
+        `${sanitize(inv?.customerName || "Khách hàng")}_HĐ_` +
+        `${sanitize(String(inv?.contractId || invoiceId))}_` +
+        `${inv?.invoiceMonth || "MM"}-${inv?.invoiceYear || "YYYY"}.xlsx`;
 
       a.download = filename;
       document.body.appendChild(a);
@@ -503,10 +472,10 @@ export default function ContractDetailPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
       toast.dismiss(toastId);
-      toast.success('Đã xuất Excel');
+      toast.success("Đã xuất Excel");
     } catch (error) {
-      console.error('Export Excel failed', error);
-      toast.error('Không thể xuất file Excel');
+      console.error("Export Excel failed", error);
+      toast.error("Không thể xuất file Excel");
     }
   };
 
@@ -645,7 +614,7 @@ export default function ContractDetailPage() {
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card 1: Thông tin hợp đồng */}
+          {/* Split Card 1 into two cards for better layout */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
               Thông tin hợp đồng
@@ -708,7 +677,14 @@ export default function ContractDetailPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
 
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+              Chi tiết hợp đồng
+            </h3>
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">
@@ -807,44 +783,6 @@ export default function ContractDetailPage() {
               )}
             </div>
           </div>
-
-          {/* Card 2: Thông tin tài chính */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
-              Thông tin tài chính
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Tổng giá cơ bản</p>
-                <p className="text-2xl font-bold text-gray-800">
-                  {formatCurrency(computeServicesBaseTotal(contract?.services))}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Tổng VAT</p>
-                <p className="text-xl font-semibold text-gray-700">
-                  {formatCurrency(computeServicesVatTotal(contract?.services))}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t">
-                <p className="text-xs text-gray-500 mb-1">Tổng cộng (Bao gồm VAT)</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(computeServicesGrandTotal(contract?.services))}
-                </p>
-              </div>
-
-              {contract.notes && (
-                <div className="pt-3 border-t">
-                  <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {contract.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Card 3: Dịch vụ */}
@@ -887,6 +825,9 @@ export default function ContractDetailPage() {
                       Tên dịch vụ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loại dịch vụ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mô tả
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -895,12 +836,7 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       VAT
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số ngày làm/tháng
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tổng
-                    </th>
+
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Thao tác
                     </th>
@@ -915,6 +851,15 @@ export default function ContractDetailPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-semibold text-blue-900">
                           {service.title}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-700">
+                          {(service as any).serviceType === "ONE_TIME"
+                            ? "Một lần mỗi tháng"
+                            : (service as any).serviceType === "RECURRING"
+                            ? "Định kỳ hàng tháng"
+                            : (service as any).serviceType}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -932,18 +877,7 @@ export default function ContractDetailPage() {
                           {service.vat}%
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-700">
-                          {getContractAssignmentsPlandays(contract)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-bold text-blue-700">
-                          {formatCurrency(
-                            service.price + (service.price * service.vat) / 100
-                          )}
-                        </span>
-                      </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => handleEditService(service)}
@@ -976,24 +910,6 @@ export default function ContractDetailPage() {
               <p className="text-sm">Chưa có dịch vụ nào cho hợp đồng này</p>
             </div>
           )}
-        </div>
-
-        {/* Documents Section */}
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <ContractDocuments
-            contractId={contractId}
-            documents={documents}
-            onRefresh={async () => {
-              try {
-                const docs = await contractDocumentService.getContractDocuments(
-                  contractId
-                );
-                setDocuments(docs);
-              } catch (error) {
-                console.error("Error refreshing documents:", error);
-              }
-            }}
-          />
         </div>
 
         {/* Invoices Section */}
@@ -1046,27 +962,37 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tổng tiền
                     </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày công
-                    </th> */}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Số ngày làm
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ghi chú
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
+                    <tr
+                      key={invoice.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/admin/contracts/${contract.id}/invoices/${invoice.id}`)}
+                      onKeyDown={(e) => {
+                        if ((e as any).key === "Enter")
+                          router.push(`/admin/contracts/${contract.id}/invoices/${invoice.id}`);
+                      }}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono font-medium text-blue-600">
+                        <Link
+                          href={`/admin/contracts/${contract.id}/invoices/${invoice.id}`}
+                          className="text-sm font-mono font-medium text-blue-600"
+                        >
                           {invoice.invoiceNumber || `#${invoice.id}`}
-                        </span>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">
@@ -1078,11 +1004,11 @@ export default function ContractDetailPage() {
                           {formatCurrency(invoice.totalAmount)}
                         </span>
                       </td>
-                      {/* <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-700">
                           {invoice.actualWorkingDays || "—"}
                         </span>
-                      </td> */}
+                      </td> 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
@@ -1097,77 +1023,7 @@ export default function ContractDetailPage() {
                           {invoice.notes || "—"}
                         </p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleUpdateInvoiceStatus(invoice)}
-                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                              />
-                            </svg>
-                            Cập nhật
-                          </button>
-
-                          <button
-                            onClick={() => handleExportExcel(invoice.id)}
-                            className="text-green-600 hover:text-green-800 inline-flex items-center gap-1 ml-3"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                              />
-                            </svg>
-                            Xuất Excel
-                          </button>
-
-                          <button
-                            onClick={() => handleDeleteInvoice(invoice.id)}
-                            disabled={deletingInvoice === invoice.id}
-                            className="text-red-600 hover:text-red-800 inline-flex items-center gap-1 ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {deletingInvoice === invoice.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
-                            ) : (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-                                />
-                              </svg>
-                            )}
-                            <span>Xóa</span>
-                          </button>
-                        </div>
-                      </td>
+                      
                     </tr>
                   ))}
                 </tbody>
@@ -1176,7 +1032,23 @@ export default function ContractDetailPage() {
           )}
         </div>
       </div>
-
+      {/* Documents Section */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <ContractDocuments
+          contractId={contractId}
+          documents={documents}
+          onRefresh={async () => {
+            try {
+              const docs = await contractDocumentService.getContractDocuments(
+                contractId
+              );
+              setDocuments(docs);
+            } catch (error) {
+              console.error("Error refreshing documents:", error);
+            }
+          }}
+        />
+      </div>
       {/* Edit Modal */}
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1459,7 +1331,10 @@ export default function ContractDetailPage() {
                   <select
                     value={serviceForm.serviceType}
                     onChange={(e) =>
-                      setServiceForm({ ...serviceForm, serviceType: e.target.value })
+                      setServiceForm({
+                        ...serviceForm,
+                        serviceType: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -1476,7 +1351,10 @@ export default function ContractDetailPage() {
                     type="date"
                     value={serviceForm.effectiveFrom}
                     onChange={(e) =>
-                      setServiceForm({ ...serviceForm, effectiveFrom: e.target.value })
+                      setServiceForm({
+                        ...serviceForm,
+                        effectiveFrom: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -1639,10 +1517,16 @@ export default function ContractDetailPage() {
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Hợp đồng:</strong> #{contract.id} - {contract.customerName}
+                  <strong>Hợp đồng:</strong> #{contract.id} -{" "}
+                  {contract.customerName}
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Loại:</strong> {contract.contractType === "ONE_TIME" ? "Hợp đồng 1 lần (trọn gói)" : contract.contractType === "MONTHLY_FIXED" ? "Hợp đồng hàng tháng cố định" : "Hợp đồng hàng tháng theo ngày thực tế"}
+                  <strong>Loại:</strong>{" "}
+                  {contract.contractType === "ONE_TIME"
+                    ? "Hợp đồng 1 lần (trọn gói)"
+                    : contract.contractType === "MONTHLY_FIXED"
+                    ? "Hợp đồng hàng tháng cố định"
+                    : "Hợp đồng hàng tháng theo ngày thực tế"}
                 </p>
               </div>
 
@@ -1661,11 +1545,13 @@ export default function ContractDetailPage() {
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <option key={month} value={month}>
-                        Tháng {month}
-                      </option>
-                    ))}
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                      (month) => (
+                        <option key={month} value={month}>
+                          Tháng {month}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -1689,30 +1575,7 @@ export default function ContractDetailPage() {
                 </div>
               </div>
 
-              {contract.contractType === "MONTHLY_ACTUAL" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Số ngày làm việc thực tế *
-                  </label>
-                  <input
-                    type="number"
-                    value={invoiceForm.actualWorkingDays}
-                    onChange={(e) =>
-                      setInvoiceForm({
-                        ...invoiceForm,
-                        actualWorkingDays: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số ngày làm việc thực tế"
-                    min="1"
-                    max="31"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Bắt buộc cho hợp đồng theo ngày thực tế
-                  </p>
-                </div>
-              )}
+              {/* actualWorkingDays removed — handled on backend now */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1804,13 +1667,16 @@ export default function ContractDetailPage() {
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Hóa đơn:</strong> {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
+                  <strong>Hóa đơn:</strong>{" "}
+                  {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/{selectedInvoice.invoiceYear}
+                  <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/
+                  {selectedInvoice.invoiceYear}
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Tổng tiền:</strong> {formatCurrency(selectedInvoice.totalAmount)}
+                  <strong>Tổng tiền:</strong>{" "}
+                  {formatCurrency(selectedInvoice.totalAmount)}
                 </p>
               </div>
 
@@ -1842,7 +1708,10 @@ export default function ContractDetailPage() {
                 <textarea
                   value={statusUpdateForm.notes}
                   onChange={(e) =>
-                    setStatusUpdateForm({ ...statusUpdateForm, notes: e.target.value })
+                    setStatusUpdateForm({
+                      ...statusUpdateForm,
+                      notes: e.target.value,
+                    })
                   }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

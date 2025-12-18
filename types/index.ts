@@ -66,6 +66,8 @@ export interface ContractService {
   title: string;
   description?: string;
   price: number;
+  amount?: number;
+  baseAmount?: number;
   vat: number;
   createdAt: string;
   updatedAt: string;
@@ -84,6 +86,7 @@ export interface Contract {
   contractNumber?: string;       // Số hợp đồng
   startDate: Date;
   endDate: Date;
+  plannedDays?: number;         // Số ngày làm theo hợp đồng (tổng ngày/tháng hoặc kế hoạch)
   workingDaysPerWeek?: string[]; // Ngày làm việc trong tuần: ["MONDAY", "TUESDAY", ...]
   contractType?: string;         // Loại hợp đồng: ONE_TIME, MONTHLY_FIXED, MONTHLY_ACTUAL
   finalPrice: number;            // Giá cuối cùng (tổng giá các service)

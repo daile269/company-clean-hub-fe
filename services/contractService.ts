@@ -135,6 +135,7 @@ export const getById = async (id: string): Promise<Contract> => {
       services: apiContract.services,
       startDate: new Date(apiContract.startDate),
       endDate: new Date(apiContract.endDate),
+      plannedDays: apiContract.plannedDays,
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
       contractType: apiContract.contractType,

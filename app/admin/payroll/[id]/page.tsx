@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import payrollService, { Payroll } from "@/services/payrollService";
+import payrollService, { Payroll, PayrollStatus } from "@/services/payrollService";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollUpdateModal from "@/components/PayrollUpdateModal";
+import PayrollPaymentModal from "@/components/PayrollPaymentModal";
 import AttendanceEditModal from "@/components/AttendanceEditModal";
 import AttendanceCalendar from "@/components/AttendanceCalendar";
 import toast, { Toaster } from "react-hot-toast";
@@ -25,6 +26,7 @@ export default function PayrollDetailPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [overlayMessage, setOverlayMessage] = useState("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const showOverlay = (message?: string) => {
     setOverlayMessage(message || "Đang xử lý...");
@@ -91,34 +93,14 @@ export default function PayrollDetailPage() {
       setAttLoading(false);
     }
   };
-  
+
   const loadAssignments = async (employeeId: number | string, month: number | undefined, year: number | undefined) => {
     try {
-      const res = await assignmentService.getAssignmentsByEmployeeId(employeeId.toString(), month || 0, year || 0 );
+      const res = await assignmentService.getAssignmentsByEmployeeId(employeeId.toString(), month || 0, year || 0);
       setAssignments(res);
-      console.log("Loaded assignments:", res);  
+      console.log("Loaded assignments:", res);
     } catch (error) {
       console.error("Error loading assignments:", error);
-    }
-  };
-
-  const handleMarkAsPaid = async () => {
-    if (!confirm("Xác nhận đã thanh toán lương?")) return;
-    setLoading(true);
-    try {
-      showOverlay("Đang cập nhật trạng thái thanh toán...");
-      await payrollService.markAsPaid(Number(id));
-      setOverlayMessage("Đang tải thông tin bảng lương...");
-      await loadPayroll({ showOverlay: false });
-      hideOverlay();
-      toast.success("Đã cập nhật trạng thái thanh toán");
-    } catch (error) {
-      console.error("Failed to mark as paid:", error);
-      hideOverlay();
-      toast.error("Không thể cập nhật trạng thái");
-    }finally
-    {
-      setLoading(false);
     }
   };
 
@@ -174,6 +156,24 @@ export default function PayrollDetailPage() {
     return typeMap[type] || type;
   };
 
+  const getStatusLabel = (status: PayrollStatus): string => {
+    switch (status) {
+      case 'UNPAID': return 'Chưa trả';
+      case 'PARTIAL_PAID': return 'Đã trả một phần';
+      case 'PAID': return 'Đã trả đủ';
+      default: return '';
+    }
+  };
+
+  const getStatusColor = (status: PayrollStatus): string => {
+    switch (status) {
+      case 'UNPAID': return 'bg-red-100 text-red-800';
+      case 'PARTIAL_PAID': return 'bg-orange-100 text-orange-800';
+      case 'PAID': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const getAssignmentTypeColor = (type: string | undefined): string => {
     if (!type) return "bg-gray-100 text-gray-800";
     const colorMap: Record<string, string> = {
@@ -184,7 +184,7 @@ export default function PayrollDetailPage() {
     return colorMap[type] || "bg-gray-100 text-gray-800";
   };
 
- 
+
   if (!payroll) {
     return (
       <div className="text-center py-12">
@@ -223,9 +223,9 @@ export default function PayrollDetailPage() {
           </h1>
         </div>
         <div className="flex gap-3">
-          {!payroll.isPaid && (
+          {payroll.status !== 'PAID' && (
             <button
-              onClick={handleMarkAsPaid}
+              onClick={() => setShowPaymentModal(true)}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
             >
               <svg
@@ -238,10 +238,10 @@ export default function PayrollDetailPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              Thanh toán
+              Thanh toán lương
             </button>
           )}
           <button
@@ -425,12 +425,9 @@ export default function PayrollDetailPage() {
                   </label>
                   <p className="mt-1">
                     <span
-                      className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${payroll.isPaid
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                        }`}
+                      className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusColor(payroll.status)}`}
                     >
-                      {payroll.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+                      {getStatusLabel(payroll.status)}
                     </span>
                   </p>
                 </div>
@@ -442,6 +439,26 @@ export default function PayrollDetailPage() {
                     {formatDate(payroll.paymentDate)}
                   </p>
                 </div>
+                {payroll.paidAmount > 0 && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Đã thanh toán
+                      </label>
+                      <p className="mt-1 text-lg font-semibold text-green-600">
+                        {formatCurrency(payroll.paidAmount)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Còn lại
+                      </label>
+                      <p className="mt-1 text-lg font-semibold text-orange-600">
+                        {formatCurrency(payroll.remainingAmount)}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -528,9 +545,20 @@ export default function PayrollDetailPage() {
             insuranceTotal: payroll.insuranceTotal,
             advanceTotal: payroll.advanceTotal,
           }}
-           onShowToast={(msg, type) => showToast(msg, type)}
+          onShowToast={(msg, type) => showToast(msg, type)}
         />
       )}
+
+      {/* Payment Modal */}
+      <PayrollPaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        payroll={payroll}
+        onSuccess={() => {
+          toast.success("Đã cập nhật thanh toán thành công!");
+          loadPayroll({});
+        }}
+      />
 
       {/* Edit Attendance Modal */}
       <AttendanceEditModal

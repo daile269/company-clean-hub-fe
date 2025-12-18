@@ -1,12 +1,13 @@
 import { apiService } from './api';
 
+export type PayrollStatus = 'UNPAID' | 'PARTIAL_PAID' | 'PAID';
+
 export interface Payroll {
   id: number;
   employeeId: number;
   employeeName: string;
   employeeCode: string;
-  employmentType?: string;
-  month: number;
+  employmentType?: string; month: number;
   year: number;
   totalDays: number;
   salaryBase?: number;
@@ -16,7 +17,9 @@ export interface Payroll {
   allowanceTotal: number;
   insuranceTotal: number;
   finalSalary: number;
-  isPaid: boolean;
+  status: PayrollStatus;  // Changed from isPaid
+  paidAmount: number;     // New field
+  remainingAmount: number; // New field
   paymentDate: string | null;
   accountantId: number | null;
   accountantName: string | null;
@@ -167,10 +170,10 @@ const payrollService = {
       throw error;
     }
   },
-    exportExcel: async (month: number, year: number) => {
-      console.log("2 Exporting Excel file...");
+  exportExcel: async (month: number, year: number) => {
+    console.log("2 Exporting Excel file...");
     const blob = await apiService.getFile(`/payrolls/export/excel/${month}/${year}`);
-console.log("Exporting Excel file...");
+    console.log("Exporting Excel file...");
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     console.log("link: ", link);
@@ -197,18 +200,18 @@ console.log("Exporting Excel file...");
     }
   },
 
-  // Thanh toán lương
-  markAsPaid: async (id: number): Promise<Payroll> => {
+  // Cập nhật thanh toán lương (trả sớm hoặc trả đủ)
+  updatePaymentStatus: async (id: number, paidAmount: number): Promise<Payroll> => {
     try {
-      const response = await apiService.put<any>(`/payrolls/${id}/payment-status?isPaid=true`);
+      const response = await apiService.put<any>(`/payrolls/${id}/payment-status?paidAmount=${paidAmount}`);
 
       if (!response.success || !response.data) {
-        throw new Error(response.message || 'Failed to mark payroll as paid');
+        throw new Error(response.message || 'Failed to update payment status');
       }
 
       return response.data;
     } catch (error) {
-      console.error('Error marking payroll as paid:', error);
+      console.error('Error updating payment status:', error);
       throw error;
     }
   },
@@ -217,7 +220,7 @@ console.log("Exporting Excel file...");
   calculatePayroll: async (data: PayrollCalculateRequest): Promise<PayrollAssignmentResponse[]> => {
     try {
       const response = await apiService.post<any>("/payrolls/calculate", data);
-
+      console.log("response calculatePayroll12321321321:", response);
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to calculate payroll');
       }

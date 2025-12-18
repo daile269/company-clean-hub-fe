@@ -22,9 +22,26 @@ const updateAssignment = async (assignment: Assignment, allowance: number) => {
         throw new Error("Assignment không hợp lệ");
     }
 
+    // Only send the fields needed for update to avoid null issues
     const payload = {
-        ...assignment,
+        id: assignment.id,
+        employeeId: assignment.employeeId,
+        customerId: assignment.customerId,
+        projectCompanyId: assignment.contract,
+        contractId: assignment.contractId,
+        salaryAtTime: assignment.salaryAtTime,
+        plannedDays: assignment.plannedDays,
+        status: assignment.status,
+        startDate: assignment.startDate,
+        endDate: assignment.endDate,
         additionalAllowance: allowance,
+        // Include other fields from assignment if they exist
+        ...Object.keys(assignment).reduce((acc, key) => {
+            if (!acc.hasOwnProperty(key) && assignment[key as keyof Assignment] !== undefined) {
+                acc[key] = assignment[key as keyof Assignment];
+            }
+            return acc;
+        }, {} as Record<string, any>)
     };
 
     return assignmentService.update(assignment.id, payload);

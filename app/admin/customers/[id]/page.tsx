@@ -632,9 +632,12 @@ export default function CustomerDetail() {
           salaryAtTime: "",
           description: "",
         });
-        // Reload assigned employees list
-        loadAssignedEmployees();
-        loadAllAssignedEmployeesForCustomer();
+        // Reload assigned employees list and histories
+        await Promise.all([
+          loadAssignedEmployees(),
+          loadAllAssignedEmployeesForCustomer(),
+          loadAssignmentHistories(),
+        ]);
       } else {
         toast.error(response.message || "Phân công thất bại");
       }
@@ -709,7 +712,12 @@ export default function CustomerDetail() {
           salaryAtTime: "",
           description: "",
         });
-        loadAssignedEmployees();
+        // Reload assigned employees list, grouped assignments and histories
+        await Promise.all([
+          loadAssignedEmployees(),
+          loadAllAssignedEmployeesForCustomer(),
+          loadAssignmentHistories(),
+        ]);
       } else {
         toast.error(response.message || "Điều động thất bại");
       }

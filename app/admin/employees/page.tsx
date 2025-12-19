@@ -5,10 +5,16 @@ import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
 import EmployeeExportModal from "@/components/EmployeeExportModal";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Permission checks
+  const canView = usePermission('EMPLOYEE_VIEW');
+  const canCreate = usePermission('EMPLOYEE_CREATE');
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchKeyword, setSearchKeyword] = useState(""); // Keyword được gửi đến API
   const [filterType, setFilterType] = useState<string>("all");
@@ -171,13 +177,25 @@ export default function EmployeesPage() {
     }
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem danh sách nhân viên
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
 
         <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên làm việc theo hợp đồng của khách hàng</h1>
-       
+        {canCreate && (
           <button
             onClick={() => setShowAddModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
@@ -197,6 +215,7 @@ export default function EmployeesPage() {
             </svg>
             Thêm nhân viên
           </button>
+        )}
       </div>
 
       {/* Loading State */}
@@ -527,7 +546,7 @@ export default function EmployeesPage() {
           </div>
 
           {/* Add Modal */}
-          {showAddModal && (
+          {showAddModal && canCreate && (
             <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
                 <div className="flex justify-between items-start mb-6">

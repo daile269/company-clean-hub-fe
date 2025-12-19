@@ -14,6 +14,7 @@ import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/servi
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
+import { usePermission } from "@/hooks/usePermission";
 
 
 export default function EmployeeDetail() {
@@ -21,6 +22,11 @@ export default function EmployeeDetail() {
   const id = params?.id as string | undefined;
 
   const router = useRouter();
+
+  // Permission checks
+  const canView = usePermission(["EMPLOYEE_VIEW","EMPLOYEE_VIEW_OWN"]);
+  const canEdit = usePermission("EMPLOYEE_EDIT");
+  const canPayrollAdvance = usePermission("PAYROLL_ADVANCE");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,6 +104,16 @@ export default function EmployeeDetail() {
     }
   };
   // previous mockAssignments removed in favor of real API
+
+  if (!canView) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-lg text-gray-600">
+          Bạn không có quyền xem thông tin nhân viên
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -186,6 +202,7 @@ export default function EmployeeDetail() {
   };
 
   const handleEdit = () => {
+    if (!canEdit) return;
     // include username and an empty password field so hidden inputs exist
     setEditForm({
       ...(employee as Employee),
@@ -215,6 +232,7 @@ export default function EmployeeDetail() {
   };
 
   const handleDeleteImage = async (imageId: string) => {
+    if (!canEdit) return;
     try {
       setIsDeletingImage(true);
       await employeeService.deleteImage(id!, imageId);
@@ -232,6 +250,7 @@ export default function EmployeeDetail() {
   };
 
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEdit) return;
     const files = e.target.files;
     if (!files || !id) return;
 
@@ -262,6 +281,7 @@ export default function EmployeeDetail() {
   };
 
   const handleUploadEmployeeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEdit) return;
     const files = e.target.files;
     if (!files || !id) return;
 
@@ -299,26 +319,28 @@ export default function EmployeeDetail() {
         <h1 className="text-2xl font-bold">Chi tiết nhân viên</h1>
         {employee && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowPayrollAdvanceInsuranceModal(true)}
-              className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {canPayrollAdvance && (
+              <button
+                onClick={() => setShowPayrollAdvanceInsuranceModal(true)}
+                className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Ứng lương / Bảo hiểm
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Ứng lương / Bảo hiểm
+              </button>
+            )}
             <button
               onClick={() => router.back()}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
@@ -339,26 +361,28 @@ export default function EmployeeDetail() {
               </svg>
               Quay lại
             </button>
-            <button
-              onClick={handleEdit}
-              className="px-3 py-1 bg-[#19AD70] text-white rounded hover:bg-[#158F60] inline-flex items-center gap-2 cursor-pointer"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {canEdit && (
+              <button
+                onClick={handleEdit}
+                className="px-3 py-1 bg-[#19AD70] text-white rounded hover:bg-[#158F60] inline-flex items-center gap-2 cursor-pointer"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                />
-              </svg>
-              Sửa
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                  />
+                </svg>
+                Sửa
+              </button>
+            )}
           </div>
         )}
       </div>

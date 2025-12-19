@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { assignmentService, Assignment } from "@/services/assignmentService";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -15,6 +16,9 @@ export default function AssignmentsPage() {
   const [totalElements, setTotalElements] = useState(0);
 
   const router = useRouter();
+
+  // Permission checks
+  const canView = usePermission('ASSIGNMENT_VIEW');
 
   // Load assignments from API with pagination
   useEffect(() => {
@@ -89,6 +93,16 @@ export default function AssignmentsPage() {
         );
     }
   };
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">Bạn không có quyền xem phân công</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

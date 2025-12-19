@@ -3,7 +3,8 @@ import { ContractDocument } from "@/types";
 import contractDocumentService from "@/services/contractDocumentService";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { ImageUploader } from "./shared/ImageUploader"
+import { ImageUploader } from "./shared/ImageUploader";
+import { usePermission } from "@/hooks/usePermission";
 
 interface ContractDocumentsProps {
   contractId: string | number;
@@ -20,7 +21,7 @@ export default function ContractDocuments({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [documentToDelete, setDocumentToDelete] = useState<ContractDocument | null>(null);
-
+  const canCreate = usePermission("CONTRACT_CREATE");
   const handleUploadDocuments = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files;
     if (!files || files.length === 0) return;
@@ -69,6 +70,7 @@ export default function ContractDocuments({
         <h3 className="text-lg font-semibold text-gray-800">
           Tài liệu hợp đồng
         </h3>
+        {canCreate && (
         <button
           onClick={() => setShowUploadModal(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
@@ -89,6 +91,7 @@ export default function ContractDocuments({
           </svg>
           Thêm tài liệu
         </button>
+        )}
       </div>
 
       {/* Documents Grid */}

@@ -434,18 +434,10 @@ export default function AttendanceCalendar({
                                                                 {attendanceStatus === 'norecord' ? (
                                                                     // Không có lịch → icon clipboard xám
                                                                     <div className="text-gray-300 text-xl text-center">
-                                                                        <span className="group-hover:hidden inline-block opacity-50">
-                                                                            <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
+                                                                        <span className=" inline-block opacity-50">
+                                                                            <FontAwesomeIcon icon={SolidIcons.faClipboard} />
                                                                         </span>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                onEditAttendance?.(dayAttendances[0] || { date: new Date(year, month - 1, day).toISOString() } as Attendance);
-                                                                                setEditingAttendance(null);
-                                                                            }}
-                                                                            className="group-hover:block hidden mt-1 bg-blue-500 text-white px-1 py-0.5 rounded text-xs hover:bg-blue-600 w-full"
-                                                                        >
-                                                                            Sửa
-                                                                        </button>
+                                                                        
                                                                     </div>
                                                                 ) : attendanceStatus === 'done' ? (
                                                                     // Đã làm → icon check xanh
@@ -521,18 +513,10 @@ export default function AttendanceCalendar({
                                                                 ) : (
                                                                     // Chưa làm → icon xám nhưng vẫn có thể edit
                                                                     <div className="text-gray-400 text-xl text-center">
-                                                                        <span className="group-hover:hidden inline-block">
+                                                                        <span className="inline-block">
                                                                             <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
                                                                         </span>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                onEditAttendance?.(dayAttendances[0]);
-                                                                                setEditingAttendance(null);
-                                                                            }}
-                                                                            className="group-hover:block hidden mt-1 bg-blue-500 text-white px-1 py-0.5 rounded text-xs hover:bg-blue-600 w-full"
-                                                                        >
-                                                                            Sửa
-                                                                        </button>
+                                                                       
                                                                     </div>
                                                                 )}
                                                             </div>

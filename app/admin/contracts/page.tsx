@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Contract } from "@/types";
 import contractService from "@/services/contractService";
 import toast from "react-hot-toast";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function ContractsPage() {
   const router = useRouter();
@@ -21,6 +22,22 @@ export default function ContractsPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   
   const [showAddModal, setShowAddModal] = useState(false);
+  
+  // Permission checks
+  const canView = usePermission('CONTRACT_VIEW');
+  const canCreate = usePermission('CONTRACT_CREATE');
+  
+  // If user doesn't have VIEW permission, show message
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">Bạn không có quyền xem hợp đồng</p>
+        </div>
+      </div>
+    );
+  }
+  
   const [addForm, setAddForm] = useState({
     customerId: "",
     serviceIds: [] as number[],
@@ -184,25 +201,27 @@ export default function ContractsPage() {
     <div>
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý hợp đồng</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        {canCreate && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Thêm hợp đồng
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Thêm hợp đồng
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -603,7 +622,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Add Modal */}
-      {showAddModal && (
+      {showAddModal && canCreate && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">

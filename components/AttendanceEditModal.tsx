@@ -173,7 +173,7 @@ export default function AttendanceEditModal({
             </div>
           </div>
 
-          {/* Tăng ca */}
+          {/* Tăng ca
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tăng ca (Overtime)
@@ -193,7 +193,7 @@ export default function AttendanceEditModal({
                 đ
               </span>
             </div>
-          </div>
+          </div> */}
 
           {/* Buttons */}
           <div className="flex gap-2 justify-end pt-4">

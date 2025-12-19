@@ -12,11 +12,17 @@ import attendanceService, {
   AttendancePaginationResponse,
 } from "@/services/attendanceService";
 import contractService from "@/services/contractService";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function AssignmentDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
+
+  // Permission checks
+  const canView = usePermission("ASSIGNMENT_VIEW");
+  const canEdit = usePermission("ASSIGNMENT_UPDATE");
+  const canDelete = usePermission("ASSIGNMENT_DELETE");
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +117,16 @@ export default function AssignmentDetail() {
     }
   };
 
+  if (!canView) {
+    return (
+      <div className="p-6">
+        <p className="text-lg text-gray-600">
+          Bạn không có quyền xem thông tin phân công
+        </p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -179,6 +195,7 @@ export default function AssignmentDetail() {
   };
 
   const handleEdit = () => {
+    if (!canEdit) return;
     setEditForm({
       ...assignment,
       salaryAtTime: formatNumber((assignment as any)?.salaryAtTime ?? 0) as any,
@@ -237,7 +254,7 @@ export default function AssignmentDetail() {
   };
 
   const handleDelete = async () => {
-    if (!assignment) return;
+    if (!assignment || !canDelete) return;
 
     if (confirm("Bạn có chắc chắn muốn xóa phân công này?")) {
       try {
@@ -303,46 +320,50 @@ export default function AssignmentDetail() {
             </svg>
             Quay lại
           </button>
-          <button
-            onClick={handleEdit}
-            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {canEdit && (
+            <button
+              onClick={handleEdit}
+              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-              />
-            </svg>
-            Sửa
-          </button>
-          {/* <button
-            onClick={handleDelete}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                />
+              </svg>
+              Sửa
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-              />
-            </svg>
-            Xóa
-          </button> */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
+                />
+              </svg>
+              Xóa
+            </button>
+          )}
         </div>
       </div>
 

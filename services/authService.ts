@@ -57,6 +57,7 @@ class AuthService {
       localStorage.removeItem('isLoggedIn');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
       // Clear token from apiService
       apiService.setToken(null);
       // Clear permissions
@@ -74,8 +75,9 @@ class AuthService {
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('userEmail', data.email);
       localStorage.setItem('userRole', data.roleName);
+      localStorage.setItem('userId', data.id.toString());
       
-      // Also save token to cookies for middleware
+      // Save token to cookies for middleware (middleware will decode JWT to get role)
       document.cookie = `token=${data.token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
     }
   }
@@ -91,9 +93,11 @@ class AuthService {
     if (typeof window !== 'undefined') {
       const userStr = localStorage.getItem('user');
       const token = localStorage.getItem('token');
-      
+          console.log('AuthService - userStr:', userStr);
+          console.log('AuthService - token:', token);
       if (userStr && token) {
         const user = JSON.parse(userStr);
+        console.log('AuthService - getCurrentUser:', user);
         return { ...user, token };
       }
     }
@@ -106,6 +110,7 @@ class AuthService {
 
   getUserRole(): string | null {
     const user = this.getCurrentUser();
+    console.log('user',user)
     return user ? user.roleName : null;
   }
 }

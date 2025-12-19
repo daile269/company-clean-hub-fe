@@ -14,12 +14,21 @@ import {
 import serviceService, { ServiceRequest } from "@/services/serviceService";
 import contractService from "@/services/contractService";
 import { Customer, Employee } from "@/types";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function CustomerDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
 
+  // Permission checks
+  const canView = usePermission("CUSTOMER_VIEW");
+  const canEdit = usePermission("CUSTOMER_EDIT");
+  const canDelete = usePermission("CUSTOMER_DELETE");
+  const canAssign = usePermission("CUSTOMER_ASSIGN");
+  const canAddContract = usePermission("CONTRACT_CREATE");
+  const canViewEmployee = usePermission("EMPLOYEE_VIEW");
+  const canEditEmployee = usePermission("EMPLOYEE_EDIT");
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -370,6 +379,18 @@ export default function CustomerDetail() {
     }
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem thông tin khách hàng
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -459,6 +480,7 @@ export default function CustomerDetail() {
   };
 
   const handleEdit = () => {
+    if (!canEdit) return;
     // Use customer data as editForm; username is derived from code on save
     setEditForm({ ...customer! });
     setShowEditModal(true);
@@ -484,7 +506,7 @@ export default function CustomerDetail() {
   };
 
   const handleDelete = async () => {
-    if (!customer) return;
+    if (!customer || !canDelete) return;
 
     try {
       const response = await customerService.delete(customer.id);
@@ -842,86 +864,94 @@ export default function CustomerDetail() {
             </svg>
             Quay lại
           </button>
-          <button
-            onClick={handleOpenAssignmentModal}
-            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {canAssign && (
+            <button
+              onClick={handleOpenAssignmentModal}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Phân công nhân viên
-          </button>
-          <button
-            onClick={handleOpenReassignmentModal}
-            className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 inline-flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Phân công nhân viên
+            </button>
+          )}
+          {canAssign && (
+            <button
+              onClick={handleOpenReassignmentModal}
+              className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 inline-flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-              />
-            </svg>
-            Điều động tạm thời
-          </button>
-          <button
-            onClick={handleEdit}
-            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
+              Điều động tạm thời
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={handleEdit}
+              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-              />
-            </svg>
-            Sửa
-          </button>
-          {/* <button
-            onClick={() => setShowDeleteModal(true)}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                />
+              </svg>
+              Sửa
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-              />
-            </svg>
-            Xóa
-          </button> */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
+                />
+              </svg>
+              Xóa
+            </button>
+          )}
         </div>
       </div>
 
@@ -943,11 +973,10 @@ export default function CustomerDetail() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                    customer.status === "ACTIVE"
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customer.status === "ACTIVE"
                       ? "bg-green-100 text-green-800"
                       : "bg-red-100 text-red-800"
-                  }`}
+                    }`}
                 >
                   {customer.status === "ACTIVE"
                     ? "Hoạt động"
@@ -1068,34 +1097,36 @@ export default function CustomerDetail() {
               </svg>
               Làm mới
             </button>
-            <button
-              onClick={() => {
-                setContractForm((prev) => ({
-                  ...prev,
-                  customerId: id || "",
-                  startDate: prev.serviceEffectiveFrom || prev.startDate,
-                  serviceServiceType: "RECURRING",
-                }));
-                setShowAddContractModal(true);
-              }}
-              className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 inline-flex items-center gap-1"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {canAddContract && (
+              <button
+                onClick={() => {
+                  setContractForm((prev) => ({
+                    ...prev,
+                    customerId: id || "",
+                    startDate: prev.serviceEffectiveFrom || prev.startDate,
+                    serviceServiceType: "RECURRING",
+                  }));
+                  setShowAddContractModal(true);
+                }}
+                className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 inline-flex items-center gap-1"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Thêm hợp đồng
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm hợp đồng
+              </button>
+            )}
           </div>
         </div>
 
@@ -1198,19 +1229,18 @@ export default function CustomerDetail() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                          contract.paymentStatus === "PAID"
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${contract.paymentStatus === "PAID"
                             ? "bg-green-100 text-green-800"
                             : contract.paymentStatus === "PARTIAL"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {contract.paymentStatus === "PAID"
                           ? "Đã thanh toán"
                           : contract.paymentStatus === "PARTIAL"
-                          ? "Thanh toán 1 phần"
-                          : "Chưa thanh toán"}
+                            ? "Thanh toán 1 phần"
+                            : "Chưa thanh toán"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -1427,12 +1457,15 @@ export default function CustomerDetail() {
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                             Trạng thái
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">
-                            Lương
-                          </th>
+                          {canViewEmployee && (
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">
+                              Lương
+                            </th>
+                          )}
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
                             Ngày công
                           </th>
+
                         </tr>
                       </thead>
                       <tbody>
@@ -1442,10 +1475,12 @@ export default function CustomerDetail() {
                               key={assignment.id}
                               role="button"
                               tabIndex={0}
-                              onClick={() =>
-                                router.push(
-                                  `/admin/assignments/${assignment.id}`
-                                )
+                              onClick={() => {
+                                if (!canViewEmployee) {
+                                  return;
+                                }
+                                router.push(`/admin/assignments/${assignment.id}`)
+                              }
                               }
                               onKeyDown={(e) => {
                                 if (e.key === "Enter")
@@ -1488,26 +1523,27 @@ export default function CustomerDetail() {
                               </td>
                               <td className="px-4 py-3">
                                 <span
-                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                                    assignment.status === "IN_PROGRESS"
+                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${assignment.status === "IN_PROGRESS"
                                       ? "bg-green-100 text-green-800"
                                       : assignment.status === "CANCELED"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
-                                  }`}
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-gray-100 text-gray-800"
+                                    }`}
                                 >
                                   {assignment.status === "IN_PROGRESS"
                                     ? "Đang thực hiện"
                                     : assignment.status === "CANCELED"
-                                    ? "Đã hủy"
-                                    : "Hoàn thành"}
+                                      ? "Đã hủy"
+                                      : "Hoàn thành"}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-right">
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {formatCurrency(assignment.salaryAtTime)}
-                                </span>
-                              </td>
+                              {canViewEmployee && (
+                                <td className="px-4 py-3 text-right">
+                                  <span className="text-sm font-semibold text-gray-900">
+                                    {formatCurrency(assignment.salaryAtTime)}
+                                  </span>
+                                </td>
+                              )}
                               <td className="px-4 py-3 text-center">
                                 <span className="text-sm font-medium text-gray-700">
                                   {assignment.workDays} ngày
@@ -1663,9 +1699,11 @@ export default function CustomerDetail() {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                           Ngày tạo
                         </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
-                          Hành động
-                        </th>
+                        {canEditEmployee && (
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                            Hành động
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -1713,11 +1751,10 @@ export default function CustomerDetail() {
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                                  history.status === "ACTIVE"
+                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${history.status === "ACTIVE"
                                     ? "bg-green-100 text-green-800"
                                     : "bg-red-100 text-red-800"
-                                }`}
+                                  }`}
                               >
                                 {history.status === "ACTIVE"
                                   ? "Đang áp dụng"
@@ -1734,39 +1771,41 @@ export default function CustomerDetail() {
                                 {formatDate(history.createdAt)}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center">
-                              {history.status === "ACTIVE" ? (
-                                <button
-                                  onClick={() =>
-                                    handleOpenRollbackModal(history)
-                                  }
-                                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center gap-1"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                            {canEditEmployee && (
+                              <td className="px-4 py-3 text-center">
+                                {history.status === "ACTIVE" ? (
+                                  <button
+                                    onClick={() =>
+                                      handleOpenRollbackModal(history)
+                                    }
+                                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 inline-flex items-center gap-1"
                                   >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                                    />
-                                  </svg>
-                                  Hoàn tác
-                                </button>
-                              ) : (
-                                <span className="text-xs text-gray-500">
-                                  Đã hoàn tác{" "}
-                                  {history.rollbackAt
-                                    ? `(${formatDate(history.rollbackAt)})`
-                                    : ""}
-                                </span>
-                              )}
-                            </td>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                      />
+                                    </svg>
+                                    Hoàn tác
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-gray-500">
+                                    Đã hoàn tác{" "}
+                                    {history.rollbackAt
+                                      ? `(${formatDate(history.rollbackAt)})`
+                                      : ""}
+                                  </span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         )
                       )}
@@ -2126,10 +2165,10 @@ export default function CustomerDetail() {
                           <p className="text-sm font-semibold text-gray-900">
                             {employee.monthlySalary
                               ? formatCurrency(employee.monthlySalary) +
-                                "/tháng"
+                              "/tháng"
                               : employee.dailySalary
-                              ? formatCurrency(employee.dailySalary) + "/ngày"
-                              : "N/A"}
+                                ? formatCurrency(employee.dailySalary) + "/ngày"
+                                : "N/A"}
                           </p>
                         </div>
                       </div>
@@ -2524,9 +2563,8 @@ export default function CustomerDetail() {
                             "T6",
                             "T7",
                           ][d.getDay()];
-                          const displayDate = `${d.getDate()}/${
-                            d.getMonth() + 1
-                          } (${dayName})`;
+                          const displayDate = `${d.getDate()}/${d.getMonth() + 1
+                            } (${dayName})`;
 
                           dates.push(
                             <label
@@ -2541,12 +2579,12 @@ export default function CustomerDetail() {
                                 onChange={(e) => {
                                   const newDates = e.target.checked
                                     ? [
-                                        ...reassignmentForm.selectedDates,
-                                        dateStr,
-                                      ]
+                                      ...reassignmentForm.selectedDates,
+                                      dateStr,
+                                    ]
                                     : reassignmentForm.selectedDates.filter(
-                                        (d) => d !== dateStr
-                                      );
+                                      (d) => d !== dateStr
+                                    );
                                   setReassignmentForm({
                                     ...reassignmentForm,
                                     selectedDates: newDates.sort(),
@@ -2653,7 +2691,7 @@ export default function CustomerDetail() {
                           </div>
                           {/* Assignments under this contract */}
                           <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
-                            {contractGroup.assignments &&
+ {contractGroup.assignments &&
                             contractGroup.assignments.length > 0 ? (
                               contractGroup.assignments.map(
                                 (assignment: any, aIdx: number) => (
@@ -2780,12 +2818,11 @@ export default function CustomerDetail() {
                         employeesPage.content.map((employee: any) => (
                           <label
                             key={`replacement-${employee.id}`}
-                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                              reassignmentForm.replacementEmployeeId ===
-                              Number(employee.id)
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacementEmployeeId ===
+                                Number(employee.id)
                                 ? "border-green-500 bg-green-50"
                                 : "border-gray-200 hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             <input
                               type="checkbox"

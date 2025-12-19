@@ -1,12 +1,18 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Contract, ContractDocument } from "@/types";
 import contractService from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
 import serviceService from "@/services/serviceService";
-import invoiceService, { Invoice, InvoiceCreateRequest } from "@/services/invoiceService";
+import invoiceService, {
+  Invoice,
+  InvoiceCreateRequest,
+} from "@/services/invoiceService";
 import { apiService } from "@/services/api";
+import attendanceService from "@/services/attendanceService";
+import { assignmentService } from "@/services/assignmentService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
@@ -45,13 +51,87 @@ export default function ContractDetailPage() {
   const [invoiceForm, setInvoiceForm] = useState({
     invoiceMonth: new Date().getMonth() + 1,
     invoiceYear: new Date().getFullYear(),
-    actualWorkingDays: "" as any,
     notes: "",
   });
   const [statusUpdateForm, setStatusUpdateForm] = useState({
     status: "PAID" as string,
     notes: "",
   });
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsMonth, setAssignmentsMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [assignmentsYear, setAssignmentsYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [assignmentsStatus, setAssignmentsStatus] = useState<string>("");
+
+  // Leave (deleted attendances) list + filters
+  const [leaveMonth, setLeaveMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [leaveYear, setLeaveYear] = useState<number>(new Date().getFullYear());
+  const [leaveEmployeeId, setLeaveEmployeeId] = useState<string>("");
+  const [leaveLoading, setLeaveLoading] = useState(false);
+  const [leaveList, setLeaveList] = useState<any[]>([]);
+  const [employeeOptions, setEmployeeOptions] = useState<any[]>([]);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [savingLeave, setSavingLeave] = useState(false);
+  const [leaveFormState, setLeaveFormState] = useState({
+    date: new Date().toISOString().split("T")[0],
+    employeeId: "",
+    description: "",
+  });
+
+  // Derive employees for select from assignments (only employees of this contract)
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const res = await (
+          await import("@/services/employeeService")
+        ).employeeService.getAll({ page: 0, pageSize: 200 });
+        setEmployeeOptions(res.content || []);
+      } catch (err) {
+        console.error("Error loading employees:", err);
+      }
+    };
+
+    loadEmployees();
+  }, []);
+
+  // Load deleted attendances (leave days)
+  useEffect(() => {
+    const loadDeletedAttendances = async () => {
+      try {
+        setLeaveLoading(true);
+        const q = new URLSearchParams();
+        if (contractId) q.append("contractId", String(contractId));
+        if (leaveEmployeeId) q.append("employeeId", String(leaveEmployeeId));
+        if (leaveMonth) q.append("month", String(leaveMonth));
+        if (leaveYear) q.append("year", String(leaveYear));
+        q.append("page", "0");
+        q.append("pageSize", "50");
+
+        const res = await attendanceService.getDeleted({
+          contractId: contractId,
+          employeeId: leaveEmployeeId || undefined,
+          month: leaveMonth,
+          year: leaveYear,
+          page: 0,
+          pageSize: 50,
+        });
+        setLeaveList(res.content || []);
+      } catch (err) {
+        console.error("Error loading deleted attendances:", err);
+        setLeaveList([]);
+      } finally {
+        setLeaveLoading(false);
+      }
+    };
+
+    if (contractId) loadDeletedAttendances();
+  }, [contractId, leaveMonth, leaveYear, leaveEmployeeId]);
 
   // Permission checks
   const canView = usePermission("CONTRACT_VIEW");
@@ -68,7 +148,6 @@ export default function ContractDetailPage() {
       try {
         setLoading(true);
         const data = await contractService.getById(contractId);
-        console.log("Loaded contract data:", data);
         setContract(data);
       } catch (error) {
         console.error("Error loading contract:", error);
@@ -77,7 +156,6 @@ export default function ContractDetailPage() {
         setLoading(false);
       }
     };
-
     loadContract();
   }, [contractId]);
 
@@ -119,6 +197,31 @@ export default function ContractDetailPage() {
     loadInvoices();
   }, [contractId]);
 
+  // Load assignments for this contract (selected month/year)
+  const fetchAssignments = async (month: number, year: number) => {
+    try {
+      setAssignmentsLoading(true);
+      const res = await assignmentService.getByContractMonthYear(
+        Number(contractId),
+        month,
+        year,
+        1,
+        50,
+        assignmentsStatus || undefined
+      );
+      setAssignments(res.content || []);
+    } catch (err) {
+      console.error("Error loading assignments:", err);
+      setAssignments([]);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contractId) fetchAssignments(assignmentsMonth, assignmentsYear);
+  }, [contractId, assignmentsMonth, assignmentsYear, assignmentsStatus]);
+
   const getCustomerName = (customerName?: string) => {
     return customerName || "N/A";
   };
@@ -142,6 +245,48 @@ export default function ContractDetailPage() {
     }
   };
 
+  const getAssignmentTypeLabel = (type?: string) => {
+    if (!type) return "-";
+    const map: Record<string, string> = {
+      FIXED_BY_CONTRACT: "Cố định theo hợp đồng",
+      FIXED_BY_DAY: "Cố định theo ngày",
+      TEMPORARY: "Tạm thời",
+      FIXED_BY_COMPANY: "Làm việc tại công ty",
+    };
+    return map[type] || type.replace(/_/g, " ");
+  };
+
+  const getAssignmentStatusLabel = (status?: string) => {
+    if (!status) return "-";
+    switch (status) {
+      case "IN_PROGRESS":
+        return "Đang thực hiện";
+      case "CANCELED":
+        return "Đã hủy";
+      case "PENDING":
+        return "Chưa bắt đầu";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "OVERDUE":
+        return "Quá hạn";
+      default:
+        return status;
+    }
+  };
+
+  const getAssignmentStatusColor = (status?: string) => {
+    switch (status) {
+      case "IN_PROGRESS":
+        return "bg-green-100 text-green-800";
+      case "COMPLETED":
+        return "bg-blue-100 text-blue-800";
+      case "CANCELED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-yellow-100 text-yellow-800";
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -151,22 +296,10 @@ export default function ContractDetailPage() {
 
   const computeServicesBaseTotal = (services?: any[]) => {
     if (!services || services.length === 0) return 0;
-    return services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
-  };
-
-  const computeServicesVatTotal = (services?: any[]) => {
-    if (!services || services.length === 0) return 0;
-    return services.reduce((sum, s) => {
-      const price = Number(s.price) || 0;
-      const vatPercent = Number(s.vat) || 0;
-      return sum + (price * vatPercent) / 100;
-    }, 0);
-  };
-
-  const computeServicesGrandTotal = (services?: any[]) => {
-    const base = computeServicesBaseTotal(services);
-    const vat = computeServicesVatTotal(services);
-    return base + vat;
+    return services.reduce(
+      (sum, s) => sum + (Number(s.baseAmount ?? s.price) || 0),
+      0
+    );
   };
 
   const formatDate = (date: Date) => {
@@ -245,6 +378,7 @@ export default function ContractDetailPage() {
     }
   };
 
+<<<<<<< HEAD
   const handleDelete = async () => {
     if (!contract || !canDelete) return;
 
@@ -260,6 +394,8 @@ export default function ContractDetailPage() {
     }
   };
 
+=======
+>>>>>>> main
   const handleAddService = () => {
     if (!canEdit) return;
     setEditingService(null);
@@ -282,7 +418,8 @@ export default function ContractDetailPage() {
       description: service.description || "",
       price: service.price,
       vat: service.vat || 0,
-      effectiveFrom: service.effectiveFrom || new Date().toISOString().split("T")[0],
+      effectiveFrom:
+        service.effectiveFrom || new Date().toISOString().split("T")[0],
       serviceType: service.serviceType || "RECURRING",
     });
     setShowServiceModal(true);
@@ -303,8 +440,9 @@ export default function ContractDetailPage() {
     try {
       setSavingService(true);
       if (editingService) {
-        // Update existing service
-        await serviceService.update(editingService.id.toString(), {
+        // Update existing service via contract endpoint
+        await apiService.put(`/contracts/${contract?.id}/services`, {
+          serviceId: editingService.id,
           title: serviceForm.title,
           description: serviceForm.description,
           price: servicePrice,
@@ -357,7 +495,6 @@ export default function ContractDetailPage() {
     setInvoiceForm({
       invoiceMonth: new Date().getMonth() + 1,
       invoiceYear: new Date().getFullYear(),
-      actualWorkingDays: "" as any,
       notes: "",
     });
     setShowInvoiceModal(true);
@@ -366,21 +503,23 @@ export default function ContractDetailPage() {
   const handleDeleteInvoice = async (invoiceId: number) => {
     if (!contract || !canManageCost) return;
 
-    if (!confirm('Xác nhận xóa hóa đơn này?')) return;
+    if (!confirm("Xác nhận xóa hóa đơn này?")) return;
 
     try {
       setDeletingInvoice(invoiceId);
-      const toastId = toast.loading('Đang xóa hóa đơn...');
+      const toastId = toast.loading("Đang xóa hóa đơn...");
       await invoiceService.delete(invoiceId);
       toast.dismiss(toastId);
-      toast.success('Đã xóa hóa đơn thành công');
+      toast.success("Đã xóa hóa đơn thành công");
 
       // Reload invoices
-      const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+      const updatedInvoices = await invoiceService.getByContractId(
+        Number(contract.id)
+      );
       setInvoices(updatedInvoices);
     } catch (error) {
-      console.error('Error deleting invoice:', error);
-      toast.error('Không thể xóa hóa đơn');
+      console.error("Error deleting invoice:", error);
+      toast.error("Không thể xóa hóa đơn");
     } finally {
       setDeletingInvoice(null);
     }
@@ -398,24 +537,16 @@ export default function ContractDetailPage() {
         notes: invoiceForm.notes,
       };
 
-      // For MONTHLY_ACTUAL contracts, actualWorkingDays is required
-      if (contract.contractType === "MONTHLY_ACTUAL") {
-        const workDays = invoiceForm.actualWorkingDays
-          ? Number(invoiceForm.actualWorkingDays)
-          : 0;
-        if (workDays <= 0) {
-          toast.error("Vui lòng nhập số ngày làm việc thực tế");
-          return;
-        }
-        invoiceData.actualWorkingDays = workDays;
-      }
+      // Note: `actualWorkingDays` is handled server-side now; do not include from UI.
 
       await invoiceService.create(invoiceData);
       toast.success("Đã tạo hóa đơn thành công");
       setShowInvoiceModal(false);
 
       // Reload invoices
-      const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+      const updatedInvoices = await invoiceService.getByContractId(
+        Number(contract.id)
+      );
       setInvoices(updatedInvoices);
     } catch (error) {
       console.error("Error creating invoice:", error);
@@ -455,12 +586,6 @@ export default function ContractDetailPage() {
     }
   };
 
-  const getContractAssignmentsPlandays = (contract: any): number => {
-    console.log("Calculating plandays for contract:", contract);
-    if (!contract || !contract.assignments || contract.assignments.length === 0) return 0;
-    return contract.assignments.reduce((sum: number, a: any) => sum + (Number(a?.planday) || 0), 0);
-  };
-
   const handleUpdateInvoiceStatus = (invoice: Invoice) => {
     if (!canManageCost) return;
     setSelectedInvoice(invoice);
@@ -485,7 +610,9 @@ export default function ContractDetailPage() {
 
       // Reload invoices
       if (contract) {
-        const updatedInvoices = await invoiceService.getByContractId(Number(contract.id));
+        const updatedInvoices = await invoiceService.getByContractId(
+          Number(contract.id)
+        );
         setInvoices(updatedInvoices);
       }
     } catch (error) {
@@ -498,19 +625,21 @@ export default function ContractDetailPage() {
 
   const handleExportExcel = async (invoiceId: number) => {
     try {
-      const toastId = toast.loading('Đang xuất Excel...');
-      const blob = await apiService.getFile(`/invoices/${invoiceId}/export/excel`);
+      const toastId = toast.loading("Đang xuất Excel...");
+      const blob = await apiService.getFile(
+        `/invoices/${invoiceId}/export/excel`
+      );
 
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const inv = invoices.find(i => i.id === invoiceId);
-    const sanitize = (str: string) => str.replace(/[\\/:*?"<>|]/g, "_");
-    const filename =
-      `Hóa đơn ` +
-      `${sanitize(inv?.customerName || "Khách hàng")}_HĐ_` +
-      `${sanitize(String(inv?.contractId || invoiceId))}_` +
-      `${inv?.invoiceMonth || "MM"}-${inv?.invoiceYear || "YYYY"}.xlsx`;
+      const inv = invoices.find((i) => i.id === invoiceId);
+      const sanitize = (str: string) => str.replace(/[\\/:*?"<>|]/g, "_");
+      const filename =
+        `Hóa đơn ` +
+        `${sanitize(inv?.customerName || "Khách hàng")}_HĐ_` +
+        `${sanitize(String(inv?.contractId || invoiceId))}_` +
+        `${inv?.invoiceMonth || "MM"}-${inv?.invoiceYear || "YYYY"}.xlsx`;
 
       a.download = filename;
       document.body.appendChild(a);
@@ -518,10 +647,10 @@ export default function ContractDetailPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
       toast.dismiss(toastId);
-      toast.success('Đã xuất Excel');
+      toast.success("Đã xuất Excel");
     } catch (error) {
-      console.error('Export Excel failed', error);
-      toast.error('Không thể xuất file Excel');
+      console.error("Export Excel failed", error);
+      toast.error("Không thể xuất file Excel");
     }
   };
 
@@ -680,7 +809,7 @@ export default function ContractDetailPage() {
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card 1: Thông tin hợp đồng */}
+          {/* Split Card 1 into two cards for better layout */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
               Thông tin hợp đồng
@@ -743,7 +872,14 @@ export default function ContractDetailPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
 
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+              Chi tiết hợp đồng
+            </h3>
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">
@@ -842,44 +978,6 @@ export default function ContractDetailPage() {
               )}
             </div>
           </div>
-
-          {/* Card 2: Thông tin tài chính */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
-              Thông tin tài chính
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Tổng giá cơ bản</p>
-                <p className="text-2xl font-bold text-gray-800">
-                  {formatCurrency(computeServicesBaseTotal(contract?.services))}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Tổng VAT</p>
-                <p className="text-xl font-semibold text-gray-700">
-                  {formatCurrency(computeServicesVatTotal(contract?.services))}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t">
-                <p className="text-xs text-gray-500 mb-1">Tổng cộng (Bao gồm VAT)</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(computeServicesGrandTotal(contract?.services))}
-                </p>
-              </div>
-
-              {contract.notes && (
-                <div className="pt-3 border-t">
-                  <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {contract.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Card 3: Dịch vụ */}
@@ -924,6 +1022,9 @@ export default function ContractDetailPage() {
                       Tên dịch vụ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loại dịch vụ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mô tả
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -932,6 +1033,7 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       VAT
                     </th>
+<<<<<<< HEAD
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Số ngày làm/tháng
                     </th>
@@ -939,6 +1041,9 @@ export default function ContractDetailPage() {
                       Tổng
                     </th>
                     {canEditService && (
+=======
+
+>>>>>>> main
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Thao tác
                     </th>
@@ -956,6 +1061,15 @@ export default function ContractDetailPage() {
                           {service.title}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-700">
+                          {(service as any).serviceType === "ONE_TIME"
+                            ? "Một lần mỗi tháng"
+                            : (service as any).serviceType === "RECURRING"
+                            ? "Định kỳ hàng tháng"
+                            : (service as any).serviceType}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-600 line-clamp-2">
                           {service.description || "—"}
@@ -971,6 +1085,7 @@ export default function ContractDetailPage() {
                           {service.vat}%
                         </span>
                       </td>
+<<<<<<< HEAD
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-700">
                           {getContractAssignmentsPlandays(contract)}
@@ -984,6 +1099,9 @@ export default function ContractDetailPage() {
                         </span>
                       </td>
                       {canEditService && (
+=======
+
+>>>>>>> main
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => handleEditService(service)}
@@ -1017,24 +1135,6 @@ export default function ContractDetailPage() {
               <p className="text-sm">Chưa có dịch vụ nào cho hợp đồng này</p>
             </div>
           )}
-        </div>
-
-        {/* Documents Section */}
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <ContractDocuments
-            contractId={contractId}
-            documents={documents}
-            onRefresh={async () => {
-              try {
-                const docs = await contractDocumentService.getContractDocuments(
-                  contractId
-                );
-                setDocuments(docs);
-              } catch (error) {
-                console.error("Error refreshing documents:", error);
-              }
-            }}
-          />
         </div>
 
         {/* Invoices Section */}
@@ -1089,27 +1189,43 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tổng tiền
                     </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày công
-                    </th> */}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Số ngày làm
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ghi chú
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
+                    <tr
+                      key={invoice.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        router.push(
+                          `/admin/contracts/${contract.id}/invoices/${invoice.id}`
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if ((e as any).key === "Enter")
+                          router.push(
+                            `/admin/contracts/${contract.id}/invoices/${invoice.id}`
+                          );
+                      }}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono font-medium text-blue-600">
+                        <Link
+                          href={`/admin/contracts/${contract.id}/invoices/${invoice.id}`}
+                          className="text-sm font-mono font-medium text-blue-600"
+                        >
                           {invoice.invoiceNumber || `#${invoice.id}`}
-                        </span>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">
@@ -1121,11 +1237,11 @@ export default function ContractDetailPage() {
                           {formatCurrency(invoice.totalAmount)}
                         </span>
                       </td>
-                      {/* <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-700">
                           {invoice.actualWorkingDays || "—"}
                         </span>
-                      </td> */}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
@@ -1140,76 +1256,166 @@ export default function ContractDetailPage() {
                           {invoice.notes || "—"}
                         </p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleUpdateInvoiceStatus(invoice)}
-                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                              />
-                            </svg>
-                            Cập nhật
-                          </button>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
-                          <button
-                            onClick={() => handleExportExcel(invoice.id)}
-                            className="text-green-600 hover:text-green-800 inline-flex items-center gap-1 ml-3"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                              />
-                            </svg>
-                            Xuất Excel
-                          </button>
+        {/* Assignments Section */}
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Nhân viên phụ trách
+            </h3>
+            <div className="flex gap-2 items-center">
+              <select
+                value={assignmentsStatus}
+                onChange={(e) => setAssignmentsStatus(e.target.value)}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">Chọn trạng thái</option>
+                <option value="IN_PROGRESS">Đang thực hiện</option>
+                <option value="COMPLETED">Hoàn thành</option>
+                <option value="CANCELED">Đã hủy</option>
+              </select>
+              <select
+                value={assignmentsMonth}
+                onChange={(e) => setAssignmentsMonth(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    Tháng {m}
+                  </option>
+                ))}
+              </select>
 
-                          <button
-                            onClick={() => handleDeleteInvoice(invoice.id)}
-                            disabled={deletingInvoice === invoice.id}
-                            className="text-red-600 hover:text-red-800 inline-flex items-center gap-1 ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              <select
+                value={assignmentsYear}
+                onChange={(e) => setAssignmentsYear(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                {Array.from(
+                  { length: 5 },
+                  (_, i) => assignmentsYear - 2 + i
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {assignmentsLoading ? (
+            <div className="py-6 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : assignments.length === 0 ? (
+            <div className="py-3 text-gray-500">
+              Chưa có nhân viên phụ trách cho hợp đồng này
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      #
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nhân viên
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mã NV
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loại
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ngày bắt đầu
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Số ngày
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Dự kiến
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Lương
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phụ cấp
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {assignments.map((a: any, idx: number) => (
+                    <tr
+                      key={a.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/admin/assignments/${a.id}`)}
+                      onKeyDown={(e) => {
+                        if ((e as any).key === "Enter")
+                          router.push(`/admin/assignments/${a.id}`);
+                      }}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        <div>
+                          <Link
+                            href={`/admin/assignments/${a.id}`}
+                            className="font-medium text-blue-600"
                           >
-                            {deletingInvoice === invoice.id ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600" />
-                            ) : (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-                                />
-                              </svg>
-                            )}
-                            <span>Xóa</span>
-                          </button>
+                            {a.employeeName || a.name || "-"}
+                          </Link>
+                          <div className="text-xs text-gray-500">
+                            {a.position || a.role || ""}
+                          </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {a.employeeCode || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {getAssignmentTypeLabel(a.assignmentType || a.scope)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getAssignmentStatusColor(
+                            a.status
+                          )}`}
+                        >
+                          {getAssignmentStatusLabel(a.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {a.startDate ? formatDate(a.startDate) : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.workDays ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.plannedDays ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.salaryAtTime
+                          ? formatCurrency(Number(a.salaryAtTime))
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.additionalAllowance
+                          ? formatCurrency(Number(a.additionalAllowance))
+                          : "-"}
                       </td>
                     </tr>
                   ))}
@@ -1220,6 +1426,368 @@ export default function ContractDetailPage() {
         </div>
       </div>
 
+      {/* Leave (deleted attendances) Section */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Danh sách ngày nghỉ phép
+          </h3>
+          <div className="flex gap-2 items-center">
+            <select
+              value={leaveEmployeeId}
+              onChange={(e) => setLeaveEmployeeId(e.target.value)}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="">Tất cả nhân viên</option>
+              {assignments.map((emp: any) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.employeeName}{" "}
+                  {emp.employeeCode ? `(${emp.employeeCode})` : ""}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={leaveMonth}
+              onChange={(e) => setLeaveMonth(Number(e.target.value))}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={leaveYear}
+              onChange={(e) => setLeaveYear(Number(e.target.value))}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 5 }, (_, i) => leaveYear - 2 + i).map(
+                (y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                )
+              )}
+            </select>
+
+            <button
+              onClick={() => {
+                setLeaveFormState((s) => ({
+                  ...s,
+                  employeeId: leaveEmployeeId || (employeeOptions[0]?.id ?? ""),
+                  date: new Date().toISOString().split("T")[0],
+                  description: "",
+                }));
+                setShowLeaveModal(true);
+              }}
+              className="ml-2 px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+            >
+              + Thêm ngày nghỉ phép
+            </button>
+          </div>
+        </div>
+
+        {leaveLoading ? (
+          <div className="py-6 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : leaveList.length === 0 ? (
+          <div className="py-3 text-gray-500">
+            Chưa có ngày nghỉ phép cho bộ lọc này
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    #
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nhân viên
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mã NV
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ngày nghỉ
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Loại
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ghi chú
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hành động
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {leaveList.map((it: any, idx: number) => (
+                  <tr key={it.id || idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {idx + 1}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {it.employeeName || it.name || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.employeeCode || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.date || it.attendanceDate || it.deletedAt || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.type || it.leaveType || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.notes || it.reason || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const dateValue =
+                              it.date || it.attendanceDate || it.deletedAt;
+                            const employeeIdValue =
+                              it.employeeId ?? it.employeeId ?? undefined;
+
+                            await attendanceService.restoreByDate({
+                              date: dateValue,
+                              contractId: Number(contractId),
+                              employeeId: Number(employeeIdValue),
+                            });
+
+                            toast.success("Đã hoàn tác ngày nghỉ");
+
+                            // Refresh list
+                            try {
+                              const refreshed =
+                                await attendanceService.getDeleted({
+                                  contractId: contractId,
+                                  employeeId: leaveEmployeeId || undefined,
+                                  month: leaveMonth,
+                                  year: leaveYear,
+                                  page: 0,
+                                  pageSize: 50,
+                                });
+                              setLeaveList(refreshed.content || []);
+                              // Refresh assignments (danh sách nhân viên phụ trách)
+                              try {
+                                await fetchAssignments(
+                                  assignmentsMonth,
+                                  assignmentsYear
+                                );
+                              } catch (err) {
+                                console.error(
+                                  "Error refreshing assignments after restore:",
+                                  err
+                                );
+                              }
+                            } catch (err) {
+                              console.error(
+                                "Error refreshing leaves after restore:",
+                                err
+                              );
+                            }
+                          } catch (err: any) {
+                            console.error(err);
+                            toast.error(
+                              err?.message || "Lỗi khi hoàn tác ngày nghỉ"
+                            );
+                          }
+                        }}
+                        className="px-3 py-1 bg-yellow-500 text-white rounded-md text-sm hover:bg-yellow-600"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                          />
+                        </svg>
+                        Hoàn tác
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Leave modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Thêm ngày nghỉ phép</h3>
+              <button
+                onClick={() => setShowLeaveModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Ngày</label>
+                <input
+                  type="date"
+                  value={leaveFormState.date}
+                  onChange={(e) =>
+                    setLeaveFormState({
+                      ...leaveFormState,
+                      date: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Nhân viên
+                </label>
+                <select
+                  value={leaveFormState.employeeId}
+                  onChange={(e) =>
+                    setLeaveFormState({
+                      ...leaveFormState,
+                      employeeId: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Chọn nhân viên</option>
+                  {employeeOptions.map((emp: any) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}{" "}
+                      {emp.employeeCode ? `(${emp.employeeCode})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Lý do
+                </label>
+                <textarea
+                  rows={3}
+                  value={leaveFormState.description}
+                  onChange={(e) =>
+                    setLeaveFormState({
+                      ...leaveFormState,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowLeaveModal(false)}
+                className="px-4 py-2 border rounded-md text-gray-700"
+                disabled={savingLeave}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (!leaveFormState.employeeId) {
+                    toast.error("Vui lòng chọn nhân viên");
+                    return;
+                  }
+                  try {
+                    setSavingLeave(true);
+                    const payload = {
+                      date: leaveFormState.date,
+                      contractId: Number(contractId),
+                      employeeId: Number(leaveFormState.employeeId),
+                      description: leaveFormState.description,
+                    };
+
+                    await attendanceService.deleteByDate(payload);
+
+                    toast.success(
+                      "Đã thêm ngày nghỉ phép của nhân viên thành công"
+                    );
+                    setShowLeaveModal(false);
+
+                    // Refresh list
+                    try {
+                      const refreshed = await attendanceService.getDeleted({
+                        contractId: contractId,
+                        employeeId: leaveEmployeeId || undefined,
+                        month: leaveMonth,
+                        year: leaveYear,
+                        page: 0,
+                        pageSize: 50,
+                      });
+                      setLeaveList(refreshed.content || []);
+                    } catch (err) {
+                      console.error("Error refreshing leaves after add:", err);
+                    }
+                    // Also refresh assignments list after adding a leave
+                    try {
+                      await fetchAssignments(assignmentsMonth, assignmentsYear);
+                    } catch (err) {
+                      console.error(
+                        "Error refreshing assignments after add:",
+                        err
+                      );
+                    }
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error(err?.message || "Lỗi khi thêm ngày nghỉ");
+                  } finally {
+                    setSavingLeave(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                disabled={savingLeave}
+              >
+                {savingLeave ? "Đang xử lý..." : "Xác nhận ngày nghỉ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Documents Section */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <ContractDocuments
+          contractId={contractId}
+          documents={documents}
+          onRefresh={async () => {
+            try {
+              const docs = await contractDocumentService.getContractDocuments(
+                contractId
+              );
+              setDocuments(docs);
+            } catch (error) {
+              console.error("Error refreshing documents:", error);
+            }
+          }}
+        />
+      </div>
       {/* Edit Modal */}
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1364,9 +1932,8 @@ export default function ContractDetailPage() {
                 <input
                   type="text"
                   value={
-                    editForm.workingDaysPerWeek &&
-                    editForm.workingDaysPerWeek.length > 0
-                      ? editForm.workingDaysPerWeek
+                    (editForm.workingDaysPerWeek ?? []).length > 0
+                      ? (editForm.workingDaysPerWeek ?? [])
                           .map((day: string) =>
                             day === "MONDAY"
                               ? "T2"
@@ -1502,7 +2069,10 @@ export default function ContractDetailPage() {
                   <select
                     value={serviceForm.serviceType}
                     onChange={(e) =>
-                      setServiceForm({ ...serviceForm, serviceType: e.target.value })
+                      setServiceForm({
+                        ...serviceForm,
+                        serviceType: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -1519,7 +2089,10 @@ export default function ContractDetailPage() {
                     type="date"
                     value={serviceForm.effectiveFrom}
                     onChange={(e) =>
-                      setServiceForm({ ...serviceForm, effectiveFrom: e.target.value })
+                      setServiceForm({
+                        ...serviceForm,
+                        effectiveFrom: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -1682,10 +2255,16 @@ export default function ContractDetailPage() {
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Hợp đồng:</strong> #{contract.id} - {contract.customerName}
+                  <strong>Hợp đồng:</strong> #{contract.id} -{" "}
+                  {contract.customerName}
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Loại:</strong> {contract.contractType === "ONE_TIME" ? "Hợp đồng 1 lần (trọn gói)" : contract.contractType === "MONTHLY_FIXED" ? "Hợp đồng hàng tháng cố định" : "Hợp đồng hàng tháng theo ngày thực tế"}
+                  <strong>Loại:</strong>{" "}
+                  {contract.contractType === "ONE_TIME"
+                    ? "Hợp đồng 1 lần (trọn gói)"
+                    : contract.contractType === "MONTHLY_FIXED"
+                    ? "Hợp đồng hàng tháng cố định"
+                    : "Hợp đồng hàng tháng theo ngày thực tế"}
                 </p>
               </div>
 
@@ -1704,11 +2283,13 @@ export default function ContractDetailPage() {
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <option key={month} value={month}>
-                        Tháng {month}
-                      </option>
-                    ))}
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                      (month) => (
+                        <option key={month} value={month}>
+                          Tháng {month}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -1732,30 +2313,7 @@ export default function ContractDetailPage() {
                 </div>
               </div>
 
-              {contract.contractType === "MONTHLY_ACTUAL" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Số ngày làm việc thực tế *
-                  </label>
-                  <input
-                    type="number"
-                    value={invoiceForm.actualWorkingDays}
-                    onChange={(e) =>
-                      setInvoiceForm({
-                        ...invoiceForm,
-                        actualWorkingDays: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số ngày làm việc thực tế"
-                    min="1"
-                    max="31"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Bắt buộc cho hợp đồng theo ngày thực tế
-                  </p>
-                </div>
-              )}
+              {/* actualWorkingDays removed — handled on backend now */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1847,13 +2405,16 @@ export default function ContractDetailPage() {
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Hóa đơn:</strong> {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
+                  <strong>Hóa đơn:</strong>{" "}
+                  {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/{selectedInvoice.invoiceYear}
+                  <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/
+                  {selectedInvoice.invoiceYear}
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Tổng tiền:</strong> {formatCurrency(selectedInvoice.totalAmount)}
+                  <strong>Tổng tiền:</strong>{" "}
+                  {formatCurrency(selectedInvoice.totalAmount)}
                 </p>
               </div>
 
@@ -1885,7 +2446,10 @@ export default function ContractDetailPage() {
                 <textarea
                   value={statusUpdateForm.notes}
                   onChange={(e) =>
-                    setStatusUpdateForm({ ...statusUpdateForm, notes: e.target.value })
+                    setStatusUpdateForm({
+                      ...statusUpdateForm,
+                      notes: e.target.value,
+                    })
                   }
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

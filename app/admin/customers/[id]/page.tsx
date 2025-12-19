@@ -284,9 +284,6 @@ export default function CustomerDetail() {
     try {
       setLoadingAssignments(true);
       const data = await assignmentService.getAllByCustomerId(id!, {});
-      console.log("=== LOADED ASSIGNMENTS BY CONTRACT ===");
-      console.log(JSON.stringify(data, null, 2));
-      console.log("======================================");
       setAssignedEmployees(data);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
@@ -682,9 +679,15 @@ export default function CustomerDetail() {
       };
 
       console.log("=== TEMPORARY REASSIGNMENT DATA ===");
-      console.log("Replacement Employee ID:", reassignmentData.replacementEmployeeId);
+      console.log(
+        "Replacement Employee ID:",
+        reassignmentData.replacementEmployeeId
+      );
       console.log("Replaced Employee ID:", reassignmentData.replacedEmployeeId);
-      console.log("Replaced Assignment ID:", reassignmentData.replacedAssignmentId);
+      console.log(
+        "Replaced Assignment ID:",
+        reassignmentData.replacedAssignmentId
+      );
       console.log("Dates:", reassignmentData.dates);
       console.log("===================================");
 
@@ -1181,9 +1184,6 @@ export default function CustomerDetail() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                     Thời gian
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">
-                    Giá cuối
-                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                     Thanh toán
                   </th>
@@ -1226,11 +1226,6 @@ export default function CustomerDetail() {
                           đến {formatDate(contract.endDate)}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {formatCurrency(contract.finalPrice)}
-                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -2684,15 +2679,23 @@ export default function CustomerDetail() {
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {assignedEmployees.map(
                       (contractGroup: any, groupIdx: number) => (
-                        <div key={`contract-replaced-${contractGroup.contractId}-${groupIdx}`}>
+                        <div
+                          key={`contract-replaced-${contractGroup.contractId}-${groupIdx}`}
+                        >
                           {/* Contract Header */}
                           <div className="bg-blue-50 px-3 py-2 rounded-t-lg border border-blue-200">
                             <p className="text-xs font-semibold text-blue-800">
+<<<<<<< HEAD
                               Hợp đồng {contractGroup.contractId}:  {contractGroup.contractDescription}
+=======
+                              Hợp đồng {contractGroup.contractId}:{" "}
+                              {contractGroup.contractDescription}
+>>>>>>> main
                             </p>
                           </div>
                           {/* Assignments under this contract */}
                           <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
+<<<<<<< HEAD
                             {contractGroup.assignments && contractGroup.assignments.length > 0 ? (
                               contractGroup.assignments.map((assignment: any, aIdx: number) => (
                                 <label
@@ -2746,6 +2749,83 @@ export default function CustomerDetail() {
                                   </div>
                                 </label>
                               ))
+=======
+                            {contractGroup.assignments &&
+                            contractGroup.assignments.length > 0 ? (
+                              contractGroup.assignments.map(
+                                (assignment: any, aIdx: number) => (
+                                  <label
+                                    key={`replaced-${
+                                      assignment.id ??
+                                      assignment.employeeId ??
+                                      aIdx
+                                    }`}
+                                    className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
+                                      reassignmentForm.replacedAssignmentId ===
+                                      assignment.id
+                                        ? "border-purple-500 bg-purple-50"
+                                        : "border-gray-200 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        reassignmentForm.replacedAssignmentId ===
+                                        assignment.id
+                                      }
+                                      onChange={(e) => {
+                                        console.log("Selected assignment:", {
+                                          id: assignment.id,
+                                          employeeId: assignment.employeeId,
+                                          employeeName: assignment.employeeName,
+                                          contractId: contractGroup.contractId,
+                                          contractDescription:
+                                            contractGroup.contractDescription,
+                                        });
+                                        setReassignmentForm({
+                                          ...reassignmentForm,
+                                          replacedEmployeeId: e.target.checked
+                                            ? assignment.employeeId
+                                            : null,
+                                          replacedAssignmentId: e.target.checked
+                                            ? assignment.id
+                                            : null,
+                                        });
+                                      }}
+                                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-sm font-semibold text-red-600">
+                                        {assignment.employeeName?.charAt(0) ||
+                                          "N"}
+                                      </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold text-sm text-gray-900 truncate">
+                                        {assignment.employeeName}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {assignment.employeeCode}
+                                      </p>
+                                      <p className="text-xs text-gray-400">
+                                        {assignment.startDate && (
+                                          <span>
+                                            Phụ trách từ{" "}
+                                            {formatDate(assignment.startDate)}
+                                          </span>
+                                        )}
+                                        {assignment.workDays !== undefined &&
+                                          assignment.workDays !== null && (
+                                            <span className="ml-2">
+                                              • {assignment.workDays} ngày
+                                            </span>
+                                          )}
+                                      </p>
+                                    </div>
+                                  </label>
+                                )
+                              )
+>>>>>>> main
                             ) : (
                               <p className="text-center text-gray-400 py-4 text-xs">
                                 Chưa có nhân viên

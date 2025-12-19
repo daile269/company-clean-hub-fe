@@ -142,6 +142,79 @@ export const getByAssignmentId = async (
   }
 };
 
+// Lấy attendances đã xóa (deleted) theo contractId và filter khác
+export const getDeleted = async (
+  params: { contractId?: string | number; employeeId?: string | number; month?: number; year?: number; page?: number; pageSize?: number }
+): Promise<AttendancePaginationResponse> => {
+  try {
+    const { contractId, employeeId, month, year, page = 0, pageSize = 50 } = params;
+    const q = new URLSearchParams();
+    if (contractId !== undefined) q.append('contractId', String(contractId));
+    if (employeeId !== undefined) q.append('employeeId', String(employeeId));
+    if (month !== undefined) q.append('month', String(month));
+    if (year !== undefined) q.append('year', String(year));
+    q.append('page', String(page));
+    q.append('pageSize', String(pageSize));
+
+    const response = await apiService.get<any>(`/attendances/deleted?${q.toString()}`);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to fetch deleted attendances');
+    }
+
+    return {
+      content: Array.isArray(response.data.content) ? response.data.content : [],
+      totalElements: response.data.totalElements || 0,
+      totalPages: response.data.totalPages || 0,
+      currentPage: response.data.page ?? page,
+      pageSize: response.data.pageSize ?? pageSize,
+    };
+  } catch (error) {
+    console.error('Error fetching deleted attendances:', error);
+    throw error;
+  }
+};
+
+// Xóa attendance theo ngày (endpoint expects DELETE with JSON body)
+export const deleteByDate = async (payload: { date: string; contractId: number | string; employeeId: number | string; description?: string }) => {
+  try {
+    // Use centralized apiService request so headers/token/error handling remain consistent
+    const response = await (apiService as any).request('/attendances/by-date', {
+      method: 'DELETE',
+      body: JSON.stringify(payload),
+    });
+
+    if (!response || !response.success) {
+      throw new Error(response?.message || 'Failed to delete attendance by date');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting attendance by date:', error);
+    throw error;
+  }
+};
+
+// Khôi phục (restore) attendance theo ngày (PUT với JSON body)
+export const restoreByDate = async (payload: { date: string; contractId: number | string; employeeId: number | string }) => {
+  try {
+    // Use centralized apiService.request for consistent headers/token/error handling
+    const response = await (apiService as any).request('/attendances/restore/by-date', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+
+    if (!response || !response.success) {
+      throw new Error(response?.message || 'Failed to restore attendance by date');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error restoring attendance by date:', error);
+    throw error;
+  }
+};
+
 // Lấy chi tiết attendance theo ID
 export const getById = async (id: string): Promise<Attendance> => {
   try {
@@ -212,6 +285,9 @@ const attendanceService = {
   delete: deleteAttendance,
   getByEmployeeAndMonth,
   getByAssignmentId,
+  getDeleted,
+  deleteByDate,
+  restoreByDate,
 };
 
 export default attendanceService;

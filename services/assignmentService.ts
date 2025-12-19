@@ -1,3 +1,4 @@
+// Assignment service (class-based) lives below; do not redeclare here.
 import { apiService, ApiResponse } from "./api";
 import { Employee } from "@/types";
 
@@ -313,6 +314,74 @@ class AssignmentService {
         totalPages: 0,
         currentPage: 0,
         pageSize: params?.pageSize ?? 100,
+      };
+    }
+  }
+
+  async getByContractMonthYear(
+    contractId: number,
+    month?: number,
+    year?: number,
+    page = 0,
+    pageSize = 10,
+    status?: string
+  ): Promise<AssignmentPaginationResponse> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (month !== undefined) queryParams.append('month', String(month));
+      if (year !== undefined) queryParams.append('year', String(year));
+      if (status) queryParams.append('status', status);
+      queryParams.append('page', String(page));
+      queryParams.append('pageSize', String(pageSize));
+
+      const response = await apiService.get<any>(
+        `/assignments/contract/${contractId}?${queryParams.toString()}`
+      );
+
+      if (response.success && response.data) {
+        // Normalize to AssignmentPaginationResponse shape.
+        const content = Array.isArray(response.data.content)
+          ? response.data.content
+          : Array.isArray(response.data.items)
+          ? response.data.items
+          : Array.isArray(response.data)
+          ? response.data
+          : [];
+
+        const totalElementsRaw = response.data.totalElements ?? response.data.total ?? (content.length || 0);
+        const totalElements = Number(totalElementsRaw);
+
+        const totalPagesRaw = response.data.totalPages ?? Math.ceil(totalElements / pageSize) ?? 0;
+        const totalPages = Number(totalPagesRaw);
+
+        const currentPage = Number(response.data.page ?? response.data.number ?? page ?? 0);
+
+        const resolvedPageSize = Number(response.data.pageSize ?? response.data.size ?? pageSize ?? 10);
+
+        return {
+          content,
+          totalElements,
+          totalPages,
+          currentPage,
+          pageSize: resolvedPageSize,
+        };
+      }
+
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: pageSize,
+      };
+    } catch (error) {
+      console.error('Error fetching assignments by contract:', error);
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: pageSize,
       };
     }
   }

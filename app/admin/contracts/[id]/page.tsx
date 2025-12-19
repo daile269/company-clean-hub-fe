@@ -11,6 +11,8 @@ import invoiceService, {
   InvoiceCreateRequest,
 } from "@/services/invoiceService";
 import { apiService } from "@/services/api";
+import attendanceService from "@/services/attendanceService";
+import { assignmentService } from "@/services/assignmentService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -54,6 +56,81 @@ export default function ContractDetailPage() {
     status: "PAID" as string,
     notes: "",
   });
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsMonth, setAssignmentsMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [assignmentsYear, setAssignmentsYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [assignmentsStatus, setAssignmentsStatus] = useState<string>("");
+
+  // Leave (deleted attendances) list + filters
+  const [leaveMonth, setLeaveMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [leaveYear, setLeaveYear] = useState<number>(new Date().getFullYear());
+  const [leaveEmployeeId, setLeaveEmployeeId] = useState<string>("");
+  const [leaveLoading, setLeaveLoading] = useState(false);
+  const [leaveList, setLeaveList] = useState<any[]>([]);
+  const [employeeOptions, setEmployeeOptions] = useState<any[]>([]);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [savingLeave, setSavingLeave] = useState(false);
+  const [leaveFormState, setLeaveFormState] = useState({
+    date: new Date().toISOString().split("T")[0],
+    employeeId: "",
+    description: "",
+  });
+
+  // Derive employees for select from assignments (only employees of this contract)
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const res = await (
+          await import("@/services/employeeService")
+        ).employeeService.getAll({ page: 0, pageSize: 200 });
+        setEmployeeOptions(res.content || []);
+      } catch (err) {
+        console.error("Error loading employees:", err);
+      }
+    };
+
+    loadEmployees();
+  }, []);
+
+  // Load deleted attendances (leave days)
+  useEffect(() => {
+    const loadDeletedAttendances = async () => {
+      try {
+        setLeaveLoading(true);
+        const q = new URLSearchParams();
+        if (contractId) q.append("contractId", String(contractId));
+        if (leaveEmployeeId) q.append("employeeId", String(leaveEmployeeId));
+        if (leaveMonth) q.append("month", String(leaveMonth));
+        if (leaveYear) q.append("year", String(leaveYear));
+        q.append("page", "0");
+        q.append("pageSize", "50");
+
+        const res = await attendanceService.getDeleted({
+          contractId: contractId,
+          employeeId: leaveEmployeeId || undefined,
+          month: leaveMonth,
+          year: leaveYear,
+          page: 0,
+          pageSize: 50,
+        });
+        setLeaveList(res.content || []);
+      } catch (err) {
+        console.error("Error loading deleted attendances:", err);
+        setLeaveList([]);
+      } finally {
+        setLeaveLoading(false);
+      }
+    };
+
+    if (contractId) loadDeletedAttendances();
+  }, [contractId, leaveMonth, leaveYear, leaveEmployeeId]);
 
   // Load contract details
   useEffect(() => {
@@ -61,7 +138,6 @@ export default function ContractDetailPage() {
       try {
         setLoading(true);
         const data = await contractService.getById(contractId);
-        console.log("Loaded contract data:", data);
         setContract(data);
       } catch (error) {
         console.error("Error loading contract:", error);
@@ -70,7 +146,6 @@ export default function ContractDetailPage() {
         setLoading(false);
       }
     };
-
     loadContract();
   }, [contractId]);
 
@@ -112,6 +187,31 @@ export default function ContractDetailPage() {
     loadInvoices();
   }, [contractId]);
 
+  // Load assignments for this contract (selected month/year)
+  const fetchAssignments = async (month: number, year: number) => {
+    try {
+      setAssignmentsLoading(true);
+      const res = await assignmentService.getByContractMonthYear(
+        Number(contractId),
+        month,
+        year,
+        1,
+        50,
+        assignmentsStatus || undefined
+      );
+      setAssignments(res.content || []);
+    } catch (err) {
+      console.error("Error loading assignments:", err);
+      setAssignments([]);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contractId) fetchAssignments(assignmentsMonth, assignmentsYear);
+  }, [contractId, assignmentsMonth, assignmentsYear, assignmentsStatus]);
+
   const getCustomerName = (customerName?: string) => {
     return customerName || "N/A";
   };
@@ -132,6 +232,48 @@ export default function ContractDetailPage() {
       return { status: "Sắp hết hạn", color: "yellow" };
     } else {
       return { status: "Đang thực hiện", color: "green" };
+    }
+  };
+
+  const getAssignmentTypeLabel = (type?: string) => {
+    if (!type) return "-";
+    const map: Record<string, string> = {
+      FIXED_BY_CONTRACT: "Cố định theo hợp đồng",
+      FIXED_BY_DAY: "Cố định theo ngày",
+      TEMPORARY: "Tạm thời",
+      FIXED_BY_COMPANY: "Làm việc tại công ty",
+    };
+    return map[type] || type.replace(/_/g, " ");
+  };
+
+  const getAssignmentStatusLabel = (status?: string) => {
+    if (!status) return "-";
+    switch (status) {
+      case "IN_PROGRESS":
+        return "Đang thực hiện";
+      case "CANCELED":
+        return "Đã hủy";
+      case "PENDING":
+        return "Chưa bắt đầu";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "OVERDUE":
+        return "Quá hạn";
+      default:
+        return status;
+    }
+  };
+
+  const getAssignmentStatusColor = (status?: string) => {
+    switch (status) {
+      case "IN_PROGRESS":
+        return "bg-green-100 text-green-800";
+      case "COMPLETED":
+        return "bg-blue-100 text-blue-800";
+      case "CANCELED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-yellow-100 text-yellow-800";
     }
   };
 
@@ -979,10 +1121,16 @@ export default function ContractDetailPage() {
                       key={invoice.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => router.push(`/admin/contracts/${contract.id}/invoices/${invoice.id}`)}
+                      onClick={() =>
+                        router.push(
+                          `/admin/contracts/${contract.id}/invoices/${invoice.id}`
+                        )
+                      }
                       onKeyDown={(e) => {
                         if ((e as any).key === "Enter")
-                          router.push(`/admin/contracts/${contract.id}/invoices/${invoice.id}`);
+                          router.push(
+                            `/admin/contracts/${contract.id}/invoices/${invoice.id}`
+                          );
                       }}
                       className="hover:bg-gray-50 cursor-pointer"
                     >
@@ -1008,7 +1156,7 @@ export default function ContractDetailPage() {
                         <span className="text-sm text-gray-700">
                           {invoice.actualWorkingDays || "—"}
                         </span>
-                      </td> 
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
@@ -1023,7 +1171,167 @@ export default function ContractDetailPage() {
                           {invoice.notes || "—"}
                         </p>
                       </td>
-                      
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Assignments Section */}
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Nhân viên phụ trách
+            </h3>
+            <div className="flex gap-2 items-center">
+              <select
+                value={assignmentsStatus}
+                onChange={(e) => setAssignmentsStatus(e.target.value)}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">Chọn trạng thái</option>
+                <option value="IN_PROGRESS">Đang thực hiện</option>
+                <option value="COMPLETED">Hoàn thành</option>
+                <option value="CANCELED">Đã hủy</option>
+              </select>
+              <select
+                value={assignmentsMonth}
+                onChange={(e) => setAssignmentsMonth(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    Tháng {m}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={assignmentsYear}
+                onChange={(e) => setAssignmentsYear(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                {Array.from(
+                  { length: 5 },
+                  (_, i) => assignmentsYear - 2 + i
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {assignmentsLoading ? (
+            <div className="py-6 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : assignments.length === 0 ? (
+            <div className="py-3 text-gray-500">
+              Chưa có nhân viên phụ trách cho hợp đồng này
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      #
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nhân viên
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mã NV
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Loại
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ngày bắt đầu
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Số ngày
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Dự kiến
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Lương
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phụ cấp
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {assignments.map((a: any, idx: number) => (
+                    <tr
+                      key={a.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/admin/assignments/${a.id}`)}
+                      onKeyDown={(e) => {
+                        if ((e as any).key === "Enter")
+                          router.push(`/admin/assignments/${a.id}`);
+                      }}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        <div>
+                          <Link
+                            href={`/admin/assignments/${a.id}`}
+                            className="font-medium text-blue-600"
+                          >
+                            {a.employeeName || a.name || "-"}
+                          </Link>
+                          <div className="text-xs text-gray-500">
+                            {a.position || a.role || ""}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {a.employeeCode || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {getAssignmentTypeLabel(a.assignmentType || a.scope)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getAssignmentStatusColor(
+                            a.status
+                          )}`}
+                        >
+                          {getAssignmentStatusLabel(a.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {a.startDate ? formatDate(a.startDate) : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.workDays ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.plannedDays ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.salaryAtTime
+                          ? formatCurrency(Number(a.salaryAtTime))
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-700">
+                        {a.additionalAllowance
+                          ? formatCurrency(Number(a.additionalAllowance))
+                          : "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1032,6 +1340,352 @@ export default function ContractDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Leave (deleted attendances) Section */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Danh sách ngày nghỉ phép
+          </h3>
+          <div className="flex gap-2 items-center">
+            <select
+              value={leaveEmployeeId}
+              onChange={(e) => setLeaveEmployeeId(e.target.value)}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="">Tất cả nhân viên</option>
+              {assignments.map((emp: any) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.employeeName}{" "}
+                  {emp.employeeCode ? `(${emp.employeeCode})` : ""}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={leaveMonth}
+              onChange={(e) => setLeaveMonth(Number(e.target.value))}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={leaveYear}
+              onChange={(e) => setLeaveYear(Number(e.target.value))}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 5 }, (_, i) => leaveYear - 2 + i).map(
+                (y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                )
+              )}
+            </select>
+
+            <button
+              onClick={() => {
+                setLeaveFormState((s) => ({
+                  ...s,
+                  employeeId: leaveEmployeeId || (employeeOptions[0]?.id ?? ""),
+                  date: new Date().toISOString().split("T")[0],
+                  description: "",
+                }));
+                setShowLeaveModal(true);
+              }}
+              className="ml-2 px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+            >
+              + Thêm ngày nghỉ phép
+            </button>
+          </div>
+        </div>
+
+        {leaveLoading ? (
+          <div className="py-6 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : leaveList.length === 0 ? (
+          <div className="py-3 text-gray-500">
+            Chưa có ngày nghỉ phép cho bộ lọc này
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    #
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nhân viên
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mã NV
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ngày nghỉ
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Loại
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ghi chú
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hành động
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {leaveList.map((it: any, idx: number) => (
+                  <tr key={it.id || idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {idx + 1}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {it.employeeName || it.name || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.employeeCode || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.date || it.attendanceDate || it.deletedAt || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.type || it.leaveType || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {it.notes || it.reason || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const dateValue =
+                              it.date || it.attendanceDate || it.deletedAt;
+                            const employeeIdValue =
+                              it.employeeId ?? it.employeeId ?? undefined;
+
+                            await attendanceService.restoreByDate({
+                              date: dateValue,
+                              contractId: Number(contractId),
+                              employeeId: Number(employeeIdValue),
+                            });
+
+                            toast.success("Đã hoàn tác ngày nghỉ");
+
+                            // Refresh list
+                            try {
+                              const refreshed =
+                                await attendanceService.getDeleted({
+                                  contractId: contractId,
+                                  employeeId: leaveEmployeeId || undefined,
+                                  month: leaveMonth,
+                                  year: leaveYear,
+                                  page: 0,
+                                  pageSize: 50,
+                                });
+                              setLeaveList(refreshed.content || []);
+                              // Refresh assignments (danh sách nhân viên phụ trách)
+                              try {
+                                await fetchAssignments(
+                                  assignmentsMonth,
+                                  assignmentsYear
+                                );
+                              } catch (err) {
+                                console.error(
+                                  "Error refreshing assignments after restore:",
+                                  err
+                                );
+                              }
+                            } catch (err) {
+                              console.error(
+                                "Error refreshing leaves after restore:",
+                                err
+                              );
+                            }
+                          } catch (err: any) {
+                            console.error(err);
+                            toast.error(
+                              err?.message || "Lỗi khi hoàn tác ngày nghỉ"
+                            );
+                          }
+                        }}
+                        className="px-3 py-1 bg-yellow-500 text-white rounded-md text-sm hover:bg-yellow-600"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                          />
+                        </svg>
+                        Hoàn tác
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Leave modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Thêm ngày nghỉ phép</h3>
+              <button
+                onClick={() => setShowLeaveModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Ngày</label>
+                <input
+                  type="date"
+                  value={leaveFormState.date}
+                  onChange={(e) =>
+                    setLeaveFormState({
+                      ...leaveFormState,
+                      date: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Nhân viên
+                </label>
+                <select
+                  value={leaveFormState.employeeId}
+                  onChange={(e) =>
+                    setLeaveFormState({
+                      ...leaveFormState,
+                      employeeId: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Chọn nhân viên</option>
+                  {employeeOptions.map((emp: any) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}{" "}
+                      {emp.employeeCode ? `(${emp.employeeCode})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Lý do
+                </label>
+                <textarea
+                  rows={3}
+                  value={leaveFormState.description}
+                  onChange={(e) =>
+                    setLeaveFormState({
+                      ...leaveFormState,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowLeaveModal(false)}
+                className="px-4 py-2 border rounded-md text-gray-700"
+                disabled={savingLeave}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (!leaveFormState.employeeId) {
+                    toast.error("Vui lòng chọn nhân viên");
+                    return;
+                  }
+                  try {
+                    setSavingLeave(true);
+                    const payload = {
+                      date: leaveFormState.date,
+                      contractId: Number(contractId),
+                      employeeId: Number(leaveFormState.employeeId),
+                      description: leaveFormState.description,
+                    };
+
+                    await attendanceService.deleteByDate(payload);
+
+                    toast.success(
+                      "Đã thêm ngày nghỉ phép của nhân viên thành công"
+                    );
+                    setShowLeaveModal(false);
+
+                    // Refresh list
+                    try {
+                      const refreshed = await attendanceService.getDeleted({
+                        contractId: contractId,
+                        employeeId: leaveEmployeeId || undefined,
+                        month: leaveMonth,
+                        year: leaveYear,
+                        page: 0,
+                        pageSize: 50,
+                      });
+                      setLeaveList(refreshed.content || []);
+                    } catch (err) {
+                      console.error("Error refreshing leaves after add:", err);
+                    }
+                    // Also refresh assignments list after adding a leave
+                    try {
+                      await fetchAssignments(assignmentsMonth, assignmentsYear);
+                    } catch (err) {
+                      console.error(
+                        "Error refreshing assignments after add:",
+                        err
+                      );
+                    }
+                  } catch (err: any) {
+                    console.error(err);
+                    toast.error(err?.message || "Lỗi khi thêm ngày nghỉ");
+                  } finally {
+                    setSavingLeave(false);
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                disabled={savingLeave}
+              >
+                {savingLeave ? "Đang xử lý..." : "Xác nhận ngày nghỉ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Documents Section */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
         <ContractDocuments
@@ -1193,9 +1847,8 @@ export default function ContractDetailPage() {
                 <input
                   type="text"
                   value={
-                    editForm.workingDaysPerWeek &&
-                    editForm.workingDaysPerWeek.length > 0
-                      ? editForm.workingDaysPerWeek
+                    (editForm.workingDaysPerWeek ?? []).length > 0
+                      ? (editForm.workingDaysPerWeek ?? [])
                           .map((day: string) =>
                             day === "MONDAY"
                               ? "T2"

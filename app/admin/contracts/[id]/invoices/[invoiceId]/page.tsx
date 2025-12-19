@@ -459,6 +459,9 @@ export default function InvoiceDetailPage() {
                     VAT
                   </th>
                   <th className="px-4 py-2 text-right text-xs text-gray-500">
+                    Tiền VAT
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs text-gray-500">
                     Tổng
                   </th>
                 </tr>
@@ -481,6 +484,9 @@ export default function InvoiceDetailPage() {
                     <td className="px-4 py-2 text-right">{line.quantity}</td>
                     <td className="px-4 py-2 text-right">
                       {formatCurrency(line.baseAmount)}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {line.vat}%
                     </td>
                     <td className="px-4 py-2 text-right">
                       {formatCurrency(line.vatAmount)}

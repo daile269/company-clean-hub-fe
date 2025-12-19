@@ -378,8 +378,7 @@ export default function ContractDetailPage() {
     }
   };
 
-<<<<<<< HEAD
-  const handleDelete = async () => {
+const handleDelete = async () => {
     if (!contract || !canDelete) return;
 
     if (confirm("Xác nhận xóa hợp đồng này?")) {
@@ -393,9 +392,6 @@ export default function ContractDetailPage() {
       }
     }
   };
-
-=======
->>>>>>> main
   const handleAddService = () => {
     if (!canEdit) return;
     setEditingService(null);
@@ -1033,17 +1029,8 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       VAT
                     </th>
-<<<<<<< HEAD
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số ngày làm/tháng
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tổng
-                    </th>
-                    {canEditService && (
-=======
 
->>>>>>> main
+{canEditService && (
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Thao tác
                     </th>
@@ -1085,23 +1072,7 @@ export default function ContractDetailPage() {
                           {service.vat}%
                         </span>
                       </td>
-<<<<<<< HEAD
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-700">
-                          {getContractAssignmentsPlandays(contract)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-bold text-blue-700">
-                          {formatCurrency(
-                            service.price + (service.price * service.vat) / 100
-                          )}
-                        </span>
-                      </td>
-                      {canEditService && (
-=======
-
->>>>>>> main
+{canEditService && (
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => handleEditService(service)}

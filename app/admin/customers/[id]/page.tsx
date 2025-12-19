@@ -2685,72 +2685,13 @@ export default function CustomerDetail() {
                           {/* Contract Header */}
                           <div className="bg-blue-50 px-3 py-2 rounded-t-lg border border-blue-200">
                             <p className="text-xs font-semibold text-blue-800">
-<<<<<<< HEAD
-                              Hợp đồng {contractGroup.contractId}:  {contractGroup.contractDescription}
-=======
                               Hợp đồng {contractGroup.contractId}:{" "}
                               {contractGroup.contractDescription}
->>>>>>> main
                             </p>
                           </div>
                           {/* Assignments under this contract */}
                           <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
-<<<<<<< HEAD
-                            {contractGroup.assignments && contractGroup.assignments.length > 0 ? (
-                              contractGroup.assignments.map((assignment: any, aIdx: number) => (
-                                <label
-                                  key={`replaced-${assignment.id ?? assignment.employeeId ?? aIdx}`}
-                                  className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacedAssignmentId === assignment.id
-                                      ? "border-purple-500 bg-purple-50"
-                                      : "border-gray-200 hover:bg-gray-50"
-                                    }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={reassignmentForm.replacedAssignmentId === assignment.id}
-                                    onChange={(e) => {
-                                      console.log("Selected assignment:", {
-                                        id: assignment.id,
-                                        employeeId: assignment.employeeId,
-                                        employeeName: assignment.employeeName,
-                                        contractId: contractGroup.contractId,
-                                        contractDescription: contractGroup.contractDescription
-                                      });
-                                      setReassignmentForm({
-                                        ...reassignmentForm,
-                                        replacedEmployeeId: e.target.checked ? assignment.employeeId : null,
-                                        replacedAssignmentId: e.target.checked ? assignment.id : null,
-                                      });
-                                    }}
-                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                  />
-                                  <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                                    <span className="text-sm font-semibold text-red-600">
-                                      {assignment.employeeName?.charAt(0) || "N"}
-                                    </span>
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-sm text-gray-900 truncate">
-                                      {assignment.employeeName}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {assignment.employeeCode}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                      {assignment.startDate && (
-                                        <span>
-                                          Phụ trách từ {formatDate(assignment.startDate)}
-                                        </span>
-                                      )}
-                                      {assignment.workDays !== undefined && assignment.workDays !== null && (
-                                        <span className="ml-2">• {assignment.workDays} ngày</span>
-                                      )}
-                                    </p>
-                                  </div>
-                                </label>
-                              ))
-=======
-                            {contractGroup.assignments &&
+ {contractGroup.assignments &&
                             contractGroup.assignments.length > 0 ? (
                               contractGroup.assignments.map(
                                 (assignment: any, aIdx: number) => (
@@ -2825,7 +2766,6 @@ export default function CustomerDetail() {
                                   </label>
                                 )
                               )
->>>>>>> main
                             ) : (
                               <p className="text-center text-gray-400 py-4 text-xs">
                                 Chưa có nhân viên

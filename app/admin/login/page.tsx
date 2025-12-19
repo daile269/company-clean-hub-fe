@@ -197,7 +197,7 @@ export default function LoginPage() {
                 <p className="text-gray-600">Quản lý tổng 2: qlt2</p>
                 <p className="text-gray-600">Quản lý vùng: qlv</p>
                 <p className="text-gray-600">User kế toán: accountant01</p>
-                <p className="text-gray-600">User nhân viên: NV007</p>
+                <p className="text-gray-600">User nhân viên: employee01</p>
                 <p className="text-gray-600">User khách hàng: kh01</p>
                 <br />
                 <p className="text-gray-600 font-bold">Mật khẩu dùng chung: Pass123456</p>

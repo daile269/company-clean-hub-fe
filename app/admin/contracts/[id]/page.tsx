@@ -370,9 +370,9 @@ export default function ContractDetailPage() {
       // Reload contract data
       const updatedContract = await contractService.getById(contract.id);
       setContract(updatedContract);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating contract:", error);
-      toast.error("Không thể cập nhật hợp đồng");
+      toast.error(error.message || "Không thể cập nhật hợp đồng");
     } finally {
       setSavingContract(false);
     }
@@ -386,9 +386,9 @@ const handleDelete = async () => {
         await contractService.delete(contract.id);
         toast.success("Đã xóa hợp đồng thành công");
         router.push("/admin/contracts");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting contract:", error);
-        toast.error("Không thể xóa hợp đồng");
+        toast.error(error.message || "Không thể xóa hợp đồng");
       }
     }
   };
@@ -513,9 +513,9 @@ const handleDelete = async () => {
         Number(contract.id)
       );
       setInvoices(updatedInvoices);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting invoice:", error);
-      toast.error("Không thể xóa hóa đơn");
+      toast.error(error.message || "Không thể xóa hóa đơn");
     } finally {
       setDeletingInvoice(null);
     }
@@ -544,9 +544,9 @@ const handleDelete = async () => {
         Number(contract.id)
       );
       setInvoices(updatedInvoices);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating invoice:", error);
-      toast.error("Không thể tạo hóa đơn");
+      toast.error(error.message || "Không thể tạo hóa đơn");
     } finally {
       setSavingInvoice(false);
     }
@@ -1516,7 +1516,7 @@ const handleDelete = async () => {
                       {it.type || it.leaveType || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.notes || it.reason || "-"}
+                      {it.description || it.description || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-right">
                       <button

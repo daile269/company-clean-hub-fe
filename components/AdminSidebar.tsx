@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthUser } from "@/services/authService";
+import { permissionService } from "@/services/permissionService";
 
 interface AdminSidebarProps {
     user: AuthUser | null;
@@ -130,6 +131,28 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
                         Quản lý phân công
                     </Link>
                 )}
+                {permissionService.hasPermission("REVIEW_VIEW_ALL") && (
+                    <Link
+                        href="/admin/reviews"
+                        className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
+                    >
+                        <svg
+                            className="mr-4 h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 8h10M7 12h6m-9 8h12a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2z"
+                            />
+                        </svg>
+                        Quản lý đánh giá
+                    </Link>
+                )}
+                
                 {(user && user?.roleName !== 'CUSTOMER' && user?.roleName !== 'EMPLOYEE' && user?.roleName !== 'QLV') && (
                     <Link
                         href="/admin/payroll"

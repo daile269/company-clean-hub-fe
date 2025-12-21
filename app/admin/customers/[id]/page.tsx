@@ -177,9 +177,9 @@ export default function CustomerDetail() {
     try {
       const contractsList = await contractService.getByCustomerId(id);
       setContracts(contractsList);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading contracts:", error);
-      toast.error("Không thể tải danh sách hợp đồng");
+      toast.error(error.message || "Không thể tải danh sách hợp đồng");
     } finally {
       setLoadingContracts(false);
     }
@@ -238,9 +238,9 @@ export default function CustomerDetail() {
         currentPage: response.currentPage ?? 0,
         pageSize: response.pageSize ?? pageSize,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading employees:", error);
-      toast.error("Không thể tải danh sách nhân viên");
+      toast.error(error.message || "Không thể tải danh sách nhân viên");
       setNotAssignedEmployees([]);
       setNotAssignedPage({
         content: [],
@@ -272,9 +272,9 @@ export default function CustomerDetail() {
       setLoading(true);
       const data = await customerService.getById(id!);
       setCustomer(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading customer:", error);
-      toast.error("Không thể tải thông tin khách hàng");
+      toast.error(error.message || "Không thể tải thông tin khách hàng");
     } finally {
       setLoading(false);
     }
@@ -534,9 +534,9 @@ export default function CustomerDetail() {
         pageSize: 100,
       });
       setEmployees(response.content);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading employees:", error);
-      toast.error("Không thể tải danh sách nhân viên");
+      toast.error(error.message || "Không thể tải danh sách nhân viên");
     } finally {
       setLoadingEmployees(false);
     }
@@ -562,9 +562,9 @@ export default function CustomerDetail() {
         currentPage: response.currentPage,
         pageSize: response.pageSize,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading paginated employees:", error);
-      toast.error("Không thể tải danh sách nhân viên");
+      toast.error(error.message || "Không thể tải danh sách nhân viên");
     } finally {
       setEmployeesPageLoading(false);
     }
@@ -812,9 +812,9 @@ export default function CustomerDetail() {
         paymentStatus: "PENDING",
         description: "",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating contract:", error);
-      toast.error("Không thể tạo hợp đồng");
+      toast.error(error.message || "Không thể tạo hợp đồng");
     } finally {
       setSavingContract(false);
     }

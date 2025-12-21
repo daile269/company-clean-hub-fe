@@ -29,6 +29,7 @@ export default function AssignmentDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Assignment>>({});
   const [contractDetails, setContractDetails] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   // Attendances (work days) states
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loadingAttendances, setLoadingAttendances] = useState(false);
@@ -258,6 +259,7 @@ export default function AssignmentDetail() {
 
     if (confirm("Bạn có chắc chắn muốn xóa phân công này?")) {
       try {
+        setDeleting(true);
         const response = await assignmentService.delete(assignment.id);
         if (response.success) {
           toast.success("Đã xóa phân công thành công");
@@ -268,6 +270,8 @@ export default function AssignmentDetail() {
       } catch (error: any) {
         console.error("Error deleting assignment:", error);
         toast.error(error.message || "Có lỗi xảy ra khi xóa");
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -345,23 +349,54 @@ export default function AssignmentDetail() {
           {canDelete && (
             <button
               onClick={handleDelete}
-              className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2"
+              disabled={deleting}
+              aria-busy={deleting}
+              className={`px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2 ${deleting ? "opacity-60 cursor-not-allowed" : ""}`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-                />
-              </svg>
-              Xóa
+              {deleting ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                  Đang xóa...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
+                    />
+                  </svg>
+                  Xóa
+                </>
+              )}
             </button>
           )}
         </div>

@@ -14,6 +14,7 @@ import invoiceService, {
 import { apiService } from "@/services/api";
 import attendanceService from "@/services/attendanceService";
 import { assignmentService } from "@/services/assignmentService";
+import { reviewService } from "@/services/reviewService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
@@ -87,6 +88,23 @@ export default function ContractDetailPage() {
     description: "",
   });
 
+  // Reviews for this contract
+  const [contractReviews, setContractReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [showAddReviewModal, setShowAddReviewModal] = useState(false);
+  const [reviewForm, setReviewForm] = useState<{
+    assignmentId: string;
+    employeeId: string;
+    rating: number;
+    comment: string;
+  }>({
+    assignmentId: "",
+    employeeId: "",
+    rating: 5,
+    comment: "",
+  });
+  const [savingReview, setSavingReview] = useState(false);
+
   // Derive employees for select from assignments (only employees of this contract)
   useEffect(() => {
     const loadEmployees = async () => {
@@ -135,6 +153,25 @@ export default function ContractDetailPage() {
 
     if (contractId) loadDeletedAttendances();
   }, [contractId, leaveMonth, leaveYear, leaveEmployeeId]);
+
+  // Load reviews for this contract
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!contractId) return;
+      try {
+        setLoadingReviews(true);
+        const list = await reviewService.getByContractId(Number(contractId));
+        setContractReviews(list || []);
+      } catch (err) {
+        console.error(err, "Error loading contract reviews:");
+        setContractReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    loadReviews();
+  }, [contractId]);
 
   // Permission checks
   const canView = usePermission("CONTRACT_VIEW");
@@ -373,9 +410,9 @@ export default function ContractDetailPage() {
       // Reload contract data
       const updatedContract = await contractService.getById(contract.id);
       setContract(updatedContract);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating contract:", error);
-      toast.error("Không thể cập nhật hợp đồng");
+      toast.error(error.message || "Không thể cập nhật hợp đồng");
     } finally {
       setSavingContract(false);
     }
@@ -389,9 +426,9 @@ export default function ContractDetailPage() {
         await contractService.delete(contract.id);
         toast.success("Đã xóa hợp đồng thành công");
         router.push("/admin/contracts");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting contract:", error);
-        toast.error("Không thể xóa hợp đồng");
+        toast.error(error.message || "Không thể xóa hợp đồng");
       }
     }
   };
@@ -522,9 +559,9 @@ export default function ContractDetailPage() {
         Number(contract.id)
       );
       setInvoices(updatedInvoices);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting invoice:", error);
-      toast.error("Không thể xóa hóa đơn");
+      toast.error(error.message || "Không thể xóa hóa đơn");
     } finally {
       setDeletingInvoice(null);
     }
@@ -553,9 +590,9 @@ export default function ContractDetailPage() {
         Number(contract.id)
       );
       setInvoices(updatedInvoices);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating invoice:", error);
-      toast.error("Không thể tạo hóa đơn");
+      toast.error(error.message || "Không thể tạo hóa đơn");
     } finally {
       setSavingInvoice(false);
     }
@@ -1504,17 +1541,546 @@ export default function ContractDetailPage() {
                 + Thêm ngày không làm
               </button>
             )}
+          </div >
+        </div >
 
+        {
+          leaveLoading ? (
+            <div className="py-6 flex items-center justify-center" >
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : leaveList.length === 0 ? (
+            <div className="py-3 text-gray-500">
+              Chưa có ngày nghỉ phép cho bộ lọc này
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      #
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nhân viên
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Mã NV
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ngày nghỉ
+                    </th>
+
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ghi chú
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Hành động
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {leaveList.map((it: any, idx: number) => (
+                    <tr key={it.id || idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {it.employeeName || it.name || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {it.employeeCode || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {(() => {
+                          const raw =
+                            it.date || it.attendanceDate || it.deletedAt;
+                          if (!raw) return "-";
+                          const d = new Date(raw);
+                          return isNaN(d.getTime())
+                            ? String(raw)
+                            : new Intl.DateTimeFormat("vi-VN").format(d);
+                        })()}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {it.description || it.description || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const dateValue =
+                                it.date || it.attendanceDate || it.deletedAt;
+                              const employeeIdValue =
+                                it.employeeId ?? it.employeeId ?? undefined;
+
+                              await attendanceService.restoreByDate({
+                                date: dateValue,
+                                contractId: Number(contractId),
+                                employeeId: Number(employeeIdValue),
+                              });
+
+                              toast.success("Đã hoàn tác ngày nghỉ");
+
+                              // Refresh list
+                              try {
+                                const refreshed =
+                                  await attendanceService.getDeleted({
+                                    contractId: contractId,
+                                    employeeId: leaveEmployeeId || undefined,
+                                    month: leaveMonth,
+                                    year: leaveYear,
+                                    page: 0,
+                                    pageSize: 50,
+                                  });
+                                setLeaveList(refreshed.content || []);
+                                // Refresh assignments (danh sách nhân viên phụ trách)
+                                try {
+                                  await fetchAssignments(
+                                    assignmentsMonth,
+                                    assignmentsYear
+                                  );
+                                } catch (err) {
+                                  console.error(
+                                    "Error refreshing assignments after restore:",
+                                    err
+                                  );
+                                }
+                              } catch (err) {
+                                console.error(
+                                  "Error refreshing leaves after restore:",
+                                  err
+                                );
+                              }
+                            } catch (err: any) {
+                              console.error(err);
+                              toast.error(
+                                err?.message || "Lỗi khi hoàn tác ngày nghỉ"
+                              );
+                            }
+                          }}
+                          className="px-3 py-1 bg-yellow-500 text-white rounded-md text-sm hover:bg-yellow-600"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-3 h-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                            />
+                          </svg>
+                          Hoàn tác
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </div >
+
+      {/* Add Review Modal */}
+      {
+        showAddReviewModal && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Thêm đánh giá nhân viên</h3>
+                <button
+                  onClick={() => setShowAddReviewModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  Đóng
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">
+                    Chọn nhân viên (phân công)
+                  </label>
+                  <select
+                    value={reviewForm.assignmentId}
+                    onChange={(e) => {
+                      const aid = e.target.value;
+                      const sel = assignments.find(
+                        (a: any) => String(a.id) === aid
+                      );
+                      setReviewForm({
+                        ...reviewForm,
+                        assignmentId: aid,
+                        employeeId: sel
+                          ? String(sel.employeeId ?? sel.employeeId)
+                          : "",
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Chọn phân công / nhân viên</option>
+                    {assignments.map((a: any) => (
+                      <option key={a.id} value={a.id}>
+                        {a.employeeName || a.name || `ID:${a.employeeId}`}{" "}
+                        {a.employeeCode ? `(${a.employeeCode})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">
+                    Đánh giá
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        title={`${s} sao`}
+                        onClick={() =>
+                          setReviewForm({ ...reviewForm, rating: s })
+                        }
+                        className="text-2xl focus:outline-none"
+                      >
+                        {reviewForm.rating >= s ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-6 h-6 text-yellow-400"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L9.05 2.927z" />
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-6 h-6 text-gray-300"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L11.05 2.927z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                    <span className="text-sm text-gray-600">
+                      {reviewForm.rating} sao
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">
+                    Bình luận
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reviewForm.comment}
+                    onChange={(e) =>
+                      setReviewForm({ ...reviewForm, comment: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+
+                {/* removed createdBy field as requested */}
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowAddReviewModal(false)}
+                  className="px-4 py-2 border rounded-md text-gray-700"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!contractId) return toast.error("Không có mã hợp đồng");
+                    if (!reviewForm.assignmentId && !reviewForm.employeeId)
+                      return toast.error("Vui lòng chọn nhân viên");
+                    if (
+                      !reviewForm.rating ||
+                      reviewForm.rating < 1 ||
+                      reviewForm.rating > 5
+                    )
+                      return toast.error("Điểm phải từ 1 tới 5");
+
+                    try {
+                      setSavingReview(true);
+                      const payload: any = {
+                        contractId: Number(contractId),
+                        assignmentId: reviewForm.assignmentId
+                          ? Number(reviewForm.assignmentId)
+                          : undefined,
+                        employeeId: reviewForm.employeeId
+                          ? Number(reviewForm.employeeId)
+                          : undefined,
+                        rating: Number(reviewForm.rating),
+                        comment: reviewForm.comment,
+                      };
+
+                      const res = await reviewService.create(payload);
+                      if (res && res.success) {
+                        toast.success("Đã thêm đánh giá");
+                        setShowAddReviewModal(false);
+                        // reload reviews
+                        try {
+                          setLoadingReviews(true);
+                          const list = await reviewService.getByContractId(
+                            Number(contractId)
+                          );
+                          setContractReviews(list || []);
+                        } catch (err) {
+                          console.error("Error loading reviews after add:", err);
+                        } finally {
+                          setLoadingReviews(false);
+                        }
+                      } else {
+                        toast.error(res?.message || "Thêm đánh giá thất bại");
+                      }
+                    } catch (err: any) {
+                      console.error("Error creating review:", err);
+                      toast.error(err?.message || "Lỗi khi thêm đánh giá");
+                    } finally {
+                      setSavingReview(false);
+                    }
+                  }}
+                  disabled={savingReview}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {savingReview ? "Đang lưu..." : "Lưu đánh giá"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Leave modal */}
+      {
+        showLeaveModal && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Thêm ngày nghỉ phép</h3>
+                <button
+                  onClick={() => setShowLeaveModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  Đóng
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Ngày</label>
+                  <input
+                    type="date"
+                    value={leaveFormState.date}
+                    onChange={(e) =>
+                      setLeaveFormState({
+                        ...leaveFormState,
+                        date: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">
+                    Nhân viên
+                  </label>
+                  <select
+                    value={leaveFormState.employeeId}
+                    onChange={(e) =>
+                      setLeaveFormState({
+                        ...leaveFormState,
+                        employeeId: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Chọn nhân viên</option>
+                    {employeeOptions.map((emp: any) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name}{" "}
+                        {emp.employeeCode ? `(${emp.employeeCode})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">
+                    Lý do
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={leaveFormState.description}
+                    onChange={(e) =>
+                      setLeaveFormState({
+                        ...leaveFormState,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowLeaveModal(false)}
+                  className="px-4 py-2 border rounded-md text-gray-700"
+                  disabled={savingLeave}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!leaveFormState.employeeId) {
+                      toast.error("Vui lòng chọn nhân viên");
+                      return;
+                    }
+                    try {
+                      setSavingLeave(true);
+                      const payload = {
+                        date: leaveFormState.date,
+                        contractId: Number(contractId),
+                        employeeId: Number(leaveFormState.employeeId),
+                        description: leaveFormState.description,
+                      };
+
+                      await attendanceService.deleteByDate(payload);
+
+                      toast.success(
+                        "Đã thêm ngày nghỉ phép của nhân viên thành công"
+                      );
+                      setShowLeaveModal(false);
+
+                      // Refresh list
+                      try {
+                        const refreshed = await attendanceService.getDeleted({
+                          contractId: contractId,
+                          employeeId: leaveEmployeeId || undefined,
+                          month: leaveMonth,
+                          year: leaveYear,
+                          page: 0,
+                          pageSize: 50,
+                        });
+                        setLeaveList(refreshed.content || []);
+                      } catch (err) {
+                        console.error("Error refreshing leaves after add:", err);
+                      }
+                      // Also refresh assignments list after adding a leave
+                      try {
+                        await fetchAssignments(assignmentsMonth, assignmentsYear);
+                      } catch (err) {
+                        console.error(
+                          "Error refreshing assignments after add:",
+                          err
+                        );
+                      }
+                    } catch (err: any) {
+                      console.error(err);
+                      toast.error(err?.message || "Lỗi khi thêm ngày nghỉ");
+                    } finally {
+                      setSavingLeave(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                  disabled={savingLeave}
+                >
+                  {savingLeave ? "Đang xử lý..." : "Xác nhận ngày nghỉ"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Reviews Card (customer feedback) */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Đánh giá của khách hàng
+          </h3>
+          <div className="flex items-center gap-3">
+            {/* <button
+            onClick={async () => {
+              try {
+                setLoadingReviews(true);
+                const list = await reviewService.getByContractId(Number(contractId));
+                setContractReviews(list || []);
+              } catch (err) {
+                console.error('Error refreshing reviews:', err);
+                toast.error('Không thể tải đánh giá');
+              } finally {
+                setLoadingReviews(false);
+              }
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+          >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            Làm mới
+          </button> */}
+            <button
+              onClick={() => {
+                // default select first assignment if available
+                const first = assignments[0];
+                setReviewForm((s) => ({
+                  ...s,
+                  assignmentId: first ? String(first.id) : "",
+                  employeeId: first
+                    ? String(first.employeeId ?? first.employeeId)
+                    : "",
+                  rating: 5,
+                  comment: "",
+                }));
+                setShowAddReviewModal(true);
+              }}
+              className="text-sm px-3 py-2 bg-green-600 text-white rounded inline-flex items-center gap-2 hover:bg-green-700"
+            >
+              + Thêm đánh giá nhân viên
+            </button>
           </div>
         </div>
 
-        {leaveLoading ? (
+        {loadingReviews ? (
           <div className="py-6 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-        ) : leaveList.length === 0 ? (
-          <div className="py-3 text-gray-500">
-            Chưa có ngày nghỉ phép cho bộ lọc này
+        ) : contractReviews.length === 0 ? (
+          <div className="py-4 text-gray-500">
+            Chưa có đánh giá cho hợp đồng này
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1528,116 +2094,53 @@ export default function ContractDetailPage() {
                     Nhân viên
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Mã NV
+                    Mã nhân viên
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ngày nghỉ
+                    Điểm đánh giá
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Loại
+                    Bình luận
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ghi chú
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Hành động
+                    Ngày
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {leaveList.map((it: any, idx: number) => (
-                  <tr key={it.id || idx} className="hover:bg-gray-50">
+                {contractReviews.map((r: any, idx: number) => (
+                  <tr
+                    key={r.id || idx}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => r.id && router.push(`/admin/reviews/${r.id}`)}
+                    onKeyDown={(e) => {
+                      if ((e as any).key === "Enter" && r.id)
+                        router.push(`/admin/reviews/${r.id}`);
+                    }}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {idx + 1}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {it.employeeName || it.name || "-"}
+                      {r.employeeName ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {r.employeeCode ?? "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.employeeCode || "-"}
+                      {r.rating ?? "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.date || it.attendanceDate || it.deletedAt || "-"}
+                      {r.comment ?? "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.type || it.leaveType || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.notes || it.reason || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right">
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            const dateValue =
-                              it.date || it.attendanceDate || it.deletedAt;
-                            const employeeIdValue =
-                              it.employeeId ?? it.employeeId ?? undefined;
-
-                            await attendanceService.restoreByDate({
-                              date: dateValue,
-                              contractId: Number(contractId),
-                              employeeId: Number(employeeIdValue),
-                            });
-
-                            toast.success("Đã hoàn tác ngày nghỉ");
-
-                            // Refresh list
-                            try {
-                              const refreshed =
-                                await attendanceService.getDeleted({
-                                  contractId: contractId,
-                                  employeeId: leaveEmployeeId || undefined,
-                                  month: leaveMonth,
-                                  year: leaveYear,
-                                  page: 0,
-                                  pageSize: 50,
-                                });
-                              setLeaveList(refreshed.content || []);
-                              // Refresh assignments (danh sách nhân viên phụ trách)
-                              try {
-                                await fetchAssignments(
-                                  assignmentsMonth,
-                                  assignmentsYear
-                                );
-                              } catch (err) {
-                                console.error(
-                                  "Error refreshing assignments after restore:",
-                                  err
-                                );
-                              }
-                            } catch (err) {
-                              console.error(
-                                "Error refreshing leaves after restore:",
-                                err
-                              );
-                            }
-                          } catch (err: any) {
-                            console.error(err);
-                            toast.error(
-                              err?.message || "Lỗi khi hoàn tác ngày nghỉ"
-                            );
-                          }
-                        }}
-                        className="px-3 py-1 bg-yellow-500 text-white rounded-md text-sm hover:bg-yellow-600"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="w-3 h-3"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                          />
-                        </svg>
-                        Hoàn tác
-                      </button>
+                      {r.createdAt
+                        ? new Intl.DateTimeFormat("vi-VN").format(
+                          new Date(r.createdAt)
+                        )
+                        : "-"}
                     </td>
                   </tr>
                 ))}
@@ -1646,148 +2149,6 @@ export default function ContractDetailPage() {
           </div>
         )}
       </div>
-
-      {/* Leave modal */}
-      {showLeaveModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Thêm ngày nghỉ phép</h3>
-              <button
-                onClick={() => setShowLeaveModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Đóng
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">Ngày</label>
-                <input
-                  type="date"
-                  value={leaveFormState.date}
-                  onChange={(e) =>
-                    setLeaveFormState({
-                      ...leaveFormState,
-                      date: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">
-                  Nhân viên
-                </label>
-                <select
-                  value={leaveFormState.employeeId}
-                  onChange={(e) =>
-                    setLeaveFormState({
-                      ...leaveFormState,
-                      employeeId: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Chọn nhân viên</option>
-                  {employeeOptions.map((emp: any) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name}{" "}
-                      {emp.employeeCode ? `(${emp.employeeCode})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">
-                  Lý do
-                </label>
-                <textarea
-                  rows={3}
-                  value={leaveFormState.description}
-                  onChange={(e) =>
-                    setLeaveFormState({
-                      ...leaveFormState,
-                      description: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setShowLeaveModal(false)}
-                className="px-4 py-2 border rounded-md text-gray-700"
-                disabled={savingLeave}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={async () => {
-                  if (!leaveFormState.employeeId) {
-                    toast.error("Vui lòng chọn nhân viên");
-                    return;
-                  }
-                  try {
-                    setSavingLeave(true);
-                    const payload = {
-                      date: leaveFormState.date,
-                      contractId: Number(contractId),
-                      employeeId: Number(leaveFormState.employeeId),
-                      description: leaveFormState.description,
-                    };
-
-                    await attendanceService.deleteByDate(payload);
-
-                    toast.success(
-                      "Đã thêm ngày nghỉ phép của nhân viên thành công"
-                    );
-                    setShowLeaveModal(false);
-
-                    // Refresh list
-                    try {
-                      const refreshed = await attendanceService.getDeleted({
-                        contractId: contractId,
-                        employeeId: leaveEmployeeId || undefined,
-                        month: leaveMonth,
-                        year: leaveYear,
-                        page: 0,
-                        pageSize: 50,
-                      });
-                      setLeaveList(refreshed.content || []);
-                    } catch (err) {
-                      console.error("Error refreshing leaves after add:", err);
-                    }
-                    // Also refresh assignments list after adding a leave
-                    try {
-                      await fetchAssignments(assignmentsMonth, assignmentsYear);
-                    } catch (err) {
-                      console.error(
-                        "Error refreshing assignments after add:",
-                        err
-                      );
-                    }
-                  } catch (err: any) {
-                    console.error(err);
-                    toast.error(err?.message || "Lỗi khi thêm ngày nghỉ");
-                  } finally {
-                    setSavingLeave(false);
-                  }
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-                disabled={savingLeave}
-              >
-                {savingLeave ? "Đang xử lý..." : "Xác nhận ngày nghỉ"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Documents Section */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
@@ -1807,717 +2168,725 @@ export default function ContractDetailPage() {
         />
       </div>
       {/* Edit Modal */}
-      {showEditModal && editForm && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Chỉnh sửa hợp đồng
-              </h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+      {
+        showEditModal && editForm && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Chỉnh sửa hợp đồng
+                </h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã hợp đồng
-                </label>
-                <input
-                  type="text"
-                  value={editForm.id || ""}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Khách hàng
-                </label>
-                <input
-                  type="text"
-                  value={editForm.customerName || ""}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái thanh toán *
-                </label>
-                <select
-                  value={editForm.paymentStatus || "PENDING"}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, paymentStatus: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="PENDING">Chưa thanh toán</option>
-                  <option value="PARTIAL">Thanh toán 1 phần</option>
-                  <option value="PAID">Đã thanh toán</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá cuối cùng (VND)
-                </label>
-                <input
-                  type="number"
-                  value={contract?.finalPrice || 0}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày bắt đầu *
-                </label>
-                <input
-                  type="date"
-                  value={formatDateInput(editForm.startDate)}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      startDate: new Date(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày kết thúc *
-                </label>
-                <input
-                  type="date"
-                  value={formatDateInput(editForm.endDate)}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      endDate: new Date(e.target.value),
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại hợp đồng *
-                </label>
-                <select
-                  value={editForm.contractType || "ONE_TIME"}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, contractType: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
-                  <option value="MONTHLY_FIXED">
-                    Hợp đồng hàng tháng cố định
-                  </option>
-                  <option value="MONTHLY_ACTUAL">
-                    Hợp đồng hàng tháng theo ngày thực tế
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày làm việc trong tuần
-                </label>
-                <input
-                  type="text"
-                  value={
-                    (editForm.workingDaysPerWeek ?? []).length > 0
-                      ? (editForm.workingDaysPerWeek ?? [])
-                        .map((day: string) =>
-                          day === "MONDAY"
-                            ? "T2"
-                            : day === "TUESDAY"
-                              ? "T3"
-                              : day === "WEDNESDAY"
-                                ? "T4"
-                                : day === "THURSDAY"
-                                  ? "T5"
-                                  : day === "FRIDAY"
-                                    ? "T6"
-                                    : day === "SATURDAY"
-                                      ? "T7"
-                                      : day === "SUNDAY"
-                                        ? "CN"
-                                        : day
-                        )
-                        .join(", ")
-                      : "Chưa có dữ liệu"
-                  }
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả
-                </label>
-                <textarea
-                  value={editForm.description || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, description: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowEditModal(false)}
-                disabled={savingContract}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={savingContract}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {savingContract ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Lưu thay đổi
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Service Modal */}
-      {showServiceModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {editingService ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ mới"}
-              </h2>
-              <button
-                onClick={() => setShowServiceModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={serviceForm.title}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, title: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập tên dịch vụ"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Loại dịch vụ *
-                  </label>
-                  <select
-                    value={serviceForm.serviceType}
-                    onChange={(e) =>
-                      setServiceForm({
-                        ...serviceForm,
-                        serviceType: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <option value="RECURRING">Định kỳ (RECURRING)</option>
-                    <option value="ONE_TIME">Một lần (ONE_TIME)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ngày áp dụng giá *
-                  </label>
-                  <input
-                    type="date"
-                    value={serviceForm.effectiveFrom}
-                    onChange={(e) =>
-                      setServiceForm({
-                        ...serviceForm,
-                        effectiveFrom: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Giá dịch vụ (VND) *
+                    Mã hợp đồng
                   </label>
                   <input
                     type="text"
-                    value={serviceForm.price}
-                    onChange={(e) => {
-                      const rawValue = handleNumberInput(e.target.value);
-                      if (rawValue === "") {
-                        setServiceForm({ ...serviceForm, price: "" });
-                        return;
-                      }
-                      setServiceForm({
-                        ...serviceForm,
-                        price: formatNumber(rawValue),
-                      });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập giá dịch vụ"
+                    value={editForm.id || ""}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    VAT (%) *
+                    Khách hàng
                   </label>
                   <input
-                    type="number"
-                    value={serviceForm.vat}
-                    onChange={(e) =>
-                      setServiceForm({ ...serviceForm, vat: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập VAT (%)"
-                    min="0"
-                    max="100"
+                    type="text"
+                    value={editForm.customerName || ""}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng giá (Price + VAT)
-                </label>
-                <input
-                  type="text"
-                  value={(() => {
-                    const rawPrice = parseFormattedNumber(
-                      String(serviceForm.price || "")
-                    );
-                    const price = Number(rawPrice) || 0;
-                    const vat =
-                      serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
-                    const total = price + (price * vat) / 100;
-                    return total ? formatNumber(total) : "";
-                  })()}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả
-                </label>
-                <textarea
-                  value={serviceForm.description}
-                  onChange={(e) =>
-                    setServiceForm({
-                      ...serviceForm,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập mô tả dịch vụ"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowServiceModal(false)}
-                disabled={savingService}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveService}
-                disabled={savingService}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {savingService ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    {editingService ? "Lưu thay đổi" : "Thêm dịch vụ"}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Modal */}
-      {showInvoiceModal && contract && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Tạo hóa đơn mới
-              </h2>
-              <button
-                onClick={() => setShowInvoiceModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Hợp đồng:</strong> #{contract.id} -{" "}
-                  {contract.customerName}
-                </p>
-                <p className="text-sm text-blue-700 mt-1">
-                  <strong>Loại:</strong>{" "}
-                  {contract.contractType === "ONE_TIME"
-                    ? "Hợp đồng 1 lần (trọn gói)"
-                    : contract.contractType === "MONTHLY_FIXED"
-                      ? "Hợp đồng hàng tháng cố định"
-                      : "Hợp đồng hàng tháng theo ngày thực tế"}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tháng *
+                    Trạng thái thanh toán *
                   </label>
                   <select
-                    value={invoiceForm.invoiceMonth}
+                    value={editForm.paymentStatus || "PENDING"}
                     onChange={(e) =>
-                      setInvoiceForm({
-                        ...invoiceForm,
-                        invoiceMonth: Number(e.target.value),
-                      })
+                      setEditForm({ ...editForm, paymentStatus: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                      (month) => (
-                        <option key={month} value={month}>
-                          Tháng {month}
-                        </option>
-                      )
-                    )}
+                    <option value="PENDING">Chưa thanh toán</option>
+                    <option value="PARTIAL">Thanh toán 1 phần</option>
+                    <option value="PAID">Đã thanh toán</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Năm *
+                    Giá cuối cùng (VND)
                   </label>
                   <input
                     type="number"
-                    value={invoiceForm.invoiceYear}
+                    value={contract?.finalPrice || 0}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày bắt đầu *
+                  </label>
+                  <input
+                    type="date"
+                    value={formatDateInput(editForm.startDate)}
                     onChange={(e) =>
-                      setInvoiceForm({
-                        ...invoiceForm,
-                        invoiceYear: Number(e.target.value),
+                      setEditForm({
+                        ...editForm,
+                        startDate: new Date(e.target.value),
                       })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="2020"
-                    max="2100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày kết thúc *
+                  </label>
+                  <input
+                    type="date"
+                    value={formatDateInput(editForm.endDate)}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        endDate: new Date(e.target.value),
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Loại hợp đồng *
+                  </label>
+                  <select
+                    value={editForm.contractType || "ONE_TIME"}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, contractType: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
+                    <option value="MONTHLY_FIXED">
+                      Hợp đồng hàng tháng cố định
+                    </option>
+                    <option value="MONTHLY_ACTUAL">
+                      Hợp đồng hàng tháng theo ngày thực tế
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày làm việc trong tuần
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      (editForm.workingDaysPerWeek ?? []).length > 0
+                        ? (editForm.workingDaysPerWeek ?? [])
+                          .map((day: string) =>
+                            day === "MONDAY"
+                              ? "T2"
+                              : day === "TUESDAY"
+                                ? "T3"
+                                : day === "WEDNESDAY"
+                                  ? "T4"
+                                  : day === "THURSDAY"
+                                    ? "T5"
+                                    : day === "FRIDAY"
+                                      ? "T6"
+                                      : day === "SATURDAY"
+                                        ? "T7"
+                                        : day === "SUNDAY"
+                                          ? "CN"
+                                          : day
+                          )
+                          .join(", ")
+                        : "Chưa có dữ liệu"
+                    }
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mô tả
+                  </label>
+                  <textarea
+                    value={editForm.description || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, description: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
-              {/* actualWorkingDays removed — handled on backend now */}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ghi chú
-                </label>
-                <textarea
-                  value={invoiceForm.notes}
-                  onChange={(e) =>
-                    setInvoiceForm({ ...invoiceForm, notes: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú cho hóa đơn..."
-                />
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  disabled={savingContract}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={savingContract}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingContract ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Lưu thay đổi
+                    </>
+                  )}
+                </button>
               </div>
             </div>
+          </div>
+        )
+      }
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowInvoiceModal(false)}
-                disabled={savingInvoice}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveInvoice}
-                disabled={savingInvoice}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {savingInvoice ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+      {/* Service Modal */}
+      {
+        showServiceModal && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {editingService ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ mới"}
+                </h2>
+                <button
+                  onClick={() => setShowServiceModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tên dịch vụ *
+                  </label>
+                  <input
+                    type="text"
+                    value={serviceForm.title}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, title: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập tên dịch vụ"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Loại dịch vụ *
+                    </label>
+                    <select
+                      value={serviceForm.serviceType}
+                      onChange={(e) =>
+                        setServiceForm({
+                          ...serviceForm,
+                          serviceType: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Tạo hóa đơn
-                  </>
-                )}
-              </button>
+                      <option value="RECURRING">Định kỳ (RECURRING)</option>
+                      <option value="ONE_TIME">Một lần (ONE_TIME)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ngày áp dụng giá *
+                    </label>
+                    <input
+                      type="date"
+                      value={serviceForm.effectiveFrom}
+                      onChange={(e) =>
+                        setServiceForm({
+                          ...serviceForm,
+                          effectiveFrom: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Giá dịch vụ (VND) *
+                    </label>
+                    <input
+                      type="text"
+                      value={serviceForm.price}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        if (rawValue === "") {
+                          setServiceForm({ ...serviceForm, price: "" });
+                          return;
+                        }
+                        setServiceForm({
+                          ...serviceForm,
+                          price: formatNumber(rawValue),
+                        });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nhập giá dịch vụ"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      VAT (%) *
+                    </label>
+                    <input
+                      type="number"
+                      value={serviceForm.vat}
+                      onChange={(e) =>
+                        setServiceForm({ ...serviceForm, vat: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nhập VAT (%)"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tổng giá (Price + VAT)
+                  </label>
+                  <input
+                    type="text"
+                    value={(() => {
+                      const rawPrice = parseFormattedNumber(
+                        String(serviceForm.price || "")
+                      );
+                      const price = Number(rawPrice) || 0;
+                      const vat =
+                        serviceForm.vat === "" ? 0 : Number(serviceForm.vat);
+                      const total = price + (price * vat) / 100;
+                      return total ? formatNumber(total) : "";
+                    })()}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mô tả
+                  </label>
+                  <textarea
+                    value={serviceForm.description}
+                    onChange={(e) =>
+                      setServiceForm({
+                        ...serviceForm,
+                        description: e.target.value,
+                      })
+                    }
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập mô tả dịch vụ"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowServiceModal(false)}
+                  disabled={savingService}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveService}
+                  disabled={savingService}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingService ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      {editingService ? "Lưu thay đổi" : "Thêm dịch vụ"}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* Invoice Modal */}
+      {
+        showInvoiceModal && contract && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Tạo hóa đơn mới
+                </h2>
+                <button
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Hợp đồng:</strong> #{contract.id} -{" "}
+                    {contract.customerName}
+                  </p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    <strong>Loại:</strong>{" "}
+                    {contract.contractType === "ONE_TIME"
+                      ? "Hợp đồng 1 lần (trọn gói)"
+                      : contract.contractType === "MONTHLY_FIXED"
+                        ? "Hợp đồng hàng tháng cố định"
+                        : "Hợp đồng hàng tháng theo ngày thực tế"}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tháng *
+                    </label>
+                    <select
+                      value={invoiceForm.invoiceMonth}
+                      onChange={(e) =>
+                        setInvoiceForm({
+                          ...invoiceForm,
+                          invoiceMonth: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                        (month) => (
+                          <option key={month} value={month}>
+                            Tháng {month}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Năm *
+                    </label>
+                    <input
+                      type="number"
+                      value={invoiceForm.invoiceYear}
+                      onChange={(e) =>
+                        setInvoiceForm({
+                          ...invoiceForm,
+                          invoiceYear: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      min="2020"
+                      max="2100"
+                    />
+                  </div>
+                </div>
+
+                {/* actualWorkingDays removed — handled on backend now */}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    value={invoiceForm.notes}
+                    onChange={(e) =>
+                      setInvoiceForm({ ...invoiceForm, notes: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập ghi chú cho hóa đơn..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowInvoiceModal(false)}
+                  disabled={savingInvoice}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveInvoice}
+                  disabled={savingInvoice}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingInvoice ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Tạo hóa đơn
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* Update Invoice Status Modal */}
-      {showUpdateStatusModal && selectedInvoice && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Cập nhật trạng thái hóa đơn
-              </h2>
-              <button
-                onClick={() => setShowUpdateStatusModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+      {
+        showUpdateStatusModal && selectedInvoice && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Cập nhật trạng thái hóa đơn
+                </h2>
+                <button
+                  onClick={() => setShowUpdateStatusModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Hóa đơn:</strong>{" "}
+                    {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
+                  </p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/
+                    {selectedInvoice.invoiceYear}
+                  </p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    <strong>Tổng tiền:</strong>{" "}
+                    {formatCurrency(selectedInvoice.totalAmount)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Trạng thái *
+                  </label>
+                  <select
+                    value={statusUpdateForm.status}
+                    onChange={(e) =>
+                      setStatusUpdateForm({
+                        ...statusUpdateForm,
+                        status: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="UNPAID">Chưa thanh toán</option>
+                    <option value="PAID">Đã thanh toán</option>
+                    <option value="OVERDUE">Quá hạn</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    value={statusUpdateForm.notes}
+                    onChange={(e) =>
+                      setStatusUpdateForm({
+                        ...statusUpdateForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập ghi chú cập nhật (VD: Đã thanh toán qua chuyển khoản)..."
                   />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Hóa đơn:</strong>{" "}
-                  {selectedInvoice.invoiceNumber || `#${selectedInvoice.id}`}
-                </p>
-                <p className="text-sm text-blue-700 mt-1">
-                  <strong>Tháng/Năm:</strong> {selectedInvoice.invoiceMonth}/
-                  {selectedInvoice.invoiceYear}
-                </p>
-                <p className="text-sm text-blue-700 mt-1">
-                  <strong>Tổng tiền:</strong>{" "}
-                  {formatCurrency(selectedInvoice.totalAmount)}
-                </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái *
-                </label>
-                <select
-                  value={statusUpdateForm.status}
-                  onChange={(e) =>
-                    setStatusUpdateForm({
-                      ...statusUpdateForm,
-                      status: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowUpdateStatusModal(false)}
+                  disabled={updatingStatus}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="UNPAID">Chưa thanh toán</option>
-                  <option value="PAID">Đã thanh toán</option>
-                  <option value="OVERDUE">Quá hạn</option>
-                  <option value="CANCELLED">Đã hủy</option>
-                </select>
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveStatusUpdate}
+                  disabled={updatingStatus}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {updatingStatus ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Cập nhật
+                    </>
+                  )}
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ghi chú
-                </label>
-                <textarea
-                  value={statusUpdateForm.notes}
-                  onChange={(e) =>
-                    setStatusUpdateForm({
-                      ...statusUpdateForm,
-                      notes: e.target.value,
-                    })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập ghi chú cập nhật (VD: Đã thanh toán qua chuyển khoản)..."
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowUpdateStatusModal(false)}
-                disabled={updatingStatus}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveStatusUpdate}
-                disabled={updatingStatus}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updatingStatus ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Cập nhật
-                  </>
-                )}
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

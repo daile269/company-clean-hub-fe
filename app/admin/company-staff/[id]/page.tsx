@@ -8,12 +8,14 @@ import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/servi
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
-
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
+import { usePermission } from '@/hooks/usePermission';
 export default function CompanyStaffDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
-
+  const canManageCost = usePermission("COST_MANAGE");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -243,8 +245,8 @@ export default function CompanyStaffDetailPage() {
     setSavingEmployee(true);
     try {
       // Parse formatted numbers if they are strings
-      const monthlySalary = typeof editForm.monthlySalary === 'string' 
-        ? Number(parseFormattedNumber(editForm.monthlySalary)) 
+      const monthlySalary = typeof editForm.monthlySalary === 'string'
+        ? Number(parseFormattedNumber(editForm.monthlySalary))
         : editForm.monthlySalary;
       const allowance = typeof editForm.allowance === 'string'
         ? Number(parseFormattedNumber(editForm.allowance))
@@ -355,7 +357,7 @@ export default function CompanyStaffDetailPage() {
       for (let i = 0; i < files.length; i++) {
         formData.append("file", files[i]);
       }
- 
+
       const response = await employeeService.uploadImages(id, formData);
       if (response.success) {
         toast.success("Đã tải lên ảnh thành công");
@@ -515,11 +517,10 @@ export default function CompanyStaffDetailPage() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                    employee.status === "ACTIVE"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${employee.status === "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {employee.status === "ACTIVE"
                     ? "Hoạt động"
@@ -594,168 +595,291 @@ export default function CompanyStaffDetailPage() {
         </div>
 
         {/* Card 2: Thông tin tài chính */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
-            Thông tin tài chính
-          </h3>
-          <div className="space-y-4">
-            {/* Salary information for COMPANY_STAFF */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Lương tháng</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {employee.monthlySalary ? formatCurrency(employee.monthlySalary) : "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Phụ cấp</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {employee.allowance ? formatCurrency(employee.allowance) : "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Lương đóng bảo hiểm</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {employee.socialInsurance ? formatCurrency(employee.socialInsurance) : "N/A"}
-              </p>
-            </div>
+        {canManageCost && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+              Thông tin tài chính
+            </h3>
+            <div className="space-y-4">
+              {/* Salary information for COMPANY_STAFF */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Lương tháng</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee.monthlySalary ? formatCurrency(employee.monthlySalary) : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Phụ cấp</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee.allowance ? formatCurrency(employee.allowance) : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Lương đóng bảo hiểm</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee.socialInsurance ? formatCurrency(employee.socialInsurance) : "N/A"}
+                </p>
+              </div>
 
-            {/* Bank information */}
-            <div className="pt-4 border-t">
-              <p className="text-xs text-gray-500 mb-1">Số tài khoản</p>
-              <p className="text-sm font-mono font-medium text-gray-900">
-                {employee.bankAccount || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Ngân hàng</p>
-              <p className="text-sm font-medium text-gray-900">
-                {employee.bankName || "N/A"}
-              </p>
+              {/* Bank information */}
+              <div className="pt-4 border-t">
+                <p className="text-xs text-gray-500 mb-1">Số tài khoản</p>
+                <p className="text-sm font-mono font-medium text-gray-900">
+                  {employee.bankAccount || "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Ngân hàng</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {employee.bankName || "N/A"}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        {!canManageCost && (
+          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Hình ảnh nhân viên
+              </h3>
+              {employeeImages.length > 0 && (
+                <button
+                  onClick={() => setShowImageManageModal(true)}
+                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                    />
+                  </svg>
+                  Sửa
+                </button>
+              )}
+            </div>
+
+            {employeeImages.length > 0 ? (
+              <>
+                <div className="space-y-4 flex gap-3">
+
+                  {/* Main Image - Fixed size container */}
+                  <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
+                    {employeeImages[selectedImageIndex] ? (
+                      <img
+                        src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                        alt={`Employee image ${selectedImageIndex + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center text-gray-400">
+                        <svg
+                          className="w-16 h-16"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thumbnail Images - Square grid */}
+                  {employeeImages.length > 1 && (
+                    <div className="w-3/12 grid grid-cols-3 gap-2">
+                      {employeeImages.map((image, index) => (
+                        <div
+                          key={image.id}
+                          className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === index
+                            ? "border-blue-500 ring-2 ring-blue-300"
+                            : "border-gray-300 hover:border-gray-400"
+                            }`}
+                          onClick={() => setSelectedImageIndex(index)}
+                          onMouseEnter={() => setSelectedImageIndex(index)}
+                        >
+                          <img
+                            src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Image Info */}
+                {employeeImages[selectedImageIndex] && (
+                  <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+                    <p>
+                      Ảnh {selectedImageIndex + 1} / {employeeImages.length}
+                    </p>
+                    {employeeImages[selectedImageIndex].uploadedAt && (
+                      <p>
+                        Ngày tải lên:{" "}
+                        {new Intl.DateTimeFormat("vi-VN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <ImageUploader
+                onChange={handleUploadEmployeeImage}
+                isLoading={isUploadingEmployeeImage}
+                loadingText="Đang tải..."
+                emptyText="Chưa có hình ảnh"
+                helpText="Click để chọn hoặc kéo thả ảnh"
+                aspectRatio="video"
+                width="w-7/12"
+                multiple={true}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Employee Images Section */}
-      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Hình ảnh nhân viên
-          </h3>
-          {employeeImages.length > 0 && (
-            <button
-              onClick={() => setShowImageManageModal(true)}
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+      {canManageCost && (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Hình ảnh nhân viên
+            </h3>
+            {employeeImages.length > 0 && (
+              <button
+                onClick={() => setShowImageManageModal(true)}
+                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                />
-              </svg>
-              Sửa
-            </button>
-          )}
-        </div>
-        
-        {employeeImages.length > 0 ? (
-          <>
-            <div className="space-y-4 flex gap-3">
-              
-              {/* Main Image - Fixed size container */}
-              <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
-                {employeeImages[selectedImageIndex] ? (
-                  <img
-                    src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
-                    alt={`Employee image ${selectedImageIndex + 1}`}
-                    className="w-full h-full object-contain"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
                   />
-                ) : (
-                  <div className="flex items-center justify-center text-gray-400">
-                    <svg
-                      className="w-16 h-16"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
+                </svg>
+                Sửa
+              </button>
+            )}
+          </div>
+
+          {employeeImages.length > 0 ? (
+            <>
+              <div className="space-y-4 flex gap-3">
+
+                {/* Main Image - Fixed size container */}
+                <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
+                  {employeeImages[selectedImageIndex] ? (
+                    <img
+                      src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                      alt={`Employee image ${selectedImageIndex + 1}`}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center text-gray-400">
+                      <svg
+                        className="w-16 h-16"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnail Images - Square grid */}
+                {employeeImages.length > 1 && (
+                  <div className="w-3/12 grid grid-cols-3 gap-2">
+                    {employeeImages.map((image, index) => (
+                      <div
+                        key={image.id}
+                        className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === index
+                          ? "border-blue-500 ring-2 ring-blue-300"
+                          : "border-gray-300 hover:border-gray-400"
+                          }`}
+                        onClick={() => setSelectedImageIndex(index)}
+                        onMouseEnter={() => setSelectedImageIndex(index)}
+                      >
+                        <img
+                          src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Thumbnail Images - Square grid */}
-              {employeeImages.length > 1 && (
-                <div className="w-3/12 grid grid-cols-3 gap-2">
-                  {employeeImages.map((image, index) => (
-                    <div
-                      key={image.id}
-                      className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                        selectedImageIndex === index
-                          ? "border-blue-500 ring-2 ring-blue-300"
-                          : "border-gray-300 hover:border-gray-400"
-                      }`}
-                      onClick={() => setSelectedImageIndex(index)}
-                      onMouseEnter={() => setSelectedImageIndex(index)}
-                    >
-                      <img
-                        src={buildCloudinaryUrl(image.cloudinaryPublicId)}
-                        alt={`Thumbnail ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+              {/* Image Info */}
+              {employeeImages[selectedImageIndex] && (
+                <div className="mt-4 pt-4 border-t text-sm text-gray-600">
+                  <p>
+                    Ảnh {selectedImageIndex + 1} / {employeeImages.length}
+                  </p>
+                  {employeeImages[selectedImageIndex].uploadedAt && (
+                    <p>
+                      Ngày tải lên:{" "}
+                      {new Intl.DateTimeFormat("vi-VN", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                    </p>
+                  )}
                 </div>
               )}
-            </div>
-
-            {/* Image Info */}
-            {employeeImages[selectedImageIndex] && (
-              <div className="mt-4 pt-4 border-t text-sm text-gray-600">
-                <p>
-                  Ảnh {selectedImageIndex + 1} / {employeeImages.length}
-                </p>
-                {employeeImages[selectedImageIndex].uploadedAt && (
-                  <p>
-                    Ngày tải lên:{" "}
-                    {new Intl.DateTimeFormat("vi-VN", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
-                  </p>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <ImageUploader
-            onChange={handleUploadEmployeeImage}
-            isLoading={isUploadingEmployeeImage}
-            loadingText="Đang tải..."
-            emptyText="Chưa có hình ảnh"
-            helpText="Click để chọn hoặc kéo thả ảnh"
-            aspectRatio="video"
-            width="w-7/12"
-            multiple={true}
-          />
-        )}
-      </div>
+            </>
+          ) : (
+            <ImageUploader
+              onChange={handleUploadEmployeeImage}
+              isLoading={isUploadingEmployeeImage}
+              loadingText="Đang tải..."
+              emptyText="Chưa có hình ảnh"
+              helpText="Click để chọn hoặc kéo thả ảnh"
+              aspectRatio="video"
+              width="w-7/12"
+              multiple={true}
+            />
+          )}
+        </div>
+      )}
 
       {/* Assignments */}
       <div className="mt-6">
@@ -856,7 +980,7 @@ export default function CompanyStaffDetailPage() {
             })}
           </div>
         )}
-        
+
         {/* Pagination */}
         {!loadingAssignments && assignmentTotalPages > 1 && (
           <div className="mt-4 flex justify-between items-center">
@@ -984,7 +1108,7 @@ export default function CompanyStaffDetailPage() {
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ 
+                  Địa chỉ
                 </label>
                 <input
                   type="text"
@@ -1006,8 +1130,8 @@ export default function CompanyStaffDetailPage() {
                   value={typeof editForm.monthlySalary === 'number' ? formatNumber(editForm.monthlySalary) : editForm.monthlySalary || ""}
                   onChange={(e) => {
                     const rawValue = handleNumberInput(e.target.value);
-                    setEditForm({ 
-                      ...editForm, 
+                    setEditForm({
+                      ...editForm,
                       monthlySalary: rawValue ? formatNumber(rawValue) as any : "" as any
                     });
                   }}
@@ -1025,8 +1149,8 @@ export default function CompanyStaffDetailPage() {
                   value={typeof editForm.allowance === 'number' ? formatNumber(editForm.allowance) : editForm.allowance || ""}
                   onChange={(e) => {
                     const rawValue = handleNumberInput(e.target.value);
-                    setEditForm({ 
-                      ...editForm, 
+                    setEditForm({
+                      ...editForm,
                       allowance: rawValue ? formatNumber(rawValue) as any : "" as any
                     });
                   }}
@@ -1044,8 +1168,8 @@ export default function CompanyStaffDetailPage() {
                   value={typeof editForm.socialInsurance === 'number' ? formatNumber(editForm.socialInsurance) : editForm.socialInsurance || ""}
                   onChange={(e) => {
                     const rawValue = handleNumberInput(e.target.value);
-                    setEditForm({ 
-                      ...editForm, 
+                    setEditForm({
+                      ...editForm,
                       socialInsurance: rawValue ? formatNumber(rawValue) as any : "" as any
                     });
                   }}

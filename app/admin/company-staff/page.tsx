@@ -5,7 +5,9 @@ import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
 import EmployeeExportModal from "@/components/EmployeeExportModal";
-
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
+import { usePermission } from '@/hooks/usePermission';
 export default function CompanyStaffPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +18,7 @@ export default function CompanyStaffPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
+  const canManageCost = usePermission("COST_MANAGE");
   const [addForm, setAddForm] = useState<{
     employeeCode: string;
     name: string;
@@ -300,7 +303,7 @@ export default function CompanyStaffPage() {
                 <button
                   className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
                   title="Xuất Excel"
-                   onClick={() => setShowExportModal(true)}
+                  onClick={() => setShowExportModal(true)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -381,18 +384,55 @@ export default function CompanyStaffPage() {
                         {employee.phone}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {employee.monthlySalary ? formatCurrency(employee.monthlySalary) : '—'}
+                        {!canManageCost ? (
+                          <div className="group relative flex items-center justify-center h-6 overflow-hidden cursor-help">
+                            {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
+                            <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
+                              <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
+                              <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
+                                ********
+                              </span>
+                            </div>
+
+                            {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
+                              Bạn không có quyền xem
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700">
+                            {employee.monthlySalary ? formatCurrency(employee.monthlySalary) : '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {employee.allowance ? formatCurrency(employee.allowance) : '—'}
+                        {!canManageCost ? (
+                          <div className="group relative flex items-center justify-center h-6  cursor-help">
+                            {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
+                            <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
+                              <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
+                              <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
+                                ***
+                              </span>
+                            </div>
+
+                            {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
+                              Bạn không có quyền xem
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700">
+                            {employee.allowance ? formatCurrency(employee.allowance) : '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            employee.status === "ACTIVE"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${employee.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {employee.status === "ACTIVE"
                             ? "Hoạt động"
@@ -509,11 +549,10 @@ export default function CompanyStaffPage() {
                             <button
                               key={pageNum}
                               onClick={() => setCurrentPage(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                currentPage === pageNum
-                                  ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                  : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                              }`}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                                ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                                }`}
                             >
                               {pageNum + 1}
                             </button>

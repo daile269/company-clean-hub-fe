@@ -15,16 +15,18 @@ import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
 import { usePermission } from "@/hooks/usePermission";
-
-
+import { authService } from "@/services/authService";
 export default function EmployeeDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
 
   const router = useRouter();
 
+  // Get current user role
+  const role = authService.getUserRole();
+
   // Permission checks
-  const canView = usePermission(["EMPLOYEE_VIEW","EMPLOYEE_VIEW_OWN"]);
+  const canView = usePermission(["EMPLOYEE_VIEW", "EMPLOYEE_VIEW_OWN"]);
   const canEdit = usePermission("EMPLOYEE_EDIT");
   const canPayrollAdvance = usePermission("PAYROLL_ADVANCE");
 
@@ -61,7 +63,7 @@ export default function EmployeeDetail() {
       const data = await employeeService.getById(id!);
       console.log(data);
       setEmployee(data);
-      
+
       // Load employee images
       const images = await employeeService.getEmployeeImages(id!);
       setEmployeeImages(images);
@@ -103,7 +105,6 @@ export default function EmployeeDetail() {
       setLoadingAssignments(false);
     }
   };
-  // previous mockAssignments removed in favor of real API
 
   if (!canView) {
     return (
@@ -260,7 +261,7 @@ export default function EmployeeDetail() {
       for (let i = 0; i < files.length; i++) {
         formData.append("file", files[i]);
       }
- 
+
       const response = await employeeService.uploadImages(id, formData);
       if (response.success) {
         toast.success("Đã tải lên ảnh thành công");
@@ -405,11 +406,10 @@ export default function EmployeeDetail() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                    employee.status === "ACTIVE"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${employee.status === "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {employee.status === "ACTIVE"
                     ? "Hoạt động"
@@ -449,7 +449,9 @@ export default function EmployeeDetail() {
 
             <div>
               <p className="text-xs text-gray-500 mb-1">Số điện thoại</p>
-              <p className="text-sm text-gray-900">{employee.phone}</p>
+              <p className="text-sm text-gray-900">
+                {role === "CUSTOMER" ? "********" : employee.phone}
+              </p>
             </div>
 
             <div>
@@ -534,11 +536,11 @@ export default function EmployeeDetail() {
             </button>
           )}
         </div>
-        
+
         {employeeImages.length > 0 ? (
           <>
             <div className="space-y-4 flex gap-3">
-              
+
               {/* Main Image - Fixed size container */}
               <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
                 {employeeImages[selectedImageIndex] ? (
@@ -572,11 +574,10 @@ export default function EmployeeDetail() {
                   {employeeImages.map((image, index) => (
                     <div
                       key={image.id}
-                      className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                        selectedImageIndex === index
-                          ? "border-blue-500 ring-2 ring-blue-300"
-                          : "border-gray-300 hover:border-gray-400"
-                      }`}
+                      className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === index
+                        ? "border-blue-500 ring-2 ring-blue-300"
+                        : "border-gray-300 hover:border-gray-400"
+                        }`}
                       onClick={() => setSelectedImageIndex(index)}
                       onMouseEnter={() => setSelectedImageIndex(index)}
                     >
@@ -725,7 +726,7 @@ export default function EmployeeDetail() {
             })}
           </div>
         )}
-        
+
         {/* Pagination */}
         {!loadingAssignments && assignmentTotalPages > 1 && (
           <div className="mt-4 flex justify-between items-center">
@@ -891,7 +892,7 @@ export default function EmployeeDetail() {
 
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ 
+                  Địa chỉ
                 </label>
                 <input
                   type="text"

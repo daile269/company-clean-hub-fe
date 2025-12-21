@@ -15,11 +15,23 @@ import serviceService, { ServiceRequest } from "@/services/serviceService";
 import contractService from "@/services/contractService";
 import { Customer, Employee } from "@/types";
 import { usePermission } from "@/hooks/usePermission";
+import { authService } from "@/services/authService";
 
 export default function CustomerDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
+
+  // Role check for routing
+  const role = authService.getUserRole();
+
+  const routerForEmployee = (employeeId: string | number, assignmentId: string | number) => {
+    if (role === "CUSTOMER") {
+      router.push(`/admin/employees/${employeeId}`);
+    } else {
+      router.push(`/admin/assignments/${assignmentId}`);
+    }
+  };
 
   // Permission checks
   const canView = usePermission("CUSTOMER_VIEW");
@@ -974,8 +986,8 @@ export default function CustomerDetail() {
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
                   className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customer.status === "ACTIVE"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
                     }`}
                 >
                   {customer.status === "ACTIVE"
@@ -1230,10 +1242,10 @@ export default function CustomerDetail() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${contract.paymentStatus === "PAID"
-                            ? "bg-green-100 text-green-800"
-                            : contract.paymentStatus === "PARTIAL"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
+                          ? "bg-green-100 text-green-800"
+                          : contract.paymentStatus === "PARTIAL"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
                           }`}
                       >
                         {contract.paymentStatus === "PAID"
@@ -1479,9 +1491,8 @@ export default function CustomerDetail() {
                                 if (!canViewEmployee) {
                                   return;
                                 }
-                                router.push(`/admin/assignments/${assignment.id}`)
-                              }
-                              }
+                                routerForEmployee(assignment.employeeId, assignment.id);
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter")
                                   router.push(
@@ -1524,10 +1535,10 @@ export default function CustomerDetail() {
                               <td className="px-4 py-3">
                                 <span
                                   className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${assignment.status === "IN_PROGRESS"
-                                      ? "bg-green-100 text-green-800"
-                                      : assignment.status === "CANCELED"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-gray-100 text-gray-800"
+                                    ? "bg-green-100 text-green-800"
+                                    : assignment.status === "CANCELED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-800"
                                     }`}
                                 >
                                   {assignment.status === "IN_PROGRESS"
@@ -1752,8 +1763,8 @@ export default function CustomerDetail() {
                             <td className="px-4 py-3">
                               <span
                                 className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${history.status === "ACTIVE"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
                                   }`}
                               >
                                 {history.status === "ACTIVE"
@@ -1869,1474 +1880,20 @@ export default function CustomerDetail() {
       </div>
 
       {/* Assignment Modal */}
-      {showAssignmentModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Phân công nhân viên cho {customer.name}
-              </h2>
-              <button
-                onClick={() => setShowAssignmentModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Assignment Form */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Thông tin phân công
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Loại phân công *
-                  </label>
-                  <select
-                    value={assignmentForm.assignmentType}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        assignmentType: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="FIXED_BY_CONTRACT">Phân công cố định</option>
-                    <option value="FIXED_BY_DAY">
-                      Phân công cố định theo ngày
-                    </option>
-                    <option value="TEMPORARY">Tạm thời</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Ngày bắt đầu *
-                  </label>
-                  <input
-                    type="date"
-                    value={assignmentForm.startDate}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        startDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Hợp đồng *
-                  </label>
-                  <select
-                    value={assignmentForm.contractId || ""}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        contractId: e.target.value
-                          ? Number(e.target.value)
-                          : null,
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Chọn hợp đồng</option>
-                    {contracts.map((contract) => (
-                      <option key={contract.id} value={contract.id}>
-                        HĐ #{contract.id} -{" "}
-                        {contract.services?.map((s: any) => s.title).join(", ")}{" "}
-                        ({formatDate(contract.startDate)} -{" "}
-                        {formatDate(contract.endDate)})
-                      </option>
-                    ))}
-                  </select>
-                  {loadingContracts && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Đang tải danh sách hợp đồng...
-                    </p>
-                  )}
-                  {!loadingContracts && contracts.length === 0 && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Chưa có hợp đồng nào cho khách hàng này
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Lương theo phân công (VND)
-                  </label>
-                  <input
-                    type="text"
-                    value={assignmentForm.salaryAtTime}
-                    onChange={(e) => {
-                      const rawValue = handleNumberInput(e.target.value);
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        salaryAtTime: rawValue ? formatNumber(rawValue) : "",
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập lương theo phân công (VD: 5.000.000)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Phụ cấp (VND)
-                  </label>
-                  <input
-                    type="text"
-                    value={assignmentForm.allowance}
-                    onChange={(e) => {
-                      const rawValue = handleNumberInput(e.target.value);
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        allowance: rawValue ? formatNumber(rawValue) : "",
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Mô tả
-                  </label>
-                  <textarea
-                    value={assignmentForm.description}
-                    onChange={(e) =>
-                      setAssignmentForm({
-                        ...assignmentForm,
-                        description: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ghi chú về phân công..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Search */}
-
-            {/* Employee List (with month/year filter + pagination) */}
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2">
-                <select
-                  value={assignmentModalMonth}
-                  onChange={(e) =>
-                    setAssignmentModalMonth(Number(e.target.value))
-                  }
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <option key={m} value={m}>
-                      Tháng {m}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={assignmentModalYear}
-                  onChange={(e) =>
-                    setAssignmentModalYear(Number(e.target.value))
-                  }
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
-                >
-                  {Array.from(
-                    { length: 5 },
-                    (_, i) => new Date().getFullYear() - 2 + i
-                  ).map((y) => (
-                    <option key={y} value={y}>
-                      Năm {y}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={notAssignedEmploymentType}
-                  onChange={(e) => {
-                    setNotAssignedEmploymentType(e.target.value);
-                    loadNotAssignedEmployees(0, notAssignedPage.pageSize);
-                  }}
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Tất cả loại NV</option>
-                  <option value="CONTRACT_STAFF">NV hợp đồng KH</option>
-                  <option value="COMPANY_STAFF">NV văn phòng</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 ml-auto">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm theo tên..."
-                  value={notAssignedKeyword}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setNotAssignedKeyword(v);
-                    // immediate reload (could debounce)
-                    loadNotAssignedEmployees(0, notAssignedPage.pageSize, v);
-                  }}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
-                />
-
+      {
+        showAssignmentModal && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Phân công nhân viên cho {customer.name}
+                </h2>
                 <button
-                  onClick={() =>
-                    loadNotAssignedEmployees(0, notAssignedPage.pageSize)
-                  }
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  onClick={() => setShowAssignmentModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  Áp dụng
-                </button>
-              </div>
-            </div>
-
-            {loadingNotAssigned ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            ) : (
-              <div>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {!notAssignedPage || notAssignedPage.content.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
-                      Không tìm thấy nhân viên
-                    </p>
-                  ) : (
-                    notAssignedPage.content.map((employee: any) => (
-                      <div
-                        key={employee.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <input
-                            type="checkbox"
-                            checked={
-                              assignmentForm.employeeId === Number(employee.id)
-                            }
-                            onChange={(e) => {
-                              setAssignmentForm({
-                                ...assignmentForm,
-                                employeeId: e.target.checked
-                                  ? Number(employee.id)
-                                  : null,
-                              });
-                            }}
-                            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-lg font-semibold text-blue-600">
-                              {employee.name?.charAt(0) ?? ""}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {employee.name}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {employee?.employeeCode} • {employee.phone}
-                            </p>
-
-                            <p className="text-xs text-gray-400">
-                              {employee.employmentType === "COMPANY_STAFF"
-                                ? "Nhân viên văn phòng / công ty"
-                                : "Nhân viên làm theo hợp đồng khách hàng"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {employee.monthlySalary
-                              ? formatCurrency(employee.monthlySalary) +
-                              "/tháng"
-                              : employee.dailySalary
-                                ? formatCurrency(employee.dailySalary) + "/ngày"
-                                : "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Pagination controls */}
-                {notAssignedPage.totalPages > 0 && (
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      Trang {notAssignedPage.currentPage + 1} /{" "}
-                      {Math.max(1, notAssignedPage.totalPages)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          loadNotAssignedEmployees(
-                            Math.max(0, notAssignedPage.currentPage - 1),
-                            notAssignedPage.pageSize
-                          )
-                        }
-                        disabled={notAssignedPage.currentPage <= 0}
-                        className="px-3 py-1 border rounded disabled:opacity-50"
-                      >
-                        Trước
-                      </button>
-                      <button
-                        onClick={() =>
-                          loadNotAssignedEmployees(
-                            Math.min(
-                              notAssignedPage.totalPages - 1,
-                              notAssignedPage.currentPage + 1
-                            ),
-                            notAssignedPage.pageSize
-                          )
-                        }
-                        disabled={
-                          notAssignedPage.currentPage >=
-                          notAssignedPage.totalPages - 1
-                        }
-                        className="px-3 py-1 border rounded disabled:opacity-50"
-                      >
-                        Sau
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-              <button
-                onClick={() => setShowAssignmentModal(false)}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleAssignEmployee}
-                disabled={savingAssignment}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {savingAssignment && (
                   <svg
-                    className="animate-spin h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                )}
-                {savingAssignment ? "Đang lưu..." : "Lưu"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && editForm && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Chỉnh sửa khách hàng
-              </h2>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã khách hàng *
-                </label>
-                <input
-                  type="text"
-                  value={editForm.code}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên khách hàng *
-                </label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, name: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số điện thoại *
-                </label>
-                <input
-                  type="tel"
-                  value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editForm.email || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ *
-                </label>
-                <input
-                  type="text"
-                  value={editForm.address}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, address: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên công ty
-                </label>
-                <input
-                  type="text"
-                  value={editForm.company || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, company: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã số thuế
-                </label>
-                <input
-                  type="text"
-                  value={editForm.taxCode || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, taxCode: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Người liên hệ
-                </label>
-                <input
-                  type="text"
-                  value={editForm.contactPerson || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, contactPerson: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái
-                </label>
-                <select
-                  value={editForm.status || "ACTIVE"}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, status: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="INACTIVE">Không hoạt động</option>
-                </select>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả
-                </label>
-                <textarea
-                  value={editForm.description || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, description: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ghi chú thêm về khách hàng..."
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                Lưu thay đổi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Temporary Reassignment Modal */}
-      {showReassignmentModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Điều động nhân viên tạm thời
-              </h2>
-              <button
-                onClick={() => setShowReassignmentModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Reassignment Form */}
-            <div className="mb-6 p-4 bg-purple-50 rounded-lg">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Thông tin điều động
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Từ ngày *
-                  </label>
-                  <input
-                    type="date"
-                    value={reassignmentForm.fromDate}
-                    onChange={(e) => {
-                      const fromDate = e.target.value;
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        fromDate,
-                        selectedDates: [], // Reset selected dates when range changes
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Đến ngày *
-                  </label>
-                  <input
-                    type="date"
-                    value={reassignmentForm.toDate}
-                    min={reassignmentForm.fromDate}
-                    onChange={(e) => {
-                      const toDate = e.target.value;
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        toDate,
-                        selectedDates: [], // Reset selected dates when range changes
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Chọn các ngày điều động *
-                  </label>
-                  {reassignmentForm.fromDate && reassignmentForm.toDate && (
-                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
-                      {(() => {
-                        const dates = [];
-                        const start = new Date(reassignmentForm.fromDate);
-                        const end = new Date(reassignmentForm.toDate);
-
-                        for (
-                          let d = new Date(start);
-                          d <= end;
-                          d.setDate(d.getDate() + 1)
-                        ) {
-                          const dateStr = d.toISOString().split("T")[0];
-                          const dayName = [
-                            "CN",
-                            "T2",
-                            "T3",
-                            "T4",
-                            "T5",
-                            "T6",
-                            "T7",
-                          ][d.getDay()];
-                          const displayDate = `${d.getDate()}/${d.getMonth() + 1
-                            } (${dayName})`;
-
-                          dates.push(
-                            <label
-                              key={dateStr}
-                              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-purple-50 p-1 rounded"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={reassignmentForm.selectedDates.includes(
-                                  dateStr
-                                )}
-                                onChange={(e) => {
-                                  const newDates = e.target.checked
-                                    ? [
-                                      ...reassignmentForm.selectedDates,
-                                      dateStr,
-                                    ]
-                                    : reassignmentForm.selectedDates.filter(
-                                      (d) => d !== dateStr
-                                    );
-                                  setReassignmentForm({
-                                    ...reassignmentForm,
-                                    selectedDates: newDates.sort(),
-                                  });
-                                }}
-                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                              />
-                              <span className="text-xs">{displayDate}</span>
-                            </label>
-                          );
-                        }
-
-                        return dates.length > 0 ? (
-                          dates
-                        ) : (
-                          <p className="col-span-4 text-center text-gray-500 text-xs py-4">
-                            Vui lòng chọn khoảng ngày hợp lệ
-                          </p>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  {reassignmentForm.selectedDates.length > 0 && (
-                    <p className="text-xs text-purple-600 mt-2">
-                      Đã chọn {reassignmentForm.selectedDates.length} ngày
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Lương tại thời điểm điều động (VND)
-                  </label>
-                  <input
-                    type="text"
-                    value={reassignmentForm.salaryAtTime}
-                    onChange={(e) => {
-                      const rawValue = handleNumberInput(e.target.value);
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        salaryAtTime: rawValue ? formatNumber(rawValue) : "",
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Lý do điều động
-                  </label>
-                  <textarea
-                    value={reassignmentForm.description}
-                    onChange={(e) =>
-                      setReassignmentForm({
-                        ...reassignmentForm,
-                        description: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="VD: Nhân viên A nghỉ ốm, B thay thế..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Search (moved into replacement column) */}
-
-            {/* Two Columns for Selection */}
-            <div className="grid grid-cols-2 gap-6">
-              {/* Column 1: Nhân viên bị thay (đang phụ trách) */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
-                  Nhân viên bị thay (đang phụ trách)
-                  {reassignmentForm.replacedEmployeeId && (
-                    <span className="ml-2 text-xs text-purple-600">
-                      ✓ Đã chọn
-                    </span>
-                  )}
-                </h3>
-                {loadingAssignments ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                  </div>
-                ) : assignedEmployees.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8 text-sm">
-                    Chưa có nhân viên phụ trách
-                  </p>
-                ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {assignedEmployees.map(
-                      (contractGroup: any, groupIdx: number) => (
-                        <div
-                          key={`contract-replaced-${contractGroup.contractId}-${groupIdx}`}
-                        >
-                          {/* Contract Header */}
-                          <div className="bg-blue-50 px-3 py-2 rounded-t-lg border border-blue-200">
-                            <p className="text-xs font-semibold text-blue-800">
-                              Hợp đồng {contractGroup.contractId}:{" "}
-                              {contractGroup.contractDescription}
-                            </p>
-                          </div>
-                          {/* Assignments under this contract */}
-                          <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
- {contractGroup.assignments &&
-                            contractGroup.assignments.length > 0 ? (
-                              contractGroup.assignments.map(
-                                (assignment: any, aIdx: number) => (
-                                  <label
-                                    key={`replaced-${
-                                      assignment.id ??
-                                      assignment.employeeId ??
-                                      aIdx
-                                    }`}
-                                    className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                                      reassignmentForm.replacedAssignmentId ===
-                                      assignment.id
-                                        ? "border-purple-500 bg-purple-50"
-                                        : "border-gray-200 hover:bg-gray-50"
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        reassignmentForm.replacedAssignmentId ===
-                                        assignment.id
-                                      }
-                                      onChange={(e) => {
-                                        console.log("Selected assignment:", {
-                                          id: assignment.id,
-                                          employeeId: assignment.employeeId,
-                                          employeeName: assignment.employeeName,
-                                          contractId: contractGroup.contractId,
-                                          contractDescription:
-                                            contractGroup.contractDescription,
-                                        });
-                                        setReassignmentForm({
-                                          ...reassignmentForm,
-                                          replacedEmployeeId: e.target.checked
-                                            ? assignment.employeeId
-                                            : null,
-                                          replacedAssignmentId: e.target.checked
-                                            ? assignment.id
-                                            : null,
-                                        });
-                                      }}
-                                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                                      <span className="text-sm font-semibold text-red-600">
-                                        {assignment.employeeName?.charAt(0) ||
-                                          "N"}
-                                      </span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-semibold text-sm text-gray-900 truncate">
-                                        {assignment.employeeName}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {assignment.employeeCode}
-                                      </p>
-                                      <p className="text-xs text-gray-400">
-                                        {assignment.startDate && (
-                                          <span>
-                                            Phụ trách từ{" "}
-                                            {formatDate(assignment.startDate)}
-                                          </span>
-                                        )}
-                                        {assignment.workDays !== undefined &&
-                                          assignment.workDays !== null && (
-                                            <span className="ml-2">
-                                              • {assignment.workDays} ngày
-                                            </span>
-                                          )}
-                                      </p>
-                                    </div>
-                                  </label>
-                                )
-                              )
-                            ) : (
-                              <p className="text-center text-gray-400 py-4 text-xs">
-                                Chưa có nhân viên
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Column 2: Nhân viên thay thế (không phụ trách) */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
-                  Nhân viên thay thế
-                  {reassignmentForm.replacementEmployeeId && (
-                    <span className="ml-2 text-xs text-green-600">
-                      ✓ Đã chọn
-                    </span>
-                  )}
-                </h3>
-                <div className="mb-3">
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm nhân viên..."
-                    value={searchEmployee}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setSearchEmployee(v);
-                      // pass the value directly so loader uses current input (avoids stale state)
-                      loadEmployeesPage(0, employeesPage.pageSize, v);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                {employeesPageLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {!employeesPage || employeesPage.content.length === 0 ? (
-                        <p className="text-center text-gray-500 py-8 text-sm">
-                          Không có nhân viên khả dụng
-                        </p>
-                      ) : (
-                        employeesPage.content.map((employee: any) => (
-                          <label
-                            key={`replacement-${employee.id}`}
-                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacementEmployeeId ===
-                                Number(employee.id)
-                                ? "border-green-500 bg-green-50"
-                                : "border-gray-200 hover:bg-gray-50"
-                              }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={
-                                reassignmentForm.replacementEmployeeId ===
-                                Number(employee.id)
-                              }
-                              onChange={(e) => {
-                                setReassignmentForm({
-                                  ...reassignmentForm,
-                                  replacementEmployeeId: e.target.checked
-                                    ? Number(employee.id)
-                                    : null,
-                                });
-                              }}
-                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            />
-                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                              <span className="text-sm font-semibold text-green-600">
-                                {employee.name?.charAt(0) || "N"}
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm text-gray-900 truncate">
-                                {employee.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {employee.employeeCode}
-                              </p>
-                            </div>
-                          </label>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Pagination controls */}
-                    <div className="mt-3 flex items-center justify-between">
-                      <div className="text-sm text-gray-600">
-                        Trang {employeesPage.currentPage + 1} /{" "}
-                        {Math.max(1, employeesPage.totalPages)}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            loadEmployeesPage(
-                              Math.max(0, employeesPage.currentPage - 1),
-                              employeesPage.pageSize
-                            )
-                          }
-                          disabled={employeesPage.currentPage <= 0}
-                          className="px-3 py-1 border rounded disabled:opacity-50"
-                        >
-                          Prev
-                        </button>
-                        <button
-                          onClick={() =>
-                            loadEmployeesPage(
-                              Math.min(
-                                employeesPage.totalPages - 1,
-                                employeesPage.currentPage + 1
-                              ),
-                              employeesPage.pageSize
-                            )
-                          }
-                          disabled={
-                            employeesPage.currentPage >=
-                            employeesPage.totalPages - 1
-                          }
-                          className="px-3 py-1 border rounded disabled:opacity-50"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowReassignmentModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleTemporaryReassignment}
-                disabled={savingReassignment}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {savingReassignment && (
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                )}
-                {savingReassignment ? "Đang xử lý..." : "Xác nhận điều động"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Contract Modal */}
-      {showAddContractModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Thêm hợp đồng mới
-              </h2>
-              <button
-                onClick={() => setShowAddContractModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Contract Section Header */}
-            <div className="mt-6 mb-4 pt-6 border-t">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Thông tin hợp đồng
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày bắt đầu *
-                </label>
-                <input
-                  type="date"
-                  value={contractForm.startDate}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      startDate: e.target.value,
-                      // Keep serviceEffectiveFrom in sync with contract start date
-                      serviceEffectiveFrom: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày kết thúc *
-                </label>
-                <input
-                  type="date"
-                  value={contractForm.endDate}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      endDate: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Loại hợp đồng *
-                </label>
-                <select
-                  value={contractForm.contractType}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      contractType: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
-                  <option value="MONTHLY_FIXED">
-                    Hợp đồng hàng tháng cố định
-                  </option>
-                  <option value="MONTHLY_ACTUAL">
-                    Hợp đồng hàng tháng theo ngày thực tế
-                  </option>
-                </select>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày làm việc trong tuần
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { value: "MONDAY", label: "Thứ 2" },
-                    { value: "TUESDAY", label: "Thứ 3" },
-                    { value: "WEDNESDAY", label: "Thứ 4" },
-                    { value: "THURSDAY", label: "Thứ 5" },
-                    { value: "FRIDAY", label: "Thứ 6" },
-                    { value: "SATURDAY", label: "Thứ 7" },
-                    { value: "SUNDAY", label: "CN" },
-                  ].map((day) => (
-                    <label
-                      key={day.value}
-                      className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={contractForm.workingDaysPerWeek.includes(
-                          day.value
-                        )}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setContractForm({
-                              ...contractForm,
-                              workingDaysPerWeek: [
-                                ...contractForm.workingDaysPerWeek,
-                                day.value,
-                              ],
-                            });
-                          } else {
-                            setContractForm({
-                              ...contractForm,
-                              workingDaysPerWeek:
-                                contractForm.workingDaysPerWeek.filter(
-                                  (d) => d !== day.value
-                                ),
-                            });
-                          }
-                        }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{day.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái thanh toán *
-                </label>
-                <select
-                  value={contractForm.paymentStatus}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      paymentStatus: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="PENDING">Chưa thanh toán</option>
-                  <option value="PARTIAL">Thanh toán 1 phần</option>
-                  <option value="PAID">Đã thanh toán</option>
-                </select>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả hợp đồng
-                </label>
-                <textarea
-                  value={contractForm.description}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Hợp đồng dọn dẹp văn phòng"
-                />
-              </div>
-            </div>
-
-            {/* Service Section Header */}
-            <div className="mb-6 pb-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Thông tin dịch vụ trong hợp đồng
-              </h3>
-              <p className="text-sm text-gray-500">
-                Nhập thông tin dịch vụ mới cho hợp đồng
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tên dịch vụ *
-                </label>
-                <input
-                  type="text"
-                  value={contractForm.serviceName}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      serviceName: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: Dọn dẹp văn phòng"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá dịch vụ (VND) *
-                </label>
-                <input
-                  type="text"
-                  value={contractForm.servicePrice}
-                  onChange={(e) => {
-                    const rawValue = handleNumberInput(e.target.value);
-                    if (rawValue === "") {
-                      setContractForm({
-                        ...contractForm,
-                        servicePrice: "",
-                        finalPrice: 0,
-                      });
-                      return;
-                    }
-                    const price = Number(rawValue) || 0;
-                    const vatValue =
-                      contractForm.serviceVat === ""
-                        ? 0
-                        : Number(contractForm.serviceVat);
-                    setContractForm({
-                      ...contractForm,
-                      servicePrice: formatNumber(rawValue),
-                      finalPrice: price + (price * vatValue) / 100,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập giá dịch vụ"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  VAT (%) *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={contractForm.serviceVat}
-                  onChange={(e) => {
-                    const vat =
-                      e.target.value === "" ? 0 : Number(e.target.value);
-                    // Parse formatted price to get raw number
-                    const priceStr = String(contractForm.servicePrice || "");
-                    const rawPrice = parseFormattedNumber(priceStr);
-                    const price = Number(rawPrice) || 0;
-                    setContractForm({
-                      ...contractForm,
-                      serviceVat: e.target.value,
-                      finalPrice: price + (price * vat) / 100,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập VAT (%)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày áp dụng giá
-                </label>
-                <input
-                  type="date"
-                  value={contractForm.serviceEffectiveFrom}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng giá (Giá dịch vụ + VAT) (VNĐ)
-                </label>
-                <input
-                  type="text"
-                  value={
-                    contractForm.finalPrice
-                      ? formatNumber(contractForm.finalPrice)
-                      : ""
-                  }
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả dịch vụ
-                </label>
-                <textarea
-                  value={contractForm.serviceDescription}
-                  onChange={(e) =>
-                    setContractForm({
-                      ...contractForm,
-                      serviceDescription: e.target.value,
-                    })
-                  }
-                  rows={2}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Chi tiết về dịch vụ..."
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowAddContractModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleAddContract}
-                disabled={savingContract}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {savingContract && (
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                )}
-                {savingContract ? "Đang thêm..." : "Thêm hợp đồng"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rollback Modal */}
-      {showRollbackModal && selectedHistory && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Xác nhận hoàn tác điều động
-              </h2>
-              <button
-                onClick={() => setShowRollbackModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex gap-3">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-6 h-6 text-yellow-600 flex-shrink-0"
+                    className="w-6 h-6"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -3345,62 +1902,350 @@ export default function CustomerDetail() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-yellow-800 mb-2">
-                      Thông tin điều động
-                    </h3>
-                    <div className="space-y-2 text-sm text-yellow-700">
-                      <p>
-                        <strong>Người bị thay:</strong>{" "}
-                        {selectedHistory.replacedEmployeeName} (
-                        {selectedHistory.replacedEmployeeCode})
+                </button>
+              </div>
+
+              {/* Assignment Form */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  Thông tin phân công
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Loại phân công *
+                    </label>
+                    <select
+                      value={assignmentForm.assignmentType}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          assignmentType: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="FIXED_BY_CONTRACT">Phân công cố định</option>
+                      <option value="FIXED_BY_DAY">
+                        Phân công cố định theo ngày
+                      </option>
+                      <option value="TEMPORARY">Tạm thời</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Ngày bắt đầu *
+                    </label>
+                    <input
+                      type="date"
+                      value={assignmentForm.startDate}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          startDate: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Hợp đồng *
+                    </label>
+                    <select
+                      value={assignmentForm.contractId || ""}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          contractId: e.target.value
+                            ? Number(e.target.value)
+                            : null,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Chọn hợp đồng</option>
+                      {contracts.map((contract) => (
+                        <option key={contract.id} value={contract.id}>
+                          HĐ #{contract.id} -{" "}
+                          {contract.services?.map((s: any) => s.title).join(", ")}{" "}
+                          ({formatDate(contract.startDate)} -{" "}
+                          {formatDate(contract.endDate)})
+                        </option>
+                      ))}
+                    </select>
+                    {loadingContracts && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Đang tải danh sách hợp đồng...
                       </p>
-                      <p>
-                        <strong>Người làm thay:</strong>{" "}
-                        {selectedHistory.replacementEmployeeName} (
-                        {selectedHistory.replacementEmployeeCode})
+                    )}
+                    {!loadingContracts && contracts.length === 0 && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Chưa có hợp đồng nào cho khách hàng này
                       </p>
-                      <p>
-                        <strong>Ngày điều động:</strong>{" "}
-                        {selectedHistory.reassignmentDates
-                          .map((d) => formatDate(d))
-                          .join(", ")}
-                      </p>
-                    </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Lương theo phân công (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={assignmentForm.salaryAtTime}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          salaryAtTime: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nhập lương theo phân công (VD: 5.000.000)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Phụ cấp (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={assignmentForm.allowance}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          allowance: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Mô tả
+                    </label>
+                    <textarea
+                      value={assignmentForm.description}
+                      onChange={(e) =>
+                        setAssignmentForm({
+                          ...assignmentForm,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ghi chú về phân công..."
+                    />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h3 className="font-semibold text-red-800 mb-2">
-                  Sau khi hoàn tác:
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  <li>Chấm công của người làm thay sẽ bị xóa</li>
-                  <li>Chấm công của người bị thay được khôi phục</li>
-                  <li>Số ngày công được cập nhật lại</li>
-                </ul>
-              </div>
-            </div>
+              {/* Search */}
 
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowRollbackModal(false)}
-                disabled={rollingBack}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleConfirmRollback}
-                disabled={rollingBack}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
-              >
-                {rollingBack ? (
-                  <>
+              {/* Employee List (with month/year filter + pagination) */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={assignmentModalMonth}
+                    onChange={(e) =>
+                      setAssignmentModalMonth(Number(e.target.value))
+                    }
+                    className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <option key={m} value={m}>
+                        Tháng {m}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={assignmentModalYear}
+                    onChange={(e) =>
+                      setAssignmentModalYear(Number(e.target.value))
+                    }
+                    className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
+                  >
+                    {Array.from(
+                      { length: 5 },
+                      (_, i) => new Date().getFullYear() - 2 + i
+                    ).map((y) => (
+                      <option key={y} value={y}>
+                        Năm {y}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={notAssignedEmploymentType}
+                    onChange={(e) => {
+                      setNotAssignedEmploymentType(e.target.value);
+                      loadNotAssignedEmployees(0, notAssignedPage.pageSize);
+                    }}
+                    className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Tất cả loại NV</option>
+                    <option value="CONTRACT_STAFF">NV hợp đồng KH</option>
+                    <option value="COMPANY_STAFF">NV văn phòng</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 ml-auto">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên..."
+                    value={notAssignedKeyword}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setNotAssignedKeyword(v);
+                      // immediate reload (could debounce)
+                      loadNotAssignedEmployees(0, notAssignedPage.pageSize, v);
+                    }}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  />
+
+                  <button
+                    onClick={() =>
+                      loadNotAssignedEmployees(0, notAssignedPage.pageSize)
+                    }
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+
+              {loadingNotAssigned ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {!notAssignedPage || notAssignedPage.content.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8">
+                        Không tìm thấy nhân viên
+                      </p>
+                    ) : (
+                      notAssignedPage.content.map((employee: any) => (
+                        <div
+                          key={employee.id}
+                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <input
+                              type="checkbox"
+                              checked={
+                                assignmentForm.employeeId === Number(employee.id)
+                              }
+                              onChange={(e) => {
+                                setAssignmentForm({
+                                  ...assignmentForm,
+                                  employeeId: e.target.checked
+                                    ? Number(employee.id)
+                                    : null,
+                                });
+                              }}
+                              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-lg font-semibold text-blue-600">
+                                {employee.name?.charAt(0) ?? ""}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900">
+                                {employee.name}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {employee?.employeeCode} • {employee.phone}
+                              </p>
+
+                              <p className="text-xs text-gray-400">
+                                {employee.employmentType === "COMPANY_STAFF"
+                                  ? "Nhân viên văn phòng / công ty"
+                                  : "Nhân viên làm theo hợp đồng khách hàng"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {employee.monthlySalary
+                                ? formatCurrency(employee.monthlySalary) +
+                                "/tháng"
+                                : employee.dailySalary
+                                  ? formatCurrency(employee.dailySalary) + "/ngày"
+                                  : "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Pagination controls */}
+                  {notAssignedPage.totalPages > 0 && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        Trang {notAssignedPage.currentPage + 1} /{" "}
+                        {Math.max(1, notAssignedPage.totalPages)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            loadNotAssignedEmployees(
+                              Math.max(0, notAssignedPage.currentPage - 1),
+                              notAssignedPage.pageSize
+                            )
+                          }
+                          disabled={notAssignedPage.currentPage <= 0}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Trước
+                        </button>
+                        <button
+                          onClick={() =>
+                            loadNotAssignedEmployees(
+                              Math.min(
+                                notAssignedPage.totalPages - 1,
+                                notAssignedPage.currentPage + 1
+                              ),
+                              notAssignedPage.pageSize
+                            )
+                          }
+                          disabled={
+                            notAssignedPage.currentPage >=
+                            notAssignedPage.totalPages - 1
+                          }
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Sau
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={() => setShowAssignmentModal(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleAssignEmployee}
+                  disabled={savingAssignment}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {savingAssignment && (
                     <svg
                       className="animate-spin h-4 w-4"
                       fill="none"
@@ -3420,13 +2265,1096 @@ export default function CustomerDetail() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
+                  )}
+                  {savingAssignment ? "Đang lưu..." : "Lưu"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Edit Modal */}
+      {
+        showEditModal && editForm && (
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Chỉnh sửa khách hàng
+                </h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mã khách hàng *
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.code}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tên khách hàng *
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số điện thoại *
+                  </label>
+                  <input
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, phone: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editForm.email || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, email: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Địa chỉ *
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.address}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, address: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tên công ty
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.company || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, company: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mã số thuế
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.taxCode || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, taxCode: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Người liên hệ
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.contactPerson || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, contactPerson: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={editForm.status || "ACTIVE"}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, status: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="INACTIVE">Không hoạt động</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mô tả
+                  </label>
+                  <textarea
+                    value={editForm.description || ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, description: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ghi chú thêm về khách hàng..."
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Lưu thay đổi
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Temporary Reassignment Modal */}
+      {
+        showReassignmentModal && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Điều động nhân viên tạm thời
+                </h2>
+                <button
+                  onClick={() => setShowReassignmentModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Reassignment Form */}
+              <div className="mb-6 p-4 bg-purple-50 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  Thông tin điều động
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Từ ngày *
+                    </label>
+                    <input
+                      type="date"
+                      value={reassignmentForm.fromDate}
+                      onChange={(e) => {
+                        const fromDate = e.target.value;
+                        setReassignmentForm({
+                          ...reassignmentForm,
+                          fromDate,
+                          selectedDates: [], // Reset selected dates when range changes
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Đến ngày *
+                    </label>
+                    <input
+                      type="date"
+                      value={reassignmentForm.toDate}
+                      min={reassignmentForm.fromDate}
+                      onChange={(e) => {
+                        const toDate = e.target.value;
+                        setReassignmentForm({
+                          ...reassignmentForm,
+                          toDate,
+                          selectedDates: [], // Reset selected dates when range changes
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Chọn các ngày điều động *
+                    </label>
+                    {reassignmentForm.fromDate && reassignmentForm.toDate && (
+                      <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                        {(() => {
+                          const dates = [];
+                          const start = new Date(reassignmentForm.fromDate);
+                          const end = new Date(reassignmentForm.toDate);
+
+                          for (
+                            let d = new Date(start);
+                            d <= end;
+                            d.setDate(d.getDate() + 1)
+                          ) {
+                            const dateStr = d.toISOString().split("T")[0];
+                            const dayName = [
+                              "CN",
+                              "T2",
+                              "T3",
+                              "T4",
+                              "T5",
+                              "T6",
+                              "T7",
+                            ][d.getDay()];
+                            const displayDate = `${d.getDate()}/${d.getMonth() + 1
+                              } (${dayName})`;
+
+                            dates.push(
+                              <label
+                                key={dateStr}
+                                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-purple-50 p-1 rounded"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={reassignmentForm.selectedDates.includes(
+                                    dateStr
+                                  )}
+                                  onChange={(e) => {
+                                    const newDates = e.target.checked
+                                      ? [
+                                        ...reassignmentForm.selectedDates,
+                                        dateStr,
+                                      ]
+                                      : reassignmentForm.selectedDates.filter(
+                                        (d) => d !== dateStr
+                                      );
+                                    setReassignmentForm({
+                                      ...reassignmentForm,
+                                      selectedDates: newDates.sort(),
+                                    });
+                                  }}
+                                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                />
+                                <span className="text-xs">{displayDate}</span>
+                              </label>
+                            );
+                          }
+
+                          return dates.length > 0 ? (
+                            dates
+                          ) : (
+                            <p className="col-span-4 text-center text-gray-500 text-xs py-4">
+                              Vui lòng chọn khoảng ngày hợp lệ
+                            </p>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    {reassignmentForm.selectedDates.length > 0 && (
+                      <p className="text-xs text-purple-600 mt-2">
+                        Đã chọn {reassignmentForm.selectedDates.length} ngày
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Lương tại thời điểm điều động (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={reassignmentForm.salaryAtTime}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setReassignmentForm({
+                          ...reassignmentForm,
+                          salaryAtTime: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Lý do điều động
+                    </label>
+                    <textarea
+                      value={reassignmentForm.description}
+                      onChange={(e) =>
+                        setReassignmentForm({
+                          ...reassignmentForm,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="VD: Nhân viên A nghỉ ốm, B thay thế..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Search (moved into replacement column) */}
+
+              {/* Two Columns for Selection */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Column 1: Nhân viên bị thay (đang phụ trách) */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                    Nhân viên bị thay (đang phụ trách)
+                    {reassignmentForm.replacedEmployeeId && (
+                      <span className="ml-2 text-xs text-purple-600">
+                        ✓ Đã chọn
+                      </span>
+                    )}
+                  </h3>
+                  {loadingAssignments ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+                  ) : assignedEmployees.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8 text-sm">
+                      Chưa có nhân viên phụ trách
+                    </p>
+                  ) : (
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {assignedEmployees.map(
+                        (contractGroup: any, groupIdx: number) => (
+                          <div
+                            key={`contract-replaced-${contractGroup.contractId}-${groupIdx}`}
+                          >
+                            {/* Contract Header */}
+                            <div className="bg-blue-50 px-3 py-2 rounded-t-lg border border-blue-200">
+                              <p className="text-xs font-semibold text-blue-800">
+                                Hợp đồng {contractGroup.contractId}:{" "}
+                                {contractGroup.contractDescription}
+                              </p>
+                            </div>
+                            {/* Assignments under this contract */}
+                            <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
+                              {contractGroup.assignments &&
+                                contractGroup.assignments.length > 0 ? (
+                                contractGroup.assignments.map(
+                                  (assignment: any, aIdx: number) => (
+                                    <label
+                                      key={`replaced-${assignment.id ??
+                                        assignment.employeeId ??
+                                        aIdx
+                                        }`}
+                                      className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacedAssignmentId ===
+                                        assignment.id
+                                        ? "border-purple-500 bg-purple-50"
+                                        : "border-gray-200 hover:bg-gray-50"
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          reassignmentForm.replacedAssignmentId ===
+                                          assignment.id
+                                        }
+                                        onChange={(e) => {
+                                          console.log("Selected assignment:", {
+                                            id: assignment.id,
+                                            employeeId: assignment.employeeId,
+                                            employeeName: assignment.employeeName,
+                                            contractId: contractGroup.contractId,
+                                            contractDescription:
+                                              contractGroup.contractDescription,
+                                          });
+                                          setReassignmentForm({
+                                            ...reassignmentForm,
+                                            replacedEmployeeId: e.target.checked
+                                              ? assignment.employeeId
+                                              : null,
+                                            replacedAssignmentId: e.target.checked
+                                              ? assignment.id
+                                              : null,
+                                          });
+                                        }}
+                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-sm font-semibold text-red-600">
+                                          {assignment.employeeName?.charAt(0) ||
+                                            "N"}
+                                        </span>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-sm text-gray-900 truncate">
+                                          {assignment.employeeName}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {assignment.employeeCode}
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                          {assignment.startDate && (
+                                            <span>
+                                              Phụ trách từ{" "}
+                                              {formatDate(assignment.startDate)}
+                                            </span>
+                                          )}
+                                          {assignment.workDays !== undefined &&
+                                            assignment.workDays !== null && (
+                                              <span className="ml-2">
+                                                • {assignment.workDays} ngày
+                                              </span>
+                                            )}
+                                        </p>
+                                      </div>
+                                    </label>
+                                  )
+                                )
+                              ) : (
+                                <p className="text-center text-gray-400 py-4 text-xs">
+                                  Chưa có nhân viên
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 2: Nhân viên thay thế (không phụ trách) */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                    Nhân viên thay thế
+                    {reassignmentForm.replacementEmployeeId && (
+                      <span className="ml-2 text-xs text-green-600">
+                        ✓ Đã chọn
+                      </span>
+                    )}
+                  </h3>
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân viên..."
+                      value={searchEmployee}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSearchEmployee(v);
+                        // pass the value directly so loader uses current input (avoids stale state)
+                        loadEmployeesPage(0, employeesPage.pageSize, v);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  {employeesPageLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {!employeesPage || employeesPage.content.length === 0 ? (
+                          <p className="text-center text-gray-500 py-8 text-sm">
+                            Không có nhân viên khả dụng
+                          </p>
+                        ) : (
+                          employeesPage.content.map((employee: any) => (
+                            <label
+                              key={`replacement-${employee.id}`}
+                              className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacementEmployeeId ===
+                                Number(employee.id)
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:bg-gray-50"
+                                }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  reassignmentForm.replacementEmployeeId ===
+                                  Number(employee.id)
+                                }
+                                onChange={(e) => {
+                                  setReassignmentForm({
+                                    ...reassignmentForm,
+                                    replacementEmployeeId: e.target.checked
+                                      ? Number(employee.id)
+                                      : null,
+                                  });
+                                }}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                <span className="text-sm font-semibold text-green-600">
+                                  {employee.name?.charAt(0) || "N"}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-gray-900 truncate">
+                                  {employee.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {employee.employeeCode}
+                                </p>
+                              </div>
+                            </label>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Pagination controls */}
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="text-sm text-gray-600">
+                          Trang {employeesPage.currentPage + 1} /{" "}
+                          {Math.max(1, employeesPage.totalPages)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              loadEmployeesPage(
+                                Math.max(0, employeesPage.currentPage - 1),
+                                employeesPage.pageSize
+                              )
+                            }
+                            disabled={employeesPage.currentPage <= 0}
+                            className="px-3 py-1 border rounded disabled:opacity-50"
+                          >
+                            Prev
+                          </button>
+                          <button
+                            onClick={() =>
+                              loadEmployeesPage(
+                                Math.min(
+                                  employeesPage.totalPages - 1,
+                                  employeesPage.currentPage + 1
+                                ),
+                                employeesPage.pageSize
+                              )
+                            }
+                            disabled={
+                              employeesPage.currentPage >=
+                              employeesPage.totalPages - 1
+                            }
+                            className="px-3 py-1 border rounded disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowReassignmentModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleTemporaryReassignment}
+                  disabled={savingReassignment}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {savingReassignment && (
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  )}
+                  {savingReassignment ? "Đang xử lý..." : "Xác nhận điều động"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Add Contract Modal */}
+      {
+        showAddContractModal && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Thêm hợp đồng mới
+                </h2>
+                <button
+                  onClick={() => setShowAddContractModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Contract Section Header */}
+              <div className="mt-6 mb-4 pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Thông tin hợp đồng
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày bắt đầu *
+                  </label>
+                  <input
+                    type="date"
+                    value={contractForm.startDate}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        startDate: e.target.value,
+                        // Keep serviceEffectiveFrom in sync with contract start date
+                        serviceEffectiveFrom: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày kết thúc *
+                  </label>
+                  <input
+                    type="date"
+                    value={contractForm.endDate}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        endDate: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Loại hợp đồng *
+                  </label>
+                  <select
+                    value={contractForm.contractType}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        contractType: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="ONE_TIME">Hợp đồng 1 lần (trọn gói)</option>
+                    <option value="MONTHLY_FIXED">
+                      Hợp đồng hàng tháng cố định
+                    </option>
+                    <option value="MONTHLY_ACTUAL">
+                      Hợp đồng hàng tháng theo ngày thực tế
+                    </option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày làm việc trong tuần
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: "MONDAY", label: "Thứ 2" },
+                      { value: "TUESDAY", label: "Thứ 3" },
+                      { value: "WEDNESDAY", label: "Thứ 4" },
+                      { value: "THURSDAY", label: "Thứ 5" },
+                      { value: "FRIDAY", label: "Thứ 6" },
+                      { value: "SATURDAY", label: "Thứ 7" },
+                      { value: "SUNDAY", label: "CN" },
+                    ].map((day) => (
+                      <label
+                        key={day.value}
+                        className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={contractForm.workingDaysPerWeek.includes(
+                            day.value
+                          )}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setContractForm({
+                                ...contractForm,
+                                workingDaysPerWeek: [
+                                  ...contractForm.workingDaysPerWeek,
+                                  day.value,
+                                ],
+                              });
+                            } else {
+                              setContractForm({
+                                ...contractForm,
+                                workingDaysPerWeek:
+                                  contractForm.workingDaysPerWeek.filter(
+                                    (d) => d !== day.value
+                                  ),
+                              });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{day.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Trạng thái thanh toán *
+                  </label>
+                  <select
+                    value={contractForm.paymentStatus}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        paymentStatus: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="PENDING">Chưa thanh toán</option>
+                    <option value="PARTIAL">Thanh toán 1 phần</option>
+                    <option value="PAID">Đã thanh toán</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mô tả hợp đồng
+                  </label>
+                  <textarea
+                    value={contractForm.description}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        description: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Hợp đồng dọn dẹp văn phòng"
+                  />
+                </div>
+              </div>
+
+              {/* Service Section Header */}
+              <div className="mb-6 pb-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Thông tin dịch vụ trong hợp đồng
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Nhập thông tin dịch vụ mới cho hợp đồng
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tên dịch vụ *
+                  </label>
+                  <input
+                    type="text"
+                    value={contractForm.serviceName}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        serviceName: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="VD: Dọn dẹp văn phòng"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giá dịch vụ (VND) *
+                  </label>
+                  <input
+                    type="text"
+                    value={contractForm.servicePrice}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      if (rawValue === "") {
+                        setContractForm({
+                          ...contractForm,
+                          servicePrice: "",
+                          finalPrice: 0,
+                        });
+                        return;
+                      }
+                      const price = Number(rawValue) || 0;
+                      const vatValue =
+                        contractForm.serviceVat === ""
+                          ? 0
+                          : Number(contractForm.serviceVat);
+                      setContractForm({
+                        ...contractForm,
+                        servicePrice: formatNumber(rawValue),
+                        finalPrice: price + (price * vatValue) / 100,
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập giá dịch vụ"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    VAT (%) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={contractForm.serviceVat}
+                    onChange={(e) => {
+                      const vat =
+                        e.target.value === "" ? 0 : Number(e.target.value);
+                      // Parse formatted price to get raw number
+                      const priceStr = String(contractForm.servicePrice || "");
+                      const rawPrice = parseFormattedNumber(priceStr);
+                      const price = Number(rawPrice) || 0;
+                      setContractForm({
+                        ...contractForm,
+                        serviceVat: e.target.value,
+                        finalPrice: price + (price * vat) / 100,
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập VAT (%)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ngày áp dụng giá
+                  </label>
+                  <input
+                    type="date"
+                    value={contractForm.serviceEffectiveFrom}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tổng giá (Giá dịch vụ + VAT) (VNĐ)
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      contractForm.finalPrice
+                        ? formatNumber(contractForm.finalPrice)
+                        : ""
+                    }
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-semibold text-green-600"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mô tả dịch vụ
+                  </label>
+                  <textarea
+                    value={contractForm.serviceDescription}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        serviceDescription: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Chi tiết về dịch vụ..."
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowAddContractModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleAddContract}
+                  disabled={savingContract}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {savingContract && (
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  )}
+                  {savingContract ? "Đang thêm..." : "Thêm hợp đồng"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Rollback Modal */}
+      {
+        showRollbackModal && selectedHistory && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-2xl w-full shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Xác nhận hoàn tác điều động
+                </h2>
+                <button
+                  onClick={() => setShowRollbackModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex gap-3">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
+                      className="w-6 h-6 text-yellow-600 flex-shrink-0"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -3435,17 +3363,108 @@ export default function CustomerDetail() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                       />
                     </svg>
-                    Xác nhận hoàn tác
-                  </>
-                )}
-              </button>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-yellow-800 mb-2">
+                        Thông tin điều động
+                      </h3>
+                      <div className="space-y-2 text-sm text-yellow-700">
+                        <p>
+                          <strong>Người bị thay:</strong>{" "}
+                          {selectedHistory.replacedEmployeeName} (
+                          {selectedHistory.replacedEmployeeCode})
+                        </p>
+                        <p>
+                          <strong>Người làm thay:</strong>{" "}
+                          {selectedHistory.replacementEmployeeName} (
+                          {selectedHistory.replacementEmployeeCode})
+                        </p>
+                        <p>
+                          <strong>Ngày điều động:</strong>{" "}
+                          {selectedHistory.reassignmentDates
+                            .map((d) => formatDate(d))
+                            .join(", ")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-red-800 mb-2">
+                    Sau khi hoàn tác:
+                  </h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                    <li>Chấm công của người làm thay sẽ bị xóa</li>
+                    <li>Chấm công của người bị thay được khôi phục</li>
+                    <li>Số ngày công được cập nhật lại</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowRollbackModal(false)}
+                  disabled={rollingBack}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleConfirmRollback}
+                  disabled={rollingBack}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {rollingBack ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                        />
+                      </svg>
+                      Xác nhận hoàn tác
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

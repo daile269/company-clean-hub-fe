@@ -6,6 +6,7 @@ import { Contract, ContractDocument } from "@/types";
 import contractService from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
 import serviceService from "@/services/serviceService";
+import { authService } from "@/services/authService";
 import invoiceService, {
   Invoice,
   InvoiceCreateRequest,
@@ -16,11 +17,13 @@ import { assignmentService } from "@/services/assignmentService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
-
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 export default function ContractDetailPage() {
   const params = useParams();
   const router = useRouter();
   const contractId = params.id as string;
+  const role = authService.getUserRole();
 
   const [contract, setContract] = useState<Contract | null>(null);
   const [documents, setDocuments] = useState<ContractDocument[]>([]);
@@ -138,10 +141,10 @@ export default function ContractDetailPage() {
   const canEdit = usePermission("CONTRACT_EDIT");
   const canCreate = usePermission("CONTRACT_CREATE");
   const canDelete = usePermission("CONTRACT_DELETE");
+  const canAssign = usePermission("CUSTOMER_ASSIGN");
   const canManageCost = usePermission("COST_MANAGE");
   const canCreateService = usePermission("SERVICE_CREATE");
   const canEditService = usePermission("SERVICE_EDIT");
-
   // Load contract details
   useEffect(() => {
     const loadContract = async () => {
@@ -378,7 +381,7 @@ export default function ContractDetailPage() {
     }
   };
 
-const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!contract || !canDelete) return;
 
     if (confirm("Xác nhận xóa hợp đồng này?")) {
@@ -495,7 +498,13 @@ const handleDelete = async () => {
     });
     setShowInvoiceModal(true);
   };
-
+  const routerForEmployee = (id: string, assignmentId?: string) => {
+    if (role === "CUSTOMER") {
+      router.push(`/admin/employees/${id}`);
+    } else {
+      router.push(`/admin/assignments/${assignmentId}`);
+    }
+  };
   const handleDeleteInvoice = async (invoiceId: number) => {
     if (!contract || !canManageCost) return;
 
@@ -650,7 +659,7 @@ const handleDelete = async () => {
     }
   };
 
-  if (!canView) {
+  if (!canView && role !== "CUSTOMER") {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
@@ -703,8 +712,8 @@ const handleDelete = async () => {
     contract.paymentStatus === "PAID"
       ? "Đã thanh toán"
       : contract.paymentStatus === "PARTIAL"
-      ? "Thanh toán 1 phần"
-      : "Chưa thanh toán";
+        ? "Thanh toán 1 phần"
+        : "Chưa thanh toán";
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -739,66 +748,66 @@ const handleDelete = async () => {
                 onClick={handleCreateInvoice}
                 className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
               >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              Xuất hóa đơn
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Xuất hóa đơn
+              </button>
             )}
             {canEdit && (
-            <button
-              onClick={handleEdit}
-              className="px-4 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleEdit}
+                className="px-4 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                />
-              </svg>
-              Sửa
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                  />
+                </svg>
+                Sửa
+              </button>
             )}
             {canDelete && (
-             <button
-              onClick={handleDelete}
-              className="px-4 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleDelete}
+                className="px-4 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-                />
-              </svg>
-              Xóa
-            </button> 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
+                  />
+                </svg>
+                Xóa
+              </button>
             )}
           </div>
         </div>
@@ -823,15 +832,14 @@ const handleDelete = async () => {
                     Trạng thái hợp đồng
                   </p>
                   <span
-                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                      status.color === "green"
-                        ? "bg-green-100 text-green-800"
-                        : status.color === "yellow"
+                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${status.color === "green"
+                      ? "bg-green-100 text-green-800"
+                      : status.color === "yellow"
                         ? "bg-yellow-100 text-yellow-800"
                         : status.color === "red"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
                   >
                     {status.status}
                   </span>
@@ -882,13 +890,12 @@ const handleDelete = async () => {
                     Trạng thái thanh toán
                   </p>
                   <span
-                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                      contract.paymentStatus === "PAID"
-                        ? "bg-green-100 text-green-800"
-                        : contract.paymentStatus === "PARTIAL"
+                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${contract.paymentStatus === "PAID"
+                      ? "bg-green-100 text-green-800"
+                      : contract.paymentStatus === "PARTIAL"
                         ? "bg-yellow-100 text-yellow-800"
                         : "bg-red-100 text-red-800"
-                    }`}
+                      }`}
                   >
                     {paymentStatusLabel}
                   </span>
@@ -901,10 +908,10 @@ const handleDelete = async () => {
                       {contract.contractType === "ONE_TIME"
                         ? "Hợp đồng 1 lần (trọn gói)"
                         : contract.contractType === "MONTHLY_FIXED"
-                        ? "Hợp đồng hàng tháng cố định"
-                        : contract.contractType === "MONTHLY_ACTUAL"
-                        ? "Hợp đồng hàng tháng theo ngày thực tế"
-                        : contract.contractType}
+                          ? "Hợp đồng hàng tháng cố định"
+                          : contract.contractType === "MONTHLY_ACTUAL"
+                            ? "Hợp đồng hàng tháng theo ngày thực tế"
+                            : contract.contractType}
                     </span>
                   </div>
                 )}
@@ -925,18 +932,18 @@ const handleDelete = async () => {
                           {day === "MONDAY"
                             ? "T2"
                             : day === "TUESDAY"
-                            ? "T3"
-                            : day === "WEDNESDAY"
-                            ? "T4"
-                            : day === "THURSDAY"
-                            ? "T5"
-                            : day === "FRIDAY"
-                            ? "T6"
-                            : day === "SATURDAY"
-                            ? "T7"
-                            : day === "SUNDAY"
-                            ? "CN"
-                            : day}
+                              ? "T3"
+                              : day === "WEDNESDAY"
+                                ? "T4"
+                                : day === "THURSDAY"
+                                  ? "T5"
+                                  : day === "FRIDAY"
+                                    ? "T6"
+                                    : day === "SATURDAY"
+                                      ? "T7"
+                                      : day === "SUNDAY"
+                                        ? "CN"
+                                        : day}
                         </span>
                       ))}
                     </div>
@@ -983,26 +990,26 @@ const handleDelete = async () => {
               Dịch vụ trong hợp đồng
             </h3>
             {canCreateService && (
-            <button
-              onClick={handleAddService}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleAddService}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Thêm dịch vụ
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm dịch vụ
+              </button>
             )}
           </div>
 
@@ -1030,10 +1037,10 @@ const handleDelete = async () => {
                       VAT
                     </th>
 
-{canEditService && (
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
+                    {canEditService && (
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Thao tác
+                      </th>
                     )}
                   </tr>
                 </thead>
@@ -1053,8 +1060,8 @@ const handleDelete = async () => {
                           {(service as any).serviceType === "ONE_TIME"
                             ? "Một lần mỗi tháng"
                             : (service as any).serviceType === "RECURRING"
-                            ? "Định kỳ hàng tháng"
-                            : (service as any).serviceType}
+                              ? "Định kỳ hàng tháng"
+                              : (service as any).serviceType}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -1062,39 +1069,73 @@ const handleDelete = async () => {
                           {service.description || "—"}
                         </p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-700">
-                          {formatCurrency(service.price)}
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap flex ">
+                        {role !== "CUSTOMER" && !canManageCost ? (
+                          <div className="group relative flex items-center justify-center h-6 cursor-help">
+                            {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
+                            <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
+                              <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
+                              <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
+                                ********
+                              </span>
+                            </div>
+
+                            {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
+                              Bạn không có quyền xem
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700">
+                            {formatCurrency(service.price)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-700">
-                          {service.vat}%
-                        </span>
+                        {role !== "CUSTOMER" && !canManageCost ? (
+                          <div className="group relative flex items-center justify-center h-6 overflow-hidden cursor-help">
+                            {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
+                            <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
+                              <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
+                              <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
+                                ********
+                              </span>
+                            </div>
+
+                            {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
+                              Bạn không có quyền xem
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-700">
+                            {service.vat}%
+                          </span>
+                        )}
                       </td>
-{canEditService && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => handleEditService(service)}
-                          className="text-green-600 hover:text-green-800 inline-flex items-center gap-1"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                      {canEditService && (
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => handleEditService(service)}
+                            className="text-green-600 hover:text-green-800 inline-flex items-center gap-1"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                            />
-                          </svg>
-                          Sửa
-                        </button>
-                      </td>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                              />
+                            </svg>
+                            Sửa
+                          </button>
+                        </td>
                       )}
                     </tr>
                   ))}
@@ -1109,131 +1150,134 @@ const handleDelete = async () => {
         </div>
 
         {/* Invoices Section */}
-        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4 pb-2 border-b">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Hóa đơn ({invoices.length})
-            </h3>
-            {canManageCost && (
-            <button
-              onClick={handleCreateInvoice}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Tạo hóa đơn
-            </button>
-            )}
-          </div>
+        {canManageCost && (
+          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Hóa đơn ({invoices.length})
+              </h3>
+              {canManageCost && (
+                <button
+                  onClick={handleCreateInvoice}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Tạo hóa đơn
+                </button>
+              )}
+            </div>
 
-          {loadingInvoices ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : invoices.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p className="text-sm">Chưa có hóa đơn nào cho hợp đồng này</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số HĐ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tháng/Năm
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tổng tiền
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số ngày làm
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ghi chú
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {invoices.map((invoice) => (
-                    <tr
-                      key={invoice.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() =>
-                        router.push(
-                          `/admin/contracts/${contract.id}/invoices/${invoice.id}`
-                        )
-                      }
-                      onKeyDown={(e) => {
-                        if ((e as any).key === "Enter")
+            {loadingInvoices ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-sm">Chưa có hóa đơn nào cho hợp đồng này</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Số HĐ
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tháng/Năm
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tổng tiền
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Số ngày làm
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Trạng thái
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ghi chú
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {invoices.map((invoice) => (
+                      <tr
+                        key={invoice.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
                           router.push(
                             `/admin/contracts/${contract.id}/invoices/${invoice.id}`
-                          );
-                      }}
-                      className="hover:bg-gray-50 cursor-pointer"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/admin/contracts/${contract.id}/invoices/${invoice.id}`}
-                          className="text-sm font-mono font-medium text-blue-600"
-                        >
-                          {invoice.invoiceNumber || `#${invoice.id}`}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
-                          {invoice.invoiceMonth}/{invoice.invoiceYear}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(invoice.totalAmount)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-700">
-                          {invoice.actualWorkingDays || "—"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
-                            invoice.status
-                          )}`}
-                        >
-                          {getInvoiceStatusLabel(invoice.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-600 line-clamp-2">
-                          {invoice.notes || "—"}
-                        </p>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if ((e as any).key === "Enter")
+                            router.push(
+                              `/admin/contracts/${contract.id}/invoices/${invoice.id}`
+                            );
+                        }}
+                        className="hover:bg-gray-50 cursor-pointer"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link
+                            href={`/admin/contracts/${contract.id}/invoices/${invoice.id}`}
+                            className="text-sm font-mono font-medium text-blue-600"
+                          >
+                            {invoice.invoiceNumber || `#${invoice.id}`}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900">
+                            {invoice.invoiceMonth}/{invoice.invoiceYear}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {formatCurrency(invoice.totalAmount)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-700">
+                            {invoice.actualWorkingDays || "—"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getInvoiceStatusColor(
+                              invoice.status
+                            )}`}
+                          >
+                            {getInvoiceStatusLabel(invoice.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {invoice.notes || "—"}
+                          </p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
 
         {/* Assignments Section */}
         <div className="mt-6 bg-white rounded-lg shadow-md p-6">
@@ -1331,7 +1375,8 @@ const handleDelete = async () => {
                       key={a.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => router.push(`/admin/assignments/${a.id}`)}
+                      // onClick={() => router.push(`/admin/assignments/${a.id}`)}
+                      onClick={() => routerForEmployee(a.employeeId, a.id)}
                       onKeyDown={(e) => {
                         if ((e as any).key === "Enter")
                           router.push(`/admin/assignments/${a.id}`);
@@ -1443,21 +1488,23 @@ const handleDelete = async () => {
                 )
               )}
             </select>
+            {canAssign && (
+              <button
+                onClick={() => {
+                  setLeaveFormState((s) => ({
+                    ...s,
+                    employeeId: leaveEmployeeId || (employeeOptions[0]?.id ?? ""),
+                    date: new Date().toISOString().split("T")[0],
+                    description: "",
+                  }));
+                  setShowLeaveModal(true);
+                }}
+                className="ml-2 px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+              >
+                + Thêm ngày không làm
+              </button>
+            )}
 
-            <button
-              onClick={() => {
-                setLeaveFormState((s) => ({
-                  ...s,
-                  employeeId: leaveEmployeeId || (employeeOptions[0]?.id ?? ""),
-                  date: new Date().toISOString().split("T")[0],
-                  description: "",
-                }));
-                setShowLeaveModal(true);
-              }}
-              className="ml-2 px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
-            >
-              + Thêm ngày nghỉ phép
-            </button>
           </div>
         </div>
 
@@ -1905,24 +1952,24 @@ const handleDelete = async () => {
                   value={
                     (editForm.workingDaysPerWeek ?? []).length > 0
                       ? (editForm.workingDaysPerWeek ?? [])
-                          .map((day: string) =>
-                            day === "MONDAY"
-                              ? "T2"
-                              : day === "TUESDAY"
+                        .map((day: string) =>
+                          day === "MONDAY"
+                            ? "T2"
+                            : day === "TUESDAY"
                               ? "T3"
                               : day === "WEDNESDAY"
-                              ? "T4"
-                              : day === "THURSDAY"
-                              ? "T5"
-                              : day === "FRIDAY"
-                              ? "T6"
-                              : day === "SATURDAY"
-                              ? "T7"
-                              : day === "SUNDAY"
-                              ? "CN"
-                              : day
-                          )
-                          .join(", ")
+                                ? "T4"
+                                : day === "THURSDAY"
+                                  ? "T5"
+                                  : day === "FRIDAY"
+                                    ? "T6"
+                                    : day === "SATURDAY"
+                                      ? "T7"
+                                      : day === "SUNDAY"
+                                        ? "CN"
+                                        : day
+                        )
+                        .join(", ")
                       : "Chưa có dữ liệu"
                   }
                   disabled
@@ -2234,8 +2281,8 @@ const handleDelete = async () => {
                   {contract.contractType === "ONE_TIME"
                     ? "Hợp đồng 1 lần (trọn gói)"
                     : contract.contractType === "MONTHLY_FIXED"
-                    ? "Hợp đồng hàng tháng cố định"
-                    : "Hợp đồng hàng tháng theo ngày thực tế"}
+                      ? "Hợp đồng hàng tháng cố định"
+                      : "Hợp đồng hàng tháng theo ngày thực tế"}
                 </p>
               </div>
 

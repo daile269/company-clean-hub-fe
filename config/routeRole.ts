@@ -15,7 +15,7 @@ export const ROUTE_ROLES: Record<string, string[]> = {
 
   // Customer routes
   '/admin/customers': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
-  '/admin/customers/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
+  '/admin/customers/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
 
   // Assignment routes (CUSTOMER có ASSIGNMENT_VIEW)
   '/admin/assignments': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
@@ -26,12 +26,12 @@ export const ROUTE_ROLES: Record<string, string[]> = {
   '/admin/attendances/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
 
   // Company staff routes (employee management)
-  '/admin/company-staff': ['QLT1', 'QLT2', 'QLV'],
-  '/admin/company-staff/[id]': ['QLT1', 'QLT2', 'QLV'],
+  '/admin/company-staff': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
+  '/admin/company-staff/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
 
   // Contract routes (CUSTOMER có CONTRACT_VIEW)
-  '/admin/contracts': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
-  '/admin/contracts/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
+  '/admin/contracts': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
+  '/admin/contracts/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
 
   // Services routes (CUSTOMER có SERVICE_VIEW)
   '/admin/services': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
@@ -46,7 +46,7 @@ export const ROUTE_ROLES: Record<string, string[]> = {
  * Check if current pathname matches a route pattern and return required roles
  * Handles dynamic routes like /admin/payroll/[id]
  */
-export const  getRequiredRoles = (pathname: string): string[] | null => {
+export const getRequiredRoles = (pathname: string): string[] | null => {
   // Exact match first
   if (ROUTE_ROLES[pathname]) {
     return ROUTE_ROLES[pathname];

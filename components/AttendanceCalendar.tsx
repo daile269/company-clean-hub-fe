@@ -79,6 +79,14 @@ const getStatusAssignment = (status: string | undefined) => {
     if (status === undefined) return "Chưa cập nhật";
     if (status === "COMPLETED") return "Hoàn thành";
     if (status === "IN_PROGRESS") return "Đang thực hiện";
+    if (status === "CANCELED") return "Đã hủy";
+}
+const getAssignmentType = (type: string | undefined) => {
+    if (type === undefined) return "Chưa cập nhật";
+    if (type === "FIXED_BY_CONTRACT") return "Phân công cố định theo hợp đồng";
+    if (type === "FIXED_BY_DAY") return "Phân công cố định theo ngày";
+    if (type === "TEMPORARY") return "Phân công tạm thời";
+    if (type === "FIXED_BY_COMPANY") return "Phân công làm việc ở công ty";
 }
 const getAttendancesForDate = (
     attendances: Attendance[],
@@ -260,12 +268,15 @@ export default function AttendanceCalendar({
                     // Tính số ngày công thực tế từ attendance (count attendance với date <= hôm nay)
                     const realWorkDays = calculateRealWorkDays(assignmentAttendances);
 
+                    // Kiểm tra status - nếu đã hủy thì phủ nền xám
+                    const isCancelled = assignment?.status === "CANCELLED" || assignment?.status === "CANCELED";
+
                     return (
                         <div key={assignmentId} className="flex gap-4 bg-white rounded-lg shadow p-4">
                             {/* Sidebar - Customer Info + Assignment allowance */}
                             <div className="w-32 flex-shrink-0">
                                 <h3 className="text-sm font-semibold text-gray-900 break-words">
-                                    {customerName}
+                                    {customerName} (#{assignmentId})
                                 </h3>
 
                                 {/* Thông tin Assignment (mỗi lịch 1 assignment) */}
@@ -284,9 +295,19 @@ export default function AttendanceCalendar({
                                                 currency: "VND",
                                                 maximumFractionDigits: 0,
                                             }).format(assignment.salaryAtTime || 0)}</p>
+                                            <p className="text-gray-600">Loại phân công: <span className="font-semibold">{getAssignmentType(assignment.assignmentType)}</span></p>
                                             <p className="text-gray-600">Ngày DK: {assignment.plannedDays || 0}</p>
                                             <p className="text-gray-600">Ngày TT: {realWorkDays}</p>
                                             <p className="text-gray-600">Trạng thái: <span className="font-semibold">{getStatusAssignment(assignment.status)}</span></p>
+                                            <p className="text-gray-600 font-semibold mt-2 border-t pt-1">Tổng quan:</p>
+                                            <div className="grid grid-cols-2 gap-x-2 text-[10px] text-gray-500">
+                                                <span>Thưởng:</span>
+                                                <span className="text-right text-green-600">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(assignmentAttendances.reduce((sum, att) => sum + (att.bonus || 0), 0))}</span>
+                                                <span>Phạt:</span>
+                                                <span className="text-right text-red-600">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(assignmentAttendances.reduce((sum, att) => sum + (att.penalty || 0), 0))}</span>
+                                                <span>Hỗ trợ:</span>
+                                                <span className="text-right text-blue-600">{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(assignmentAttendances.reduce((sum, att) => sum + (att.supportCost || 0), 0))}</span>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -298,6 +319,7 @@ export default function AttendanceCalendar({
                                             Phụ cấp phân công
                                         </p>
                                         <input
+                                            disabled={isCancelled}
                                             type="number"
                                             className="w-full px-2 py-1 border border-purple-200 rounded text-xs focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
                                             value={allowanceValue}
@@ -311,96 +333,98 @@ export default function AttendanceCalendar({
                                                 }));
                                             }}
                                         />
-                                        <button
-                                            type="button"
-                                            className="mt-1 w-full bg-purple-600 text-white rounded px-2 py-1 text-xs hover:bg-purple-700 disabled:opacity-60 flex items-center justify-center gap-2"
-                                            disabled={!!savingAssignmentMap[assignmentId]}
-                                            onClick={async () => {
-                                                try {
-                                                    onAsyncStart?.("Đang cập nhật phụ cấp assignment...");
-                                                    setSavingAssignmentMap((prev) => ({
-                                                        ...prev,
-                                                        [assignmentId]: true,
-                                                    }));
+                                        {!isCancelled && (
+                                            <button
+                                                type="button"
+                                                className="mt-1 w-full bg-purple-600 text-white rounded px-2 py-1 text-xs hover:bg-purple-700 disabled:opacity-60 flex items-center justify-center gap-2"
+                                                disabled={!!savingAssignmentMap[assignmentId]}
+                                                onClick={async () => {
+                                                    try {
+                                                        onAsyncStart?.("Đang cập nhật phụ cấp assignment...");
+                                                        setSavingAssignmentMap((prev) => ({
+                                                            ...prev,
+                                                            [assignmentId]: true,
+                                                        }));
 
-                                                    const valueToSave =
-                                                        assignmentAllowanceInputs[assignmentId] ??
-                                                        (assignment.additionalAllowance ?? 0);
+                                                        const valueToSave =
+                                                            assignmentAllowanceInputs[assignmentId] ??
+                                                            (assignment.additionalAllowance ?? 0);
 
-                                                    const response = await updateAssignment(assignment, valueToSave);
-                                                    const updatedAssignment =
-                                                        response?.data ?? {
-                                                            ...assignment,
-                                                            additionalAllowance: valueToSave,
-                                                        };
+                                                        const response = await updateAssignment(assignment, valueToSave);
+                                                        const updatedAssignment =
+                                                            response?.data ?? {
+                                                                ...assignment,
+                                                                additionalAllowance: valueToSave,
+                                                            };
 
-                                                    // Clear local input cache to sync with backend value
-                                                    setAssignmentAllowanceInputs((prev) => {
-                                                        const next = { ...prev };
-                                                        delete next[assignmentId];
-                                                        return next;
-                                                    });
+                                                        // Clear local input cache to sync with backend value
+                                                        setAssignmentAllowanceInputs((prev) => {
+                                                            const next = { ...prev };
+                                                            delete next[assignmentId];
+                                                            return next;
+                                                        });
 
-                                                    // Cập nhật lại cache assignment local
-                                                    setAssignmentsById((prev) => {
-                                                        const clone = new Map(prev);
-                                                        clone.set(assignmentId, updatedAssignment);
-                                                        return clone;
-                                                    });
-                                                    onSuccess?.();
-                                                    onAsyncEnd?.();
-                                                    toast.success("Cập nhật phụ cấp assignment thành công");
-                                                } catch (error) {
-                                                    console.error("Failed to update assignment allowance", error);
-                                                    onAsyncEnd?.();
-                                                    toast.error("Cập nhật phụ cấp assignment thất bại");
-                                                } finally {
-                                                    setSavingAssignmentMap((prev) => {
-                                                        const next = { ...prev };
-                                                        delete next[assignmentId];
-                                                        return next;
-                                                    });
-                                                }
-                                            }}
-                                        >
-                                            {savingAssignmentMap[assignmentId] ? (
-                                                <>
-                                                    <span className="h-3 w-3 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
-                                                    Đang lưu...
-                                                </>
-                                            ) : (
-                                                "Lưu phụ cấp"
-                                            )}
-                                        </button>
+                                                        // Cập nhật lại cache assignment local
+                                                        setAssignmentsById((prev) => {
+                                                            const clone = new Map(prev);
+                                                            clone.set(assignmentId, updatedAssignment);
+                                                            return clone;
+                                                        });
+                                                        onSuccess?.();
+                                                        onAsyncEnd?.();
+                                                        toast.success("Cập nhật phụ cấp assignment thành công");
+                                                    } catch (error) {
+                                                        console.error("Failed to update assignment allowance", error);
+                                                        onAsyncEnd?.();
+                                                        toast.error("Cập nhật phụ cấp assignment thất bại");
+                                                    } finally {
+                                                        setSavingAssignmentMap((prev) => {
+                                                            const next = { ...prev };
+                                                            delete next[assignmentId];
+                                                            return next;
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                {savingAssignmentMap[assignmentId] ? (
+                                                    <>
+                                                        <span className="h-3 w-3 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+                                                        Đang lưu...
+                                                    </>
+                                                ) : (
+                                                    "Lưu phụ cấp"
+                                                )}
+                                            </button>
+                                        )}
+
                                     </div>
                                 )}
 
                                 {/* Legend */}
-                                {!isInProgress && (
-                                    <div className="mt-4 space-y-2 text-xs">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.bonus.dot}`}></div>
-                                            <span className="text-gray-600">{INDICATOR_TYPES.bonus.label}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.penalty.dot}`}></div>
-                                            <span className="text-gray-600">{INDICATOR_TYPES.penalty.label}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.supportCost.dot}`}></div>
-                                            <span className="text-gray-600">{INDICATOR_TYPES.supportCost.label}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
-                                            <span className="text-gray-600">{INDICATOR_TYPES.overtimeAmount.label}</span>
-                                        </div>
+                                <div className="mt-4 space-y-2 text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.bonus.dot}`}></div>
+                                        <span className="text-gray-600">{INDICATOR_TYPES.bonus.label}</span>
                                     </div>
-                                )}
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.penalty.dot}`}></div>
+                                        <span className="text-gray-600">{INDICATOR_TYPES.penalty.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.supportCost.dot}`}></div>
+                                        <span className="text-gray-600">{INDICATOR_TYPES.supportCost.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
+                                        <span className="text-gray-600">{INDICATOR_TYPES.overtimeAmount.label}</span>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Main Content Area */}
-                            <div className="flex-1 overflow-x-auto">
-                                <div className="bg-white rounded overflow-hidden border border-gray-200">
+                            <div className="flex-1 overflow-x-auto relative">
+
+                                <div className={`bg-white rounded overflow-hidden border border-gray-200 ${isCancelled ? "pointer-events-none" : ""}`}>
                                     {/* Calendar Header */}
                                     <div className="grid grid-cols-7 gap-0">
                                         {dayNames.map((day) => (
@@ -437,7 +461,7 @@ export default function AttendanceCalendar({
                                                                         <span className=" inline-block opacity-50">
                                                                             <FontAwesomeIcon icon={SolidIcons.faClipboard} />
                                                                         </span>
-                                                                        
+
                                                                     </div>
                                                                 ) : attendanceStatus === 'done' ? (
                                                                     // Đã làm → icon check xanh
@@ -516,7 +540,7 @@ export default function AttendanceCalendar({
                                                                         <span className="inline-block">
                                                                             <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
                                                                         </span>
-                                                                       
+
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -527,6 +551,15 @@ export default function AttendanceCalendar({
                                         })}
                                     </div>
                                 </div>
+                                {isCancelled && (
+                                    <div className="bg-black opacity-20 pointer-events-none absolute top-0 left-0 w-full h-full">
+                                        <div className="flex items-center justify-center h-full">
+                                            <span className="text-white text-9xl font-bold">
+                                                <FontAwesomeIcon icon={SolidIcons.faBan} />
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                         </div>

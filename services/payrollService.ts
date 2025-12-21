@@ -17,6 +17,7 @@ export interface Payroll {
   allowanceTotal: number;
   insuranceTotal: number;
   finalSalary: number;
+  baseSalary?: number;
   status: PayrollStatus;  // Changed from isPaid
   paidAmount: number;     // New field
   remainingAmount: number; // New field
@@ -25,6 +26,7 @@ export interface Payroll {
   accountantName: string | null;
   createdAt: string;
   updatedAt: string;
+  note?: string;
 }
 
 export interface PayrollCalculateRequest {
@@ -77,6 +79,7 @@ export interface PayrollAssignmentResponse {
   totalAdvance: number | null;
   finalSalary: number | null;
   isTotalRow: boolean;
+  note?: string;
 }
 
 export interface PayrollAssignmentFilterParams {

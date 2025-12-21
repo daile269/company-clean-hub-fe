@@ -81,7 +81,7 @@ export default function PayrollPage() {
     }).format(amount);
   };
 
-  const totalPayroll = payrolls.reduce((sum, p) => sum + p.finalSalary, 0);
+  const totalPayroll = payrolls.reduce((sum, p) => sum + p.remainingAmount, 0);
   const paidPayrolls = payrolls.filter((p) => p.status === 'PAID').length;
   const unpaidPayrolls = payrolls.filter((p) => p.status === 'UNPAID' || p.status === 'PARTIAL_PAID').length;
 
@@ -343,8 +343,10 @@ export default function PayrollPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên nhân viên</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tháng/Năm</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày công</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng lương</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày cập nhật</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Lương công</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng phải trả</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
                   </tr>
                 </thead>
@@ -360,9 +362,17 @@ export default function PayrollPage() {
                       <td className="px-6 py-4 text-sm text-center text-gray-700">
                         Tháng {payroll.month}/{payroll.year}
                       </td>
-                      <td className="px-6 py-4 text-sm text-center text-gray-700">{payroll.totalDays}</td>
+                      <td className="px-6 py-4 text-sm text-center text-gray-700">
+                        {new Date(payroll.createdAt).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center text-gray-700">
+                        {payroll.updatedAt ? new Date(payroll.updatedAt).toLocaleDateString('vi-VN') : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-right font-semibold text-purple-600">
+                        {formatCurrency(payroll.baseSalary || 0)}
+                      </td>
                       <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
-                        {formatCurrency(payroll.finalSalary)}
+                        {formatCurrency(payroll.remainingAmount)}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span

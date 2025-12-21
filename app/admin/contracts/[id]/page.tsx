@@ -13,6 +13,7 @@ import invoiceService, {
 import { apiService } from "@/services/api";
 import attendanceService from "@/services/attendanceService";
 import { assignmentService } from "@/services/assignmentService";
+import { reviewService } from "@/services/reviewService";
 import ContractDocuments from "@/components/ContractDocuments";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
@@ -84,6 +85,23 @@ export default function ContractDetailPage() {
     description: "",
   });
 
+  // Reviews for this contract
+  const [contractReviews, setContractReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [showAddReviewModal, setShowAddReviewModal] = useState(false);
+  const [reviewForm, setReviewForm] = useState<{
+    assignmentId: string;
+    employeeId: string;
+    rating: number;
+    comment: string;
+  }>({
+    assignmentId: "",
+    employeeId: "",
+    rating: 5,
+    comment: "",
+  });
+  const [savingReview, setSavingReview] = useState(false);
+
   // Derive employees for select from assignments (only employees of this contract)
   useEffect(() => {
     const loadEmployees = async () => {
@@ -132,6 +150,25 @@ export default function ContractDetailPage() {
 
     if (contractId) loadDeletedAttendances();
   }, [contractId, leaveMonth, leaveYear, leaveEmployeeId]);
+
+  // Load reviews for this contract
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!contractId) return;
+      try {
+        setLoadingReviews(true);
+        const list = await reviewService.getByContractId(Number(contractId));
+        setContractReviews(list || []);
+      } catch (err) {
+        console.error(err, "Error loading contract reviews:");
+        setContractReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    loadReviews();
+  }, [contractId]);
 
   // Permission checks
   const canView = usePermission("CONTRACT_VIEW");
@@ -378,7 +415,7 @@ export default function ContractDetailPage() {
     }
   };
 
-const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!contract || !canDelete) return;
 
     if (confirm("Xác nhận xóa hợp đồng này?")) {
@@ -739,66 +776,66 @@ const handleDelete = async () => {
                 onClick={handleCreateInvoice}
                 className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
               >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              Xuất hóa đơn
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Xuất hóa đơn
+              </button>
             )}
             {canEdit && (
-            <button
-              onClick={handleEdit}
-              className="px-4 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleEdit}
+                className="px-4 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                />
-              </svg>
-              Sửa
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                  />
+                </svg>
+                Sửa
+              </button>
             )}
             {canDelete && (
-             <button
-              onClick={handleDelete}
-              className="px-4 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleDelete}
+                className="px-4 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 inline-flex items-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
-                />
-              </svg>
-              Xóa
-            </button> 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-7 0h10"
+                  />
+                </svg>
+                Xóa
+              </button>
             )}
           </div>
         </div>
@@ -983,26 +1020,26 @@ const handleDelete = async () => {
               Dịch vụ trong hợp đồng
             </h3>
             {canCreateService && (
-            <button
-              onClick={handleAddService}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleAddService}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Thêm dịch vụ
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Thêm dịch vụ
+              </button>
             )}
           </div>
 
@@ -1030,10 +1067,10 @@ const handleDelete = async () => {
                       VAT
                     </th>
 
-{canEditService && (
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
+                    {canEditService && (
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Thao tác
+                      </th>
                     )}
                   </tr>
                 </thead>
@@ -1072,29 +1109,29 @@ const handleDelete = async () => {
                           {service.vat}%
                         </span>
                       </td>
-{canEditService && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => handleEditService(service)}
-                          className="text-green-600 hover:text-green-800 inline-flex items-center gap-1"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                      {canEditService && (
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => handleEditService(service)}
+                            className="text-green-600 hover:text-green-800 inline-flex items-center gap-1"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
-                            />
-                          </svg>
-                          Sửa
-                        </button>
-                      </td>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 4h6m-1 4L7 17l-4 1 1-4 9-9z"
+                              />
+                            </svg>
+                            Sửa
+                          </button>
+                        </td>
                       )}
                     </tr>
                   ))}
@@ -1115,26 +1152,26 @@ const handleDelete = async () => {
               Hóa đơn ({invoices.length})
             </h3>
             {canManageCost && (
-            <button
-              onClick={handleCreateInvoice}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+              <button
+                onClick={handleCreateInvoice}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Tạo hóa đơn
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Tạo hóa đơn
+              </button>
             )}
           </div>
 
@@ -1454,7 +1491,7 @@ const handleDelete = async () => {
                 }));
                 setShowLeaveModal(true);
               }}
-              className="ml-2 px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+              className="ml-2 px-3 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
             >
               + Thêm ngày nghỉ phép
             </button>
@@ -1486,9 +1523,7 @@ const handleDelete = async () => {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ngày nghỉ
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Loại
-                  </th>
+
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ghi chú
                   </th>
@@ -1510,10 +1545,15 @@ const handleDelete = async () => {
                       {it.employeeCode || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.date || it.attendanceDate || it.deletedAt || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {it.type || it.leaveType || "-"}
+                      {(() => {
+                        const raw =
+                          it.date || it.attendanceDate || it.deletedAt;
+                        if (!raw) return "-";
+                        const d = new Date(raw);
+                        return isNaN(d.getTime())
+                          ? String(raw)
+                          : new Intl.DateTimeFormat("vi-VN").format(d);
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {it.description || it.description || "-"}
@@ -1599,6 +1639,186 @@ const handleDelete = async () => {
           </div>
         )}
       </div>
+
+      {/* Add Review Modal */}
+      {showAddReviewModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Thêm đánh giá nhân viên</h3>
+              <button
+                onClick={() => setShowAddReviewModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Chọn nhân viên (phân công)
+                </label>
+                <select
+                  value={reviewForm.assignmentId}
+                  onChange={(e) => {
+                    const aid = e.target.value;
+                    const sel = assignments.find(
+                      (a: any) => String(a.id) === aid
+                    );
+                    setReviewForm({
+                      ...reviewForm,
+                      assignmentId: aid,
+                      employeeId: sel
+                        ? String(sel.employeeId ?? sel.employeeId)
+                        : "",
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Chọn phân công / nhân viên</option>
+                  {assignments.map((a: any) => (
+                    <option key={a.id} value={a.id}>
+                      {a.employeeName || a.name || `ID:${a.employeeId}`}{" "}
+                      {a.employeeCode ? `(${a.employeeCode})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Đánh giá
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      title={`${s} sao`}
+                      onClick={() =>
+                        setReviewForm({ ...reviewForm, rating: s })
+                      }
+                      className="text-2xl focus:outline-none"
+                    >
+                      {reviewForm.rating >= s ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-6 h-6 text-yellow-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L9.05 2.927z" />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-6 h-6 text-gray-300"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L11.05 2.927z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                  <span className="text-sm text-gray-600">
+                    {reviewForm.rating} sao
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">
+                  Bình luận
+                </label>
+                <textarea
+                  rows={3}
+                  value={reviewForm.comment}
+                  onChange={(e) =>
+                    setReviewForm({ ...reviewForm, comment: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              {/* removed createdBy field as requested */}
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowAddReviewModal(false)}
+                className="px-4 py-2 border rounded-md text-gray-700"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (!contractId) return toast.error("Không có mã hợp đồng");
+                  if (!reviewForm.assignmentId && !reviewForm.employeeId)
+                    return toast.error("Vui lòng chọn nhân viên");
+                  if (
+                    !reviewForm.rating ||
+                    reviewForm.rating < 1 ||
+                    reviewForm.rating > 5
+                  )
+                    return toast.error("Điểm phải từ 1 tới 5");
+
+                  try {
+                    setSavingReview(true);
+                    const payload: any = {
+                      contractId: Number(contractId),
+                      assignmentId: reviewForm.assignmentId
+                        ? Number(reviewForm.assignmentId)
+                        : undefined,
+                      employeeId: reviewForm.employeeId
+                        ? Number(reviewForm.employeeId)
+                        : undefined,
+                      rating: Number(reviewForm.rating),
+                      comment: reviewForm.comment,
+                    };
+
+                    const res = await reviewService.create(payload);
+                    if (res && res.success) {
+                      toast.success("Đã thêm đánh giá");
+                      setShowAddReviewModal(false);
+                      // reload reviews
+                      try {
+                        setLoadingReviews(true);
+                        const list = await reviewService.getByContractId(
+                          Number(contractId)
+                        );
+                        setContractReviews(list || []);
+                      } catch (err) {
+                        console.error("Error loading reviews after add:", err);
+                      } finally {
+                        setLoadingReviews(false);
+                      }
+                    } else {
+                      toast.error(res?.message || "Thêm đánh giá thất bại");
+                    }
+                  } catch (err: any) {
+                    console.error("Error creating review:", err);
+                    toast.error(err?.message || "Lỗi khi thêm đánh giá");
+                  } finally {
+                    setSavingReview(false);
+                  }
+                }}
+                disabled={savingReview}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {savingReview ? "Đang lưu..." : "Lưu đánh giá"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Leave modal */}
       {showLeaveModal && (
@@ -1741,6 +1961,142 @@ const handleDelete = async () => {
           </div>
         </div>
       )}
+
+      {/* Reviews Card (customer feedback) */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Đánh giá của khách hàng
+          </h3>
+          <div className="flex items-center gap-3">
+            {/* <button
+            onClick={async () => {
+              try {
+                setLoadingReviews(true);
+                const list = await reviewService.getByContractId(Number(contractId));
+                setContractReviews(list || []);
+              } catch (err) {
+                console.error('Error refreshing reviews:', err);
+                toast.error('Không thể tải đánh giá');
+              } finally {
+                setLoadingReviews(false);
+              }
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+          >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            Làm mới
+          </button> */}
+            <button
+              onClick={() => {
+                // default select first assignment if available
+                const first = assignments[0];
+                setReviewForm((s) => ({
+                  ...s,
+                  assignmentId: first ? String(first.id) : "",
+                  employeeId: first
+                    ? String(first.employeeId ?? first.employeeId)
+                    : "",
+                  rating: 5,
+                  comment: "",
+                }));
+                setShowAddReviewModal(true);
+              }}
+              className="text-sm px-3 py-2 bg-green-600 text-white rounded inline-flex items-center gap-2 hover:bg-green-700"
+            >
+              + Thêm đánh giá nhân viên
+            </button>
+          </div>
+        </div>
+
+        {loadingReviews ? (
+          <div className="py-6 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : contractReviews.length === 0 ? (
+          <div className="py-4 text-gray-500">
+            Chưa có đánh giá cho hợp đồng này
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    #
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nhân viên
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mã nhân viên
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Điểm đánh giá
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bình luận
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ngày
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {contractReviews.map((r: any, idx: number) => (
+                  <tr
+                    key={r.id || idx}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => r.id && router.push(`/admin/reviews/${r.id}`)}
+                    onKeyDown={(e) => {
+                      if ((e as any).key === "Enter" && r.id)
+                        router.push(`/admin/reviews/${r.id}`);
+                    }}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {idx + 1}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {r.employeeName ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {r.employeeCode ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {r.rating ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {r.comment ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {r.createdAt
+                        ? new Intl.DateTimeFormat("vi-VN").format(
+                            new Date(r.createdAt)
+                          )
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Documents Section */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">

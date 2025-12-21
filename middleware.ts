@@ -55,6 +55,9 @@ export function middleware(request: NextRequest) {
   const isLoginPage = pathname === '/admin/login';
   const isDashboard = pathname === '/admin';
 
+  // Lấy các thông tin về nguồn gốc request
+  const fetchSite = request.headers.get('sec-fetch-site');
+  const referer = request.headers.get('referer');
   // If accessing admin area (except login) without token, redirect to login
   if (isAdminPath && !isLoginPage && !token) {
     const url = new URL('/admin/login', request.url);
@@ -73,14 +76,16 @@ export function middleware(request: NextRequest) {
     if (requiredRoles && requiredRoles.length > 0) {
       // Decode JWT to get user role
       const decodedToken = decodeJwt(token);
-      
+
       if (decodedToken) {
         const userRole = extractRole(decodedToken);
-        
+
         if (userRole) {
           const hasAccess = requiredRoles.includes(userRole);
-          
-          if (!hasAccess) {
+          if (fetchSite === 'same-origin' && userRole === 'CUSTOMER' && referer !== 'null') {
+            return NextResponse.next();
+          }
+          else if (!hasAccess) {
             const url = new URL('/admin', request.url);
             return NextResponse.redirect(url);
           }
@@ -92,7 +97,7 @@ export function middleware(request: NextRequest) {
         const url = new URL('/admin', request.url);
         return NextResponse.redirect(url);
       }
-    } 
+    }
   }
 
   return NextResponse.next();

@@ -64,6 +64,16 @@ export default function EmployeeDetail() {
       console.log(data);
       setEmployee(data);
 
+      // EMPLOYEE can only view their own profile
+      if (role === 'EMPLOYEE') {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser && currentUser.id !== Number(id)) {
+          toast.error('Bạn không có quyền xem thông tin nhân viên này');
+          router.push('/admin');
+          return;
+        }
+      }
+
       // Load employee images
       const images = await employeeService.getEmployeeImages(id!);
       setEmployeeImages(images);

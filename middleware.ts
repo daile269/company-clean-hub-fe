@@ -82,10 +82,7 @@ export function middleware(request: NextRequest) {
 
         if (userRole) {
           const hasAccess = requiredRoles.includes(userRole);
-          if (fetchSite === 'same-origin' && userRole === 'CUSTOMER' && referer !== 'null') {
-            return NextResponse.next();
-          }
-          else if (!hasAccess) {
+          if (!hasAccess) {
             const url = new URL('/admin', request.url);
             return NextResponse.redirect(url);
           }

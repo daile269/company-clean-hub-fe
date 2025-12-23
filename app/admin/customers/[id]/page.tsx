@@ -122,6 +122,7 @@ export default function CustomerDetail() {
     startDate: string;
     salaryAtTime: number | string;
     description: string;
+    dates: string[];
   }>({
     employeeId: null,
     contractId: null,
@@ -130,6 +131,7 @@ export default function CustomerDetail() {
     startDate: new Date().toISOString().split("T")[0],
     salaryAtTime: "",
     description: "",
+    dates: [],
   });
   const [reassignmentForm, setReassignmentForm] = useState<{
     replacementEmployeeId: number | null;
@@ -479,16 +481,34 @@ export default function CustomerDetail() {
   };
 
   const getAssignmentTypeBadge = (type: string) => {
-    if (type === "FIXED_BY_CONTRACT" || type === "FIXED_BY_DAY") {
-      return "bg-green-100 text-green-800";
+    switch (type) {
+      case "FIXED_BY_CONTRACT":
+      case "FIXED_BY_DAY":
+        return "bg-green-100 text-green-800";
+      case "FIXED_BY_COMPANY":
+        return "bg-blue-100 text-blue-800";
+      case "SUPPORT":
+        return "bg-gray-100 text-gray-800";
+      case "TEMPORARY":
+      default:
+        return "bg-orange-100 text-orange-800";
     }
-    return "bg-orange-100 text-orange-800";
   };
 
   const getAssignmentTypeLabel = (type: string) => {
-    if (type === "FIXED_BY_CONTRACT") return "Cố định";
-    if (type === "FIXED_BY_DAY") return "Cố định";
-    return "Tạm thời";
+    switch (type) {
+      case "FIXED_BY_CONTRACT":
+        return "Cố định theo hợp đồng";
+      case "FIXED_BY_DAY":
+        return "Cố định theo ngày";
+      case "FIXED_BY_COMPANY":
+        return "Làm việc tại công ty";
+      case "SUPPORT":
+        return "Hỗ trợ";
+      case "TEMPORARY":
+      default:
+        return "Tạm thời";
+    }
   };
 
   const handleEdit = () => {
@@ -607,6 +627,11 @@ export default function CustomerDetail() {
       return;
     }
 
+    if (assignmentForm.assignmentType === "SUPPORT" && (!assignmentForm.dates || assignmentForm.dates.length === 0)) {
+      toast.error("Vui lòng chọn ít nhất một ngày hỗ trợ");
+      return;
+    }
+
     setSavingAssignment(true);
     try {
       // Parse formatted currency strings (e.g. "5.000.000") to raw numbers
@@ -627,6 +652,7 @@ export default function CustomerDetail() {
         salaryAtTime: salaryRaw,
         additionalAllowance: allowanceRaw,
         description: assignmentForm.description,
+        dates: assignmentForm.assignmentType === "SUPPORT" ? assignmentForm.dates : undefined,
       };
       console.log("Assignment data:", assignmentData);
       const response = await assignmentService.create(assignmentData);
@@ -643,6 +669,7 @@ export default function CustomerDetail() {
           startDate: new Date().toISOString().split("T")[0],
           salaryAtTime: "",
           description: "",
+          dates: [],
         });
         // Reload assigned employees list and histories
         await Promise.all([
@@ -1940,9 +1967,11 @@ export default function CustomerDetail() {
                       <option value="FIXED_BY_DAY">
                         Phân công cố định theo ngày
                       </option>
+                      <option value="SUPPORT">Phân công hỗ trợ (chọn ngày)</option>
                       <option value="TEMPORARY">Tạm thời</option>
                     </select>
                   </div>
+                  
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Ngày bắt đầu *
@@ -1965,14 +1994,14 @@ export default function CustomerDetail() {
                     </label>
                     <select
                       value={assignmentForm.contractId || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newContractId = e.target.value ? Number(e.target.value) : null;
                         setAssignmentForm({
                           ...assignmentForm,
-                          contractId: e.target.value
-                            ? Number(e.target.value)
-                            : null,
-                        })
-                      }
+                          contractId: newContractId,
+                          dates: [], // reset support dates when contract changes
+                        });
+                      }}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Chọn hợp đồng</option>
@@ -1996,6 +2025,115 @@ export default function CustomerDetail() {
                       </p>
                     )}
                   </div>
+                  {assignmentForm.assignmentType === "SUPPORT" && (
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-2">Chọn ngày hỗ trợ</label>
+                      <div className="flex gap-2 mb-2">
+                        <select
+                          value={assignmentModalMonth}
+                          onChange={e => setAssignmentModalMonth(Number(e.target.value))}
+                          className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                            <option key={m} value={m}>Tháng {m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={assignmentModalYear}
+                          onChange={e => setAssignmentModalYear(Number(e.target.value))}
+                          className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
+                        >
+                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                            <option key={y} value={y}>Năm {y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <table className="w-full border text-center mb-2">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="p-1 text-xs">CN</th>
+                            <th className="p-1 text-xs">T2</th>
+                            <th className="p-1 text-xs">T3</th>
+                            <th className="p-1 text-xs">T4</th>
+                            <th className="p-1 text-xs">T5</th>
+                            <th className="p-1 text-xs">T6</th>
+                            <th className="p-1 text-xs">T7</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            const year = assignmentModalYear;
+                            const month = assignmentModalMonth;
+                            const d = new Date(year, month, 0); // last day of month
+                            const days = d.getDate();
+                            const selectedContract = contracts.find((c: any) => String(c.id) === String(assignmentForm.contractId));
+                            const contractStart = selectedContract && selectedContract.startDate ? new Date(selectedContract.startDate) : null;
+                            const contractEnd = selectedContract && selectedContract.endDate ? new Date(selectedContract.endDate) : null;
+                            const rawWorkingDays: any[] = (selectedContract && (selectedContract.workingDaysPerWeek || selectedContract.workingDays)) || [];
+                            const nameToIndex: any = { SUNDAY:0, MONDAY:1, TUESDAY:2, WEDNESDAY:3, THURSDAY:4, FRIDAY:5, SATURDAY:6 };
+                            const allowedWeekdays: number[] = rawWorkingDays.map((w: any) => {
+                              if (typeof w === 'number') return w;
+                              if (typeof w === 'string' && /^\d+$/.test(w)) return Number(w);
+                              const up = String(w).toUpperCase();
+                              return nameToIndex[up];
+                            }).filter((v: any) => typeof v === 'number');
+                            const firstWeekday = new Date(year, month - 1, 1).getDay();
+                            const weeks: any[][] = [];
+                            let week: any[] = [];
+                            // Fill leading empty cells
+                            for (let i = 0; i < firstWeekday; i++) {
+                              week.push(<td key={`empty-${i}`} />);
+                            }
+                            for (let day = 1; day <= days; day++) {
+                              const date = new Date(year, month - 1, day);
+                              const dateStr = date.toISOString().split("T")[0];
+                              const weekday = date.getDay();
+                              const inRange = (!contractStart || date >= contractStart) && (!contractEnd || date <= contractEnd);
+                              const allowedByWeekday = allowedWeekdays.length === 0 || allowedWeekdays.includes(weekday);
+                              const enabled = inRange && allowedByWeekday;
+                              const selected = assignmentForm.dates.includes(dateStr);
+                              week.push(
+                                <td key={dateStr} className={`p-0.5 border`}> 
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!enabled) return;
+                                      const exists = assignmentForm.dates.includes(dateStr);
+                                      setAssignmentForm({
+                                        ...assignmentForm,
+                                        dates: exists
+                                          ? assignmentForm.dates.filter((d) => d !== dateStr)
+                                          : [...assignmentForm.dates, dateStr],
+                                      });
+                                    }}
+                                    disabled={!enabled}
+                                    className={`w-8 h-8 flex items-center justify-center text-sm border rounded ${selected ? 'bg-blue-600 text-white border-blue-700' : enabled ? 'bg-white text-gray-800 hover:bg-gray-50' : 'bg-transparent text-gray-300 cursor-not-allowed'}`}
+                                  >
+                                    {day}
+                                  </button>
+                                </td>
+                              );
+                              if (week.length === 7) {
+                                weeks.push(week);
+                                week = [];
+                              }
+                            }
+                            // Fill trailing empty cells
+                            if (week.length > 0) {
+                              while (week.length < 7) {
+                                week.push(<td key={`empty-end-${week.length}`} />);
+                              }
+                              weeks.push(week);
+                            }
+                            return weeks.map((w, i) => <tr key={i}>{w}</tr>);
+                          })()}
+                        </tbody>
+                      </table>
+                      {assignmentForm.dates.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-2">Chưa chọn ngày nào</p>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Lương theo phân công (VND)

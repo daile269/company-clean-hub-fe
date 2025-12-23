@@ -11,6 +11,7 @@ export interface AssignmentCreateRequest {
   salaryAtTime?: number;
   assignmentType?: string;
   additionalAllowance?: number;
+  dates?: string[];
   workingDaysPerWeek?: string[];  // Required for COMPANY scope
   description?: string;
 }
@@ -168,6 +169,7 @@ class AssignmentService {
       assignmentType: data.assignmentType,
       salaryAtTime: data.salaryAtTime,
       additionalAllowance: data.additionalAllowance,
+      dates: data.dates,
       workingDaysPerWeek: data.workingDaysPerWeek,
       description: data.description || "",
     };

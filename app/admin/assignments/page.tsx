@@ -346,11 +346,22 @@ export default function AssignmentsPage() {
                         {getStatusBadge(assignment.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {assignment.assignmentType === "TEMPORARY"
-                          ? "Thay thế tạm thời"
-                          : assignment.assignmentType === "REGULAR"
-                          ? "Cố định"
-                          : "N/A"}
+                        {(() => {
+                          switch (assignment.assignmentType) {
+                            case "FIXED_BY_CONTRACT":
+                              return "Cố định theo hợp đồng";
+                            case "FIXED_BY_DAY":
+                              return "Cố định theo ngày";
+                            case "TEMPORARY":
+                              return "Tạm thời";
+                            case "FIXED_BY_COMPANY":
+                              return "Làm việc tại công ty";
+                            case "SUPPORT":
+                              return "Hỗ trợ";
+                            default:
+                              return assignment.assignmentType || "N/A";
+                          }
+                        })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {assignment.updatedAt

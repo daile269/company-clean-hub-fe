@@ -111,6 +111,38 @@ private async request<T>(
     return response.blob();
   }
 
+  // POST and return a file/blob (used for endpoints that export via POST)
+  async postFile(endpoint: string, body?: unknown): Promise<Blob> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    if (body && !(body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: "POST",
+      headers,
+      body: body && !(body instanceof FormData) ? JSON.stringify(body) : (body as any),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== "undefined") {
+        localStorage.clear();
+        this.setToken(null);
+        window.location.href = "/login";
+      }
+
+      throw new Error("Lỗi khi tải file");
+    }
+
+    return response.blob();
+  }
+
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET' });
   }

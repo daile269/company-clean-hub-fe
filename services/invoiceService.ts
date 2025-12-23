@@ -300,6 +300,17 @@ const invoiceService = {
       throw error;
     }
   },
+
+  // Export all invoices for a given month/year as Excel (returns Blob)
+  exportAllExcel: async (month: number, year: number): Promise<Blob> => {
+    try {
+      const blob = await apiService.getFile(`/invoices/month/${month}/year/${year}/export/excel`);
+      return blob;
+    } catch (error) {
+      console.error('Error exporting all invoices excel:', error);
+      throw error;
+    }
+  },
 };
 
 export default invoiceService;

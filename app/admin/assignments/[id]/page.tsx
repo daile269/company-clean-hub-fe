@@ -445,13 +445,24 @@ export default function AssignmentDetail() {
               </div>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+              <p className="text-xs text-gray-500 mb-1">Loại phân công</p>
               <p className="text-sm text-gray-900">
-                {assignment.assignmentType === "TEMPORARY"
-                  ? "Thay thế tạm thời"
-                  : assignment.assignmentType === "REGULAR"
-                  ? "Cố định"
-                  : "N/A"}
+                {(() => {
+                  switch (assignment.assignmentType) {
+                    case "FIXED_BY_CONTRACT":
+                      return "Cố định theo hợp đồng";
+                    case "FIXED_BY_DAY":
+                      return "Cố định theo ngày";
+                    case "TEMPORARY":
+                      return "Tạm thời";
+                    case "FIXED_BY_COMPANY":
+                      return "Làm việc tại công ty";
+                    case "SUPPORT":
+                      return "Hỗ trợ";
+                    default:
+                      return assignment.assignmentType || "N/A";
+                  }
+                })()}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -549,9 +560,19 @@ export default function AssignmentDetail() {
               {((contractDetails && contractDetails.type) ||
                 (assignment as any)?.contractType) && (
                 <p className="text-sm text-gray-700 mt-1">
-                  Loại hợp đồng:{" "}
-                  {(contractDetails && contractDetails.type) ??
-                    (assignment as any).contractType}
+                  Loại hợp đồng: {(() => {
+                    const type = (contractDetails && contractDetails.type) ?? (assignment as any).contractType;
+                    switch (type) {
+                      case "ONE_TIME":
+                        return "Hợp đồng 1 lần (trọn gói)";
+                      case "MONTHLY_FIXED":
+                        return "Hợp đồng hàng tháng cố định";
+                      case "MONTHLY_ACTUAL":
+                        return "Hợp đồng hàng tháng theo ngày thực tế";
+                      default:
+                        return type || "N/A";
+                    }
+                  })()}
                 </p>
               )}
 

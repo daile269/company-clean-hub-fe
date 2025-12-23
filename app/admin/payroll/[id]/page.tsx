@@ -178,6 +178,7 @@ export default function PayrollDetailPage() {
       "FIXED_BY_DAY": "Phân công cố định (theo ngày)",
       "TEMPORARY": "Phân công tạm thời",
       "FIXED_BY_COMPANY": "Phân công cố định (theo công ty)",
+      "SUPPORT": "Tăng ca"
     };
     return typeMap[type] || type;
   };
@@ -651,7 +652,7 @@ export default function PayrollDetailPage() {
             {/* Formula 3: TEMPORARY */}
             <div className="border-l-4 border-orange-500 pl-4 py-2">
               <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Phân công tạm thời
+                Phân công tạm thời - Tăng ca
               </h4>
               <div className="text-xs text-gray-700 space-y-1 bg-orange-50 p-3 rounded">
                 <p><span className="font-semibold">Lương thực = </span></p>

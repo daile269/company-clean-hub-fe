@@ -24,7 +24,6 @@ export default function CustomerDetail() {
 
   // Role check for routing
   const role = authService.getUserRole();
-
   const routerForEmployee = (employeeId: string | number, assignmentId: string | number) => {
     if (role === "CUSTOMER") {
       router.push(`/admin/employees/${employeeId}`);
@@ -37,7 +36,7 @@ export default function CustomerDetail() {
   const canView = usePermission("CUSTOMER_VIEW");
   const canEdit = usePermission("CUSTOMER_EDIT");
   const canDelete = usePermission("CUSTOMER_DELETE");
-  const canAssign = usePermission("CUSTOMER_ASSIGN");
+  const canAssign = usePermission("ASSIGNMENT_CREATE");
   const canAddContract = usePermission("CONTRACT_CREATE");
   const canViewEmployee = usePermission("EMPLOYEE_VIEW");
   const canEditEmployee = usePermission("EMPLOYEE_EDIT");
@@ -1971,7 +1970,7 @@ export default function CustomerDetail() {
                       <option value="TEMPORARY">Tạm thời</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Ngày bắt đầu *
@@ -2070,7 +2069,7 @@ export default function CustomerDetail() {
                             const contractStart = selectedContract && selectedContract.startDate ? new Date(selectedContract.startDate) : null;
                             const contractEnd = selectedContract && selectedContract.endDate ? new Date(selectedContract.endDate) : null;
                             const rawWorkingDays: any[] = (selectedContract && (selectedContract.workingDaysPerWeek || selectedContract.workingDays)) || [];
-                            const nameToIndex: any = { SUNDAY:0, MONDAY:1, TUESDAY:2, WEDNESDAY:3, THURSDAY:4, FRIDAY:5, SATURDAY:6 };
+                            const nameToIndex: any = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 };
                             const allowedWeekdays: number[] = rawWorkingDays.map((w: any) => {
                               if (typeof w === 'number') return w;
                               if (typeof w === 'string' && /^\d+$/.test(w)) return Number(w);
@@ -2093,7 +2092,7 @@ export default function CustomerDetail() {
                               const enabled = inRange && allowedByWeekday;
                               const selected = assignmentForm.dates.includes(dateStr);
                               week.push(
-                                <td key={dateStr} className={`p-0.5 border`}> 
+                                <td key={dateStr} className={`p-0.5 border`}>
                                   <button
                                     type="button"
                                     onClick={() => {

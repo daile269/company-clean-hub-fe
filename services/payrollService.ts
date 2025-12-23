@@ -100,6 +100,15 @@ export interface PayrollResponse {
   last: boolean;
 }
 
+export interface PaymentHistory {
+  id: number;
+  payrollId: number;
+  paymentDate: string;
+  amount: number;
+  installmentNumber: number;
+  createdAt: string;
+}
+
 const payrollService = {
   // Lấy danh sách bảng lương với phân trang và filter
   getPayrolls: async (params: PayrollFilterParams = {}): Promise<PayrollResponse> => {
@@ -294,6 +303,22 @@ const payrollService = {
       return response.data;
     } catch (error) {
       console.error('Error recalculating payroll:', error);
+      throw error;
+    }
+  },
+
+  // Lấy lịch sử thanh toán
+  getPaymentHistory: async (payrollId: number): Promise<PaymentHistory[]> => {
+    try {
+      const response = await apiService.get<any>(`/payrolls/${payrollId}/payment-history`);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch payment history');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching payment history:', error);
       throw error;
     }
   },

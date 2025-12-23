@@ -5,6 +5,8 @@ import { assignmentService, Assignment } from "@/services/assignmentService";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { toast } from "react-hot-toast";
+import { authService } from "@/services/authService";
+
 interface AttendanceCalendarProps {
     attendances: Attendance[];
     month: number;
@@ -16,35 +18,12 @@ interface AttendanceCalendarProps {
     onAsyncEnd?: () => void;
     onSuccess?: () => void;
 }
-
+const role = authService.getUserRole();
 const updateAssignment = async (assignment: Assignment, allowance: number) => {
     if (!assignment || !assignment.id) {
         throw new Error("Assignment không hợp lệ");
     }
-
-    // Only send the fields needed for update to avoid null issues
-    const payload = {
-        id: assignment.id,
-        employeeId: assignment.employeeId,
-        customerId: assignment.customerId,
-        projectCompanyId: assignment.contract,
-        contractId: assignment.contractId,
-        salaryAtTime: assignment.salaryAtTime,
-        plannedDays: assignment.plannedDays,
-        status: assignment.status,
-        startDate: assignment.startDate,
-        endDate: assignment.endDate,
-        additionalAllowance: allowance,
-        // Include other fields from assignment if they exist
-        ...Object.keys(assignment).reduce((acc, key) => {
-            if (!acc.hasOwnProperty(key) && assignment[key as keyof Assignment] !== undefined) {
-                acc[key] = assignment[key as keyof Assignment];
-            }
-            return acc;
-        }, {} as Record<string, any>)
-    };
-
-    return assignmentService.update(assignment.id, payload);
+    return assignmentService.updateAllowance(assignment.id, allowance);
 };
 const INDICATOR_TYPES = {
     bonus: { dot: "bg-green-500", label: "Thưởng" },
@@ -413,10 +392,6 @@ export default function AttendanceCalendar({
                                     <div className="flex items-center gap-1.5">
                                         <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.supportCost.dot}`}></div>
                                         <span className="text-gray-600">{INDICATOR_TYPES.supportCost.label}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
-                                        <span className="text-gray-600">{INDICATOR_TYPES.overtimeAmount.label}</span>
                                     </div>
                                 </div>
                             </div>

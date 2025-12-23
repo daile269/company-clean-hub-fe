@@ -144,7 +144,6 @@ export default function ContractDetailPage() {
         });
         setLeaveList(res.content || []);
       } catch (err) {
-        console.error("Error loading deleted attendances:", err);
         setLeaveList([]);
       } finally {
         setLeaveLoading(false);
@@ -182,6 +181,7 @@ export default function ContractDetailPage() {
   const canManageCost = usePermission("COST_MANAGE");
   const canCreateService = usePermission("SERVICE_CREATE");
   const canEditService = usePermission("SERVICE_EDIT");
+  const canInvoiceView = usePermission("INVOICE_VIEW");
   // Load contract details
   useEffect(() => {
     const loadContract = async () => {
@@ -234,8 +234,14 @@ export default function ContractDetailPage() {
       }
     };
 
-    loadInvoices();
-  }, [contractId]);
+    if (canInvoiceView === true && contractId) {
+      loadInvoices();
+    } else if (canInvoiceView === false) {
+      // Explicitly not allowed — clear list and stop loading
+      setInvoices([]);
+      setLoadingInvoices(false);
+    }
+  }, [contractId, canInvoiceView]);
 
   // Load assignments for this contract (selected month/year)
   const fetchAssignments = async (month: number, year: number) => {

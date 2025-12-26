@@ -8,6 +8,7 @@ import EmployeeExportModal from "@/components/EmployeeExportModal";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { usePermission } from '@/hooks/usePermission';
+import BankSelect from "@/components/BankSelect";
 export default function CompanyStaffPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,6 +235,7 @@ export default function CompanyStaffPage() {
             className="animate-spin h-10 w-10 text-blue-600"
             fill="none"
             viewBox="0 0 24 24"
+            stroke="currentColor"
           >
             <circle
               className="opacity-25"
@@ -784,14 +786,9 @@ export default function CompanyStaffPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Ngân hàng
                     </label>
-                    <input
-                      type="text"
+                    <BankSelect
                       value={addForm.bankName || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, bankName: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: VietBank"
+                      onChange={(v: string) => setAddForm({ ...addForm, bankName: v })}
                     />
                   </div>
 

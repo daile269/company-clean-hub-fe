@@ -94,8 +94,7 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
           )}
         {user &&
           user?.roleName !== "CUSTOMER" &&
-          user?.roleName !== "EMPLOYEE" &&
-          user?.roleName !== "ACCOUNTANT" && (
+          user?.roleName !== "EMPLOYEE"  && (
             <Link
               href="/admin/customers"
               className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"

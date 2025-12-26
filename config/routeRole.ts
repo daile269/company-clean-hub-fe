@@ -11,7 +11,7 @@ export const ROUTE_ROLES: Record<string, string[]> = {
 
   // Employee routes
   '/admin/employees': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
-  '/admin/employees/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'EMPLOYEE'],
+  '/admin/employees/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'EMPLOYEE', 'CUSTOMER'],
 
   // Customer routes
   '/admin/customers': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],

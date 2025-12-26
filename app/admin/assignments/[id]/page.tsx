@@ -7,6 +7,7 @@ import {
   Assignment,
   AssignmentCreateRequest,
 } from "@/services/assignmentService";
+import { authService } from "@/services/authService";
 import attendanceService, {
   Attendance,
   AttendancePaginationResponse,
@@ -18,7 +19,7 @@ export default function AssignmentDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
-
+  const role = authService.getUserRole();
   // Permission checks
   const canView = usePermission("ASSIGNMENT_VIEW");
   const canEdit = usePermission("ASSIGNMENT_UPDATE");
@@ -228,7 +229,7 @@ export default function AssignmentDetail() {
             : undefined,
         additionalAllowance:
           editForm.additionalAllowance !== undefined &&
-          editForm.additionalAllowance !== null
+            editForm.additionalAllowance !== null
             ? Number(parseFormattedNumber(String(editForm.additionalAllowance)))
             : undefined,
         workingDaysPerWeek:
@@ -524,16 +525,18 @@ export default function AssignmentDetail() {
                 {assignment.workDays} ngày
               </p>
             </div>
+            {role !== 'QLV' && (
+              <div className="pt-3 border-t">
 
-            <div className="pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-1">
-                Lương tại thời điểm phân công
-              </p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(assignment.salaryAtTime)}
-              </p>
-            </div>
-
+                <p className="text-xs text-gray-500 mb-1">
+                  Lương tại thời điểm phân công
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(assignment.salaryAtTime)}
+                </p>
+              </div>
+            )}
+             {role !== 'QLV' && (
             <div className="pt-3 border-t">
               <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
               <p className="text-2xl font-bold text-green-600">
@@ -542,6 +545,7 @@ export default function AssignmentDetail() {
                 )}
               </p>
             </div>
+            )}
 
             <div className="pt-3 border-t">
               <p className="text-xs font-semibold text-gray-900 mb-1">
@@ -550,56 +554,56 @@ export default function AssignmentDetail() {
 
               {((contractDetails && contractDetails.name) ||
                 (assignment as any)?.contractName) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Tên hợp đồng:{" "}
-                  {(contractDetails && contractDetails.name) ??
-                    (assignment as any).contractName}
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Tên hợp đồng:{" "}
+                    {(contractDetails && contractDetails.name) ??
+                      (assignment as any).contractName}
+                  </p>
+                )}
 
               {((contractDetails && contractDetails.type) ||
                 (assignment as any)?.contractType) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Loại hợp đồng: {(() => {
-                    const type = (contractDetails && contractDetails.type) ?? (assignment as any).contractType;
-                    switch (type) {
-                      case "ONE_TIME":
-                        return "Hợp đồng 1 lần (trọn gói)";
-                      case "MONTHLY_FIXED":
-                        return "Hợp đồng hàng tháng cố định";
-                      case "MONTHLY_ACTUAL":
-                        return "Hợp đồng hàng tháng theo ngày thực tế";
-                      default:
-                        return type || "N/A";
-                    }
-                  })()}
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Loại hợp đồng: {(() => {
+                      const type = (contractDetails && contractDetails.type) ?? (assignment as any).contractType;
+                      switch (type) {
+                        case "ONE_TIME":
+                          return "Hợp đồng 1 lần (trọn gói)";
+                        case "MONTHLY_FIXED":
+                          return "Hợp đồng hàng tháng cố định";
+                        case "MONTHLY_ACTUAL":
+                          return "Hợp đồng hàng tháng theo ngày thực tế";
+                        default:
+                          return type || "N/A";
+                      }
+                    })()}
+                  </p>
+                )}
 
               {((contractDetails && contractDetails.workDays !== undefined) ||
                 (assignment as any)?.contractWorkDays) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Số ngày làm:{" "}
-                  {(contractDetails && contractDetails.workDays) ??
-                    (assignment as any).contractWorkDays}{" "}
-                  ngày
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Số ngày làm:{" "}
+                    {(contractDetails && contractDetails.workDays) ??
+                      (assignment as any).contractWorkDays}{" "}
+                    ngày
+                  </p>
+                )}
 
               {((contractDetails && contractDetails.finalPrice) ||
                 (assignment as any)?.contractFinalPrice ||
                 (assignment as any)?.contract?.finalPrice) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Giá hợp đồng:{" "}
-                  {formatCurrency(
-                    Number(
-                      ((contractDetails && contractDetails.finalPrice) ??
-                        (assignment as any).contractFinalPrice ??
-                        (assignment as any).contract?.finalPrice) as number
-                    )
-                  )}
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Giá hợp đồng:{" "}
+                    {formatCurrency(
+                      Number(
+                        ((contractDetails && contractDetails.finalPrice) ??
+                          (assignment as any).contractFinalPrice ??
+                          (assignment as any).contract?.finalPrice) as number
+                      )
+                    )}
+                  </p>
+                )}
             </div>
           </div>
         </div>
@@ -835,7 +839,7 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
+                 {role !== 'QLV' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Lương (VND) *
@@ -853,7 +857,7 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
+)} {role !== 'QLV' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Phụ cấp (VND)
@@ -871,7 +875,7 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
+)}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả

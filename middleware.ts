@@ -55,9 +55,7 @@ export function middleware(request: NextRequest) {
   const isLoginPage = pathname === '/admin/login';
   const isDashboard = pathname === '/admin';
 
-  // Lấy các thông tin về nguồn gốc request
-  const fetchSite = request.headers.get('sec-fetch-site');
-  const referer = request.headers.get('referer');
+
   // If accessing admin area (except login) without token, redirect to login
   if (isAdminPath && !isLoginPage && !token) {
     const url = new URL('/admin/login', request.url);

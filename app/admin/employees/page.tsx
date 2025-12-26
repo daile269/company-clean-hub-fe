@@ -6,6 +6,7 @@ import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
 import EmployeeExportModal from "@/components/EmployeeExportModal";
 import { usePermission } from "@/hooks/usePermission";
+import BankSelect from "@/components/BankSelect";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -293,7 +294,7 @@ export default function EmployeesPage() {
                 <button
                   className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
                   title="Xuất Excel"
-                    onClick={() => setShowExportModal(true)}
+                  onClick={() => setShowExportModal(true)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -378,11 +379,10 @@ export default function EmployeesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            employee.status === "ACTIVE"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${employee.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {employee.status === "ACTIVE"
                             ? "Hoạt động"
@@ -504,11 +504,10 @@ export default function EmployeesPage() {
                             <button
                               key={pageNum}
                               onClick={() => setCurrentPage(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                currentPage === pageNum
-                                  ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                  : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                              }`}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                                ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                                }`}
                             >
                               {pageNum + 1}
                             </button>
@@ -683,14 +682,9 @@ export default function EmployeesPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Ngân hàng
                     </label>
-                    <input
-                      type="text"
+                    <BankSelect
                       value={addForm.bankName || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, bankName: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: VietBank"
+                      onChange={(v: string) => setAddForm({ ...addForm, bankName: v })}
                     />
                   </div>
 

@@ -15,6 +15,7 @@ import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
 import { usePermission } from "@/hooks/usePermission";
+import BankSelect from "@/components/BankSelect";
 import { authService } from "@/services/authService";
 export default function EmployeeDetail() {
   const params = useParams();
@@ -932,14 +933,9 @@ export default function EmployeeDetail() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ngân hàng
                 </label>
-                <input
-                  type="text"
+                <BankSelect
                   value={editForm.bankName || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, bankName: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: VietBank"
+                  onChange={(v: string) => setEditForm({ ...editForm, bankName: v })}
                 />
               </div>
 

@@ -48,6 +48,7 @@ class EmployeeService {
       socialInsurance:
         apiEmployee.insuranceSalary || apiEmployee.socialInsurance,
       healthInsurance: apiEmployee.healthInsurance,
+      monthlyAdvanceLimit: apiEmployee.monthlyAdvanceLimit || undefined,
       description: apiEmployee.description || undefined,
       joinDate: apiEmployee.createdAt
         ? new Date(apiEmployee.createdAt)
@@ -187,6 +188,7 @@ class EmployeeService {
       monthlySalary: employee.monthlySalary || null,
       allowance: employee.allowance || null,
       insuranceSalary: employee.socialInsurance || null,
+      monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
     };
 
     return await apiService.post<ApiEmployee>("/employees", apiEmployee);
@@ -214,6 +216,7 @@ class EmployeeService {
       monthlySalary: employee.monthlySalary || null,
       allowance: employee.allowance || null,
       insuranceSalary: employee.socialInsurance || null,
+      monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
     };
 
     return await apiService.put<ApiEmployee>(`/employees/${id}`, apiEmployee);
@@ -258,7 +261,7 @@ class EmployeeService {
   // Xuất danh sách nhân viên ra file Excel với merge cells theo loại nhân viên
   async exportEmployeesToExcel(employmentType?: string): Promise<void> {
     try {
-      const url = employmentType 
+      const url = employmentType
         ? `/employees/export/excel?employmentType=${employmentType}`
         : `/employees/export/excel`;
       const blob = await apiService.getFile(url);
@@ -273,7 +276,7 @@ class EmployeeService {
       throw error;
     }
   }
-  
+
 }
 
 export interface EmployeeImage {

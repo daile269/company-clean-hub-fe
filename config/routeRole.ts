@@ -11,11 +11,11 @@ export const ROUTE_ROLES: Record<string, string[]> = {
 
   // Employee routes
   '/admin/employees': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
-  '/admin/employees/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
+  '/admin/employees/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'EMPLOYEE', 'CUSTOMER'],
 
   // Customer routes
   '/admin/customers': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
-  '/admin/customers/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
+  '/admin/customers/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
 
   // Assignment routes (CUSTOMER có ASSIGNMENT_VIEW)
   '/admin/assignments': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
@@ -31,7 +31,7 @@ export const ROUTE_ROLES: Record<string, string[]> = {
 
   // Contract routes (CUSTOMER có CONTRACT_VIEW)
   '/admin/contracts': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
-  '/admin/contracts/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
+  '/admin/contracts/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
 
   // Services routes (CUSTOMER có SERVICE_VIEW)
   '/admin/services': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],

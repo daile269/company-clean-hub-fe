@@ -15,6 +15,7 @@ import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
 import { usePermission } from "@/hooks/usePermission";
+import BankSelect from "@/components/BankSelect";
 import { authService } from "@/services/authService";
 export default function EmployeeDetail() {
   const params = useParams();
@@ -63,6 +64,16 @@ export default function EmployeeDetail() {
       const data = await employeeService.getById(id!);
       console.log(data);
       setEmployee(data);
+
+      // EMPLOYEE can only view their own profile
+      if (role === 'EMPLOYEE') {
+        const currentUser = authService.getCurrentUser();
+        if (currentUser && currentUser.id !== Number(id)) {
+          toast.error('Bạn không có quyền xem thông tin nhân viên này');
+          router.push('/admin');
+          return;
+        }
+      }
 
       // Load employee images
       const images = await employeeService.getEmployeeImages(id!);
@@ -922,14 +933,9 @@ export default function EmployeeDetail() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ngân hàng
                 </label>
-                <input
-                  type="text"
+                <BankSelect
                   value={editForm.bankName || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, bankName: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: VietBank"
+                  onChange={(v: string) => setEditForm({ ...editForm, bankName: v })}
                 />
               </div>
 

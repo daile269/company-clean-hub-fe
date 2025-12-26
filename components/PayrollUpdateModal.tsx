@@ -92,7 +92,7 @@ export default function PayrollUpdateModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ứng trước (VNĐ)
+              Xin ứng lương - Ghi chú (VNĐ)
             </label>
             <input
               type="number"
@@ -110,13 +110,18 @@ export default function PayrollUpdateModal({
             <p className="text-xs text-gray-500 mt-1">
               Giá trị hiện tại: {formatCurrency(currentValues.advanceTotal)}
             </p>
+            <p className="text-xs text-orange-600 mt-1">
+              ⓘ Chỉ là ghi chú, không ảnh hưởng đến tính lương
+            </p>
           </div>
 
           <div className="bg-blue-50 rounded-lg p-4">
             <p className="text-xs text-gray-600">
               <strong>Lưu ý:</strong> Tổng lương sẽ được tính lại dựa trên công thức:
               <br />
-              Lương = Lương cơ bản + Thưởng + Phụ cấp - Phạt - Bảo hiểm - Ứng trước
+              Lương = Lương cơ bản + Thưởng + Phụ cấp - Phạt - Bảo hiểm
+              <br />
+              <span className="text-orange-600">(Xin ứng lương chỉ là ghi chú, không trừ vào lương)</span>
             </p>
           </div>
 

@@ -208,7 +208,7 @@ class AssignmentService {
   ): Promise<Assignment[]> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params?.contractId) {
         queryParams.append("contractId", params.contractId.toString());
       }
@@ -231,7 +231,7 @@ class AssignmentService {
         `/assignments/customer/${customerId}/by-contract?${queryParams.toString()}`
       );
       console.log('Assignments by customer (by-contract) response:', response);
-      
+
       if (response.success && response.data) {
         // Return grouped data instead of flattening
         return Array.isArray(response.data.content) ? response.data.content : [];
@@ -345,10 +345,10 @@ class AssignmentService {
         const content = Array.isArray(response.data.content)
           ? response.data.content
           : Array.isArray(response.data.items)
-          ? response.data.items
-          : Array.isArray(response.data)
-          ? response.data
-          : [];
+            ? response.data.items
+            : Array.isArray(response.data)
+              ? response.data
+              : [];
 
         const totalElementsRaw = response.data.totalElements ?? response.data.total ?? (content.length || 0);
         const totalElements = Number(totalElementsRaw);
@@ -400,7 +400,7 @@ class AssignmentService {
   ): Promise<AssignmentPaginationResponse> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params?.customerId) {
         queryParams.append("customerId", params.customerId.toString());
       }
@@ -416,7 +416,7 @@ class AssignmentService {
       const response = await apiService.get<any>(
         `/assignments/employee/${employeeId}?${queryParams.toString()}`
       );
-      
+
       if (response.success && response.data) {
         console.log('Assignments response:', response);
         return {
@@ -457,7 +457,7 @@ class AssignmentService {
       };
     }
   }
-  async getAssignmentsByEmployeeId(employeeId: string,month: number, year:number): Promise<Assignment[]> {
+  async getAssignmentsByEmployeeId(employeeId: string, month: number, year: number): Promise<Assignment[]> {
     try {
       const response = await apiService.get<any>(
         `/assignments/assignments/${employeeId}/${month}/${year}`
@@ -490,6 +490,14 @@ class AssignmentService {
     data: Partial<AssignmentCreateRequest>
   ): Promise<ApiResponse<Assignment>> {
     return await apiService.put<Assignment>(`/assignments/${id}`, data);
+  }
+
+  async updateAllowance(
+    id: number,
+    allowance: number
+  ): Promise<ApiResponse<Assignment>> {
+    // Wrap in object to prevent empty body when allowance = 0
+    return await apiService.put<Assignment>(`/assignments/${id}/allowance`, { allowance });
   }
 
   async delete(id: number): Promise<ApiResponse<void>> {
@@ -538,7 +546,7 @@ class AssignmentService {
   ): Promise<any> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params?.contractId) {
         queryParams.append("contractId", params.contractId.toString());
       }

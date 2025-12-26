@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import { usePermission } from "@/hooks/usePermission";
-
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
+import { authService } from "@/services/authService";
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function AssignmentsPage() {
   const [totalElements, setTotalElements] = useState(0);
 
   const router = useRouter();
-
+  const role = authService.getUserRole();
   // Permission checks
   const canView = usePermission('ASSIGNMENT_VIEW');
 
@@ -284,9 +286,9 @@ export default function AssignmentsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Số ngày
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     {role !== 'QLV' && (  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Lương
-                    </th>
+                    </th> )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
@@ -339,9 +341,9 @@ export default function AssignmentsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {assignment.workDays} ngày
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(assignment.salaryAtTime)}
-                      </td>
+                      {role !== 'QLV' && (   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                       {formatCurrency(assignment.salaryAtTime)}
+                      </td> )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(assignment.status)}
                       </td>

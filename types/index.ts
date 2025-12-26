@@ -128,6 +128,7 @@ export interface Employee {
   allowance?: number;            // Phụ cấp (COMPANY_STAFF)
   socialInsurance?: number;      // Bảo hiểm xã hội / Lương đóng bảo hiểm (insuranceSalary)
   healthInsurance?: number;      // Bảo hiểm y tế
+  monthlyAdvanceLimit?: number;  // Số tiền xin ứng hàng tháng
   roleId?: number;
   roleName?: string;               // Tên vai trò
   status?: string;               // Trạng thái
@@ -161,6 +162,7 @@ export interface ApiEmployee {
   insuranceSalary: number | null; // COMPANY_STAFF only (maps to socialInsurance)
   socialInsurance: number;
   healthInsurance: number;
+  monthlyAdvanceLimit: number | null; // Số tiền xin ứng hàng tháng
   description: string | null;
   createdAt: string | null;
   updatedAt: string | null;

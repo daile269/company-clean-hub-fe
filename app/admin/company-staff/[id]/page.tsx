@@ -11,6 +11,7 @@ import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceMo
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { usePermission } from '@/hooks/usePermission';
+import { authService } from '@/services/authService';
 export default function CompanyStaffDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -21,7 +22,7 @@ export default function CompanyStaffDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Employee | null>(null);
   const [savingEmployee, setSavingEmployee] = useState(false);
-
+  const role = authService.getUserRole();
   // Format number utilities
   const formatNumber = (num: number | string) => {
     if (!num && num !== 0) return "";
@@ -1121,63 +1122,64 @@ export default function CompanyStaffDetailPage() {
               </div>
 
               {/* Salary fields for COMPANY_STAFF */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lương tháng *
-                </label>
-                <input
-                  type="text"
-                  value={typeof editForm.monthlySalary === 'number' ? formatNumber(editForm.monthlySalary) : editForm.monthlySalary || ""}
-                  onChange={(e) => {
-                    const rawValue = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      monthlySalary: rawValue ? formatNumber(rawValue) as any : "" as any
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: 10.000.000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phụ cấp
-                </label>
-                <input
-                  type="text"
-                  value={typeof editForm.allowance === 'number' ? formatNumber(editForm.allowance) : editForm.allowance || ""}
-                  onChange={(e) => {
-                    const rawValue = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      allowance: rawValue ? formatNumber(rawValue) as any : "" as any
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: 1.000.000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lương đóng bảo hiểm *
-                </label>
-                <input
-                  type="text"
-                  value={typeof editForm.socialInsurance === 'number' ? formatNumber(editForm.socialInsurance) : editForm.socialInsurance || ""}
-                  onChange={(e) => {
-                    const rawValue = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      socialInsurance: rawValue ? formatNumber(rawValue) as any : "" as any
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: 8.000.000"
-                />
-              </div>
-
+              {role !== 'QLV' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương tháng *
+                  </label>
+                  <input
+                    type="text"
+                    value={typeof editForm.monthlySalary === 'number' ? formatNumber(editForm.monthlySalary) : editForm.monthlySalary || ""}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        monthlySalary: rawValue ? formatNumber(rawValue) as any : "" as any
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="VD: 10.000.000"
+                  />
+                </div>
+              )} {role !== 'QLV' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phụ cấp
+                  </label>
+                  <input
+                    type="text"
+                    value={typeof editForm.allowance === 'number' ? formatNumber(editForm.allowance) : editForm.allowance || ""}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        allowance: rawValue ? formatNumber(rawValue) as any : "" as any
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="VD: 1.000.000"
+                  />
+                </div>
+              )} {role !== 'QLV' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương đóng bảo hiểm *
+                  </label>
+                  <input
+                    type="text"
+                    value={typeof editForm.socialInsurance === 'number' ? formatNumber(editForm.socialInsurance) : editForm.socialInsurance || ""}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        socialInsurance: rawValue ? formatNumber(rawValue) as any : "" as any
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="VD: 8.000.000"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Số tài khoản

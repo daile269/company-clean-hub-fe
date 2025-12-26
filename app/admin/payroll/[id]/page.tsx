@@ -37,6 +37,9 @@ export default function PayrollDetailPage() {
   const [activeTab, setActiveTab] = useState<'salary' | 'history'>('salary');
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // State for editing advance note
+  const [advanceNote, setAdvanceNote] = useState(0);
+  const [isEditingAdvance, setIsEditingAdvance] = useState(false);
 
   const showOverlay = (message?: string) => {
     setOverlayMessage(message || "Đang xử lý...");
@@ -67,6 +70,7 @@ export default function PayrollDetailPage() {
       const data = await payrollService.getPayrollById(Number(id));
       console.log("Loaded payroll:", data);
       setPayroll(data);
+      setAdvanceNote(data.advanceTotal || 0); // Initialize advance note
       loadPaymentHistory(); // Auto-load payment history
       // load attendances for this employee/month
       if (data && data.employeeId) {
@@ -156,6 +160,29 @@ export default function PayrollDetailPage() {
       console.error("Failed to recalculate payroll after attendance update:", error);
       hideOverlay();
       toast.error("Không thể tính lại bảng lương sau khi cập nhật chấm công");
+    }
+  };
+
+  const handleSaveAdvanceNote = async () => {
+    if (!payroll) return;
+
+    try {
+      setIsEditingAdvance(true);
+      showOverlay("Đang cập nhật xin ứng lương...");
+
+      await payrollService.recalculatePayroll(payroll.id, {
+        advanceTotal: advanceNote,
+      });
+
+      await loadPayroll({ showOverlay: false });
+      hideOverlay();
+      toast.success("Đã cập nhật xin ứng lương thành công!");
+    } catch (error) {
+      console.error("Failed to update advance note:", error);
+      hideOverlay();
+      toast.error("Không thể cập nhật xin ứng lương");
+    } finally {
+      setIsEditingAdvance(false);
     }
   };
 
@@ -388,7 +415,22 @@ export default function PayrollDetailPage() {
 
             {/* Card 2: Các khoản điều chỉnh */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900">
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-100 flex gap-2 items-center">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Lương ngày công:
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    (Lương cơ bản × Ngày công)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-purple-600">
+                    {formatCurrency(payroll.baseSalary || 0)}
+                  </p>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold m-4 text-gray-900">
                 Các khoản điều chỉnh
               </h3>
               <div className="grid grid-cols-2 gap-4">
@@ -424,6 +466,7 @@ export default function PayrollDetailPage() {
                     -{formatCurrency(payroll.insuranceTotal)}
                   </p>
                 </div>
+
               </div>
             </div>
 
@@ -497,19 +540,8 @@ export default function PayrollDetailPage() {
                   </div>
 
                   {/* Financial Information Grid - Ordered as requested */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {/* 1. Base Salary (Lương ngày công) */}
-                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">
-                        Lương ngày công
-                      </label>
-                      <p className="mt-2 text-xl font-bold text-purple-600">
-                        {formatCurrency(payroll.baseSalary || 0)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        (Lương cơ bản × Ngày công)
-                      </p>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
 
                     {/* 2. Total Salary (Tổng lương tháng) */}
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
@@ -521,17 +553,7 @@ export default function PayrollDetailPage() {
                       </p>
                     </div>
 
-                    {/* 3. Advance (Ứng trước) */}
-                    <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-100">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">
-                        Ứng trước
-                      </label>
-                      <p className="mt-2 text-xl font-bold text-yellow-600">
-                        -{formatCurrency(payroll.advanceTotal)}
-                      </p>
-                    </div>
-
-                    {/* 4. Paid Amount (Đã thanh toán) */}
+                    {/* 3. Paid Amount (Đã thanh toán) */}
                     <div className="bg-green-50 rounded-lg p-4 border border-green-100">
                       <label className="text-xs font-semibold text-gray-500 uppercase">
                         Đã thanh toán
@@ -542,14 +564,53 @@ export default function PayrollDetailPage() {
                     </div>
                   </div>
 
-                  {/* 5. Remaining Amount - MOST IMPORTANT */}
+                  {/* 4. Remaining Amount - MOST IMPORTANT */}
                   <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6 border-2 border-red-200 shadow-lg">
                     <label className="text-sm font-semibold text-gray-600 uppercase flex items-center gap-2">
-                      <span>💰</span>
-                      Số tiền còn lại phải trả
+                      Số tiền còn lại phải trả <small className="text-gray-500">(tổng lương tháng - đã thanh toán)</small>
                     </label>
                     <p className="mt-3 text-3xl font-bold text-red-600 tracking-tight">
                       {formatCurrency(payroll.remainingAmount)}
+                    </p>
+                  </div>
+
+                  {/* 5. Advance Note - Below Remaining Amount - EDITABLE */}
+                  <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <label className="text-xs font-semibold text-gray-600 uppercase">
+                        Xin ứng lương (Ghi chú)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        step="1000"
+                        min="0"
+                        value={advanceNote}
+                        onChange={(e) => setAdvanceNote(Number(e.target.value))}
+                        className="flex-1 px-4 py-2 text-lg font-semibold border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
+                        disabled={!canEdit || isEditingAdvance}
+                      />
+                      {canEdit && (
+                        <button
+                          onClick={handleSaveAdvanceNote}
+                          disabled={isEditingAdvance || advanceNote === (payroll?.advanceTotal || 0)}
+                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {isEditingAdvance ? "Đang lưu..." : "Lưu"}
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-gray-500 mt-3">
+                      ⓘ Đây chỉ là ghi chú về số tiền xin ứng, không ảnh hưởng đến tính lương
                     </p>
                   </div>
                 </>
@@ -676,7 +737,10 @@ export default function PayrollDetailPage() {
                 <span className="text-green-600"> + Thưởng</span>
                 <span className="text-purple-600"> + Phụ cấp</span>
                 <span className="text-red-600"> - Phạt</span>
-                <span className="text-yellow-600"> - Bảo hiểm - Ứng trước</span>
+                <span className="text-yellow-600"> - Bảo hiểm</span>
+              </p>
+              <p className="text-xs text-orange-600 mt-2">
+                ⓘ Lưu ý: Xin ứng lương chỉ là ghi chú, không trừ vào công thức tính lương
               </p>
             </div>
           </div>

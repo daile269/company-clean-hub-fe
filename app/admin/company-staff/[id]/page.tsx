@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-import { mockCustomers } from "@/lib/mockData";
+// mock data removed — use real API data
 import { Employee } from "@/types";
 import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
@@ -934,8 +934,8 @@ export default function CompanyStaffDetailPage() {
         ) : (
           <div className="grid gap-4">
             {assignments.map((a) => {
-              // prefer customerName returned by API, fallback to mockCustomers
-              const customer = (a.customerName && { name: a.customerName }) || mockCustomers.find((c) => c.id === String(a.customerId));
+              // prefer customerName returned by API, fallback to id string
+              const customer = { name: a.customerName || String(a.customerId) };
               return (
                 <div
                   key={a.id}

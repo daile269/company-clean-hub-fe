@@ -165,6 +165,25 @@ class ReviewService {
     }
   }
 
+  async getByCustomerId(customerId: string | number): Promise<Review[]> {
+    try {
+      const response = await apiService.get<any>(`/reviews/customer/${customerId}`);
+      if (response.success && response.data) {
+        const rawList: any[] = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data.content)
+          ? response.data.content
+          : [];
+
+        return rawList.map((r: ApiReview) => this.mapApiReview(r));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching reviews by customer:', error);
+      return [];
+    }
+  }
+
   async getByReviewerId(reviewerId: string | number): Promise<Review[]> {
     try {
       const response = await apiService.get<any>(`/reviews/reviewer/${reviewerId}`);

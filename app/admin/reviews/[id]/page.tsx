@@ -39,7 +39,7 @@ export default function ReviewDetailPage() {
       const res = await reviewService.delete(id);
       if (res && res.success) {
         toast.success("Đã xóa đánh giá");
-        router.push(`/admin/reviews`);
+        router.back();
       } else {
         toast.error(res?.message || "Xóa thất bại");
       }

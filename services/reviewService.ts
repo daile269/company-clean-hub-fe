@@ -10,6 +10,8 @@ export interface ApiReview {
   employeeId?: number;
   employeeName?: string;
   employeeCode?: string;
+  reviewId?: string;
+  reviewName?: string;
   rating?: number;
   comment?: string;
   createdBy?: string;
@@ -30,6 +32,8 @@ export interface Review {
   rating?: number;
   comment?: string;
   createdBy?: string;
+  reviewId?: string;
+  reviewName?: string;
   createdAt?: Date | null;
   updatedAt?: Date | null;
 }
@@ -63,6 +67,8 @@ class ReviewService {
       employeeId: a.employeeId,
       employeeName: a.employeeName,
       employeeCode: a.employeeCode,
+      reviewId: a.reviewId,
+      reviewName: a.reviewName,
       rating: a.rating,
       comment: a.comment,
       createdBy: a.createdBy,
@@ -140,7 +146,46 @@ class ReviewService {
     }
   }
 
+  async getByEmployeeId(employeeId: string | number): Promise<Review[]> {
+    try {
+      const response = await apiService.get<any>(`/reviews/employee/${employeeId}`);
+      if (response.success && response.data) {
+        const rawList: any[] = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data.content)
+          ? response.data.content
+          : [];
+
+        return rawList.map((r: ApiReview) => this.mapApiReview(r));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching reviews by employee:', error);
+      return [];
+    }
+  }
+
+  async getByReviewerId(reviewerId: string | number): Promise<Review[]> {
+    try {
+      const response = await apiService.get<any>(`/reviews/reviewer/${reviewerId}`);
+      if (response.success && response.data) {
+        const rawList: any[] = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data.content)
+          ? response.data.content
+          : [];
+
+        return rawList.map((r: ApiReview) => this.mapApiReview(r));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching reviews by reviewer:', error);
+      return [];
+    }
+  }
+
   async create(payload: Partial<ApiReview>) {
+    console.log('Create review payload:', payload);
     const response = await apiService.post<any>('/reviews', payload);
     return response;
   }

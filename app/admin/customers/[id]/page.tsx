@@ -125,6 +125,8 @@ export default function CustomerDetail() {
   const [loadingCustomerReviews, setLoadingCustomerReviews] = useState(false);
   const [showAddReviewModal, setShowAddReviewModal] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
+  const [contractAssignments, setContractAssignments] = useState<any[]>([]);
+  const [loadingContractAssignments, setLoadingContractAssignments] = useState(false);
   const [reviewForm, setReviewForm] = useState<{
     contractId: string;
     assignmentId: string;
@@ -239,12 +241,8 @@ export default function CustomerDetail() {
       if (!id) return;
       try {
         setLoadingCustomerReviews(true);
-        const res = await reviewService.getAll({
-          customerId: Number(id),
-          page: 0,
-          pageSize: 50,
-        });
-        setCustomerReviews(res.content || []);
+        const res = await reviewService.getByCustomerId(Number(id));
+        setCustomerReviews(res || []);
       } catch (err) {
         console.error("Error loading customer reviews:", err);
         setCustomerReviews([]);
@@ -351,6 +349,23 @@ export default function CustomerDetail() {
       console.error("Error loading assigned employees:", error);
     } finally {
       setLoadingAssignments(false);
+    }
+  };
+
+  const loadAssignmentsForContract = async (contractId: string | number) => {
+    if (!contractId) {
+      setContractAssignments([]);
+      return;
+    }
+    try {
+      setLoadingContractAssignments(true);
+      const resp = await assignmentService.getByContractMonthYear(Number(contractId), filterMonth, filterYear, 0, 200);
+      setContractAssignments(resp.content || []);
+    } catch (error) {
+      console.error('Error loading assignments for contract:', error);
+      setContractAssignments([]);
+    } finally {
+      setLoadingContractAssignments(false);
     }
   };
 
@@ -1363,6 +1378,18 @@ export default function CustomerDetail() {
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4 pb-2 border-b">
           <h3 className="text-lg font-semibold text-gray-800">Đánh giá nhân viên</h3>
+          <div>
+            <button
+              onClick={async () => {
+                await loadAssignedEmployees();
+                await loadContracts();
+                setShowAddReviewModal(true);
+              }}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+              + Thêm đánh giá
+            </button>
+          </div>
         </div>
 
         {loadingCustomerReviews ? (
@@ -1471,7 +1498,162 @@ export default function CustomerDetail() {
         )}
       </div>
 
-      {/* Add Review Modal removed — moved to employee page as requested */}
+      {/* Add Review Modal (customer adds review for employee) */}
+      {showAddReviewModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Thêm đánh giá</h3>
+              <button onClick={() => setShowAddReviewModal(false)} className="text-gray-500">Đóng</button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-gray-600">Hợp đồng</label>
+                <select
+                  value={reviewForm.contractId}
+                  onChange={async (e) => {
+                    const newContractId = e.target.value;
+                    setReviewForm({ ...reviewForm, contractId: newContractId, employeeId: "", assignmentId: "" });
+                    await loadAssignmentsForContract(newContractId);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
+                >
+                  <option value="">Chọn hợp đồng</option>
+                  {contracts.map((c: any) => (
+                    <option key={c.id} value={String(c.id)}>
+                      HĐ #{c.id} - {c.description || c.services?.map((s: any) => s.title).join(", ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Nhân viên</label>
+                <select
+                  value={reviewForm.employeeId}
+                  onChange={(e) =>
+                    setReviewForm({ ...reviewForm, employeeId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
+                >
+                  <option value="">Chọn nhân viên</option>
+                  {loadingContractAssignments ? (
+                    <option value="">Đang tải...</option>
+                  ) : (
+                    contractAssignments
+                      .reduce((acc: any[], a: any) => {
+                        if (!acc.find((x) => x.employeeId === a.employeeId)) acc.push(a);
+                        return acc;
+                      }, [])
+                      .map((a: any, idx: number) => (
+                        <option key={`${a.employeeId}-${idx}`} value={String(a.employeeId)}>
+                          {a.employeeName || a.employeeId} - {a.employeeCode || ""}
+                        </option>
+                      ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Số điểm</label>
+                <div className="flex items-center gap-2 mt-1">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const v = i + 1;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setReviewForm({ ...reviewForm, rating: v })}
+                        className={`text-xl ${reviewForm.rating >= v ? "text-yellow-400" : "text-gray-300"}`}
+                      >
+                        ★
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Bình luận</label>
+                <textarea
+                  rows={3}
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowAddReviewModal(false)}
+                  className="px-3 py-1 border rounded text-sm"
+                  disabled={savingReview}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!reviewForm.contractId || !reviewForm.employeeId || !reviewForm.rating) {
+                      toast.error("Vui lòng chọn hợp đồng, nhân viên và số điểm");
+                      return;
+                    }
+                    try {
+                      setSavingReview(true);
+                      const payload: any = {
+                        contractId: Number(reviewForm.contractId),
+                        employeeId: Number(reviewForm.employeeId),
+                        rating: reviewForm.rating,
+                        comment: reviewForm.comment,
+                      };
+                      // find assignment: prefer contractAssignments (assignments for selected contract)
+                      let found: any = undefined;
+                      if (contractAssignments && contractAssignments.length > 0) {
+                        found = contractAssignments.find((a: any) => String(a.employeeId) === reviewForm.employeeId && (a.contractId ? String(a.contractId) === reviewForm.contractId : true));
+                      }
+                      // fallback: assignedEmployees might be grouped by contract (each item has .assignments)
+                      if (!found && assignedEmployees && assignedEmployees.length > 0) {
+                        const flattened: any[] = assignedEmployees[0] && assignedEmployees[0].assignments
+                          ? assignedEmployees.flatMap((g: any) => g.assignments || [])
+                          : assignedEmployees;
+                        found = flattened.find((a: any) => String(a.employeeId) === reviewForm.employeeId && String(a.contractId) === reviewForm.contractId);
+                      }
+                      if (found) payload.assignmentId = found.id;
+                      
+                      const res = await reviewService.create(payload);
+                      if (res && (res.success === false)) {
+                        toast.error(res.message || "Lỗi khi thêm đánh giá");
+                      } else {
+                        toast.success("Đã thêm đánh giá");
+                        setShowAddReviewModal(false);
+                        // reload reviews
+                        try {
+                          setLoadingCustomerReviews(true);
+                          const r = await reviewService.getByCustomerId(Number(id));
+                          setCustomerReviews(r || []);
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setLoadingCustomerReviews(false);
+                        }
+                      }
+                    } catch (err: any) {
+                      console.error(err);
+                      toast.error(err?.message || "Có lỗi");
+                    } finally {
+                      setSavingReview(false);
+                    }
+                  }}
+                  disabled={savingReview}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                >
+                  {savingReview ? "Đang thêm..." : "Thêm đánh giá"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Card 4: Nhân viên đang phụ trách */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">

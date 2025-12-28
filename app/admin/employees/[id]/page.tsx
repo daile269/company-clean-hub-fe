@@ -2,22 +2,57 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-import {
-  mockPayrolls,
-  mockAssignments,
-  mockRatings,
-  mockCustomers,
-} from "@/lib/mockData";
+
 import { Employee, EmployeeType, AssignmentPayrollDetail } from "@/types";
 
-import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
+
+import {
+  employeeService,
+  buildCloudinaryUrl,
+  type EmployeeImage,
+} from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import payrollService, { Payroll } from "@/services/payrollService";
 import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
 import { authService } from "@/services/authService";
+import { reviewService } from "@/services/reviewService";
 export default function EmployeeDetail() {
+  const getTypeLabel = (t: "customer" | "coworker" | "manager") =>
+    t === "customer"
+      ? "Khách hàng"
+      : t === "coworker"
+        ? "Nhân viên"
+        : "Quản lý vùng";
+
+  const getTypeShort = (t: "customer" | "coworker" | "manager") =>
+    t === "customer"
+      ? "khách hàng"
+      : t === "coworker"
+        ? "nhân viên"
+        : "quản lý";
+
+  const getRoleLabel = (r?: string) => {
+    if (!r) return "N/A";
+    switch (r) {
+      case "CUSTOMER":
+        return "Khách hàng";
+      case "QLT1":
+        return "Quản lý tổng 1";
+      case "QLT2":
+        return "Quản lý tổng 2";
+      case "QLV":
+        return "Quản lý vùng";
+      case "EMPLOYEE":
+        return "Nhân viên";
+      case "ACCOUNTANT":
+        return "Kế toán";
+      default:
+        return r;
+    }
+  };
+
   const params = useParams();
   const id = params?.id as string | undefined;
 
@@ -39,20 +74,62 @@ export default function EmployeeDetail() {
   const [showImageManageModal, setShowImageManageModal] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isUploadingEmployeeImage, setIsUploadingEmployeeImage] = useState(false);
+  const [isUploadingEmployeeImage, setIsUploadingEmployeeImage] =
+    useState(false);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
-  const [assignmentCustomerId, setAssignmentCustomerId] = useState<number | undefined>();
-
   // Payroll states for insurance input in edit dialog
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
   const [payrollId, setPayrollId] = useState<number | null>(null);
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
-  const [assignmentMonth, setAssignmentMonth] = useState<number>(new Date().getMonth() + 1);
-  const [assignmentYear, setAssignmentYear] = useState<number>(new Date().getFullYear());
+  // Reviews for this employee (from customers)
+  const [employeeReviews, setEmployeeReviews] = useState<any[]>([]);
+  const [loadingEmployeeReviews, setLoadingEmployeeReviews] = useState(false);
+  const [showAddReviewModal, setShowAddReviewModal] = useState(false);
+  const [savingReview, setSavingReview] = useState(false);
+  const [newReviewForm, setNewReviewForm] = useState<{
+    customerId?: number;
+    rating?: number;
+    comment?: string;
+  }>({});
+  const [employeeGivenReviews, setEmployeeGivenReviews] = useState<any[]>([]);
+  const [loadingEmployeeGivenReviews, setLoadingEmployeeGivenReviews] =
+    useState(false);
+  const [showGivenReviewModal, setShowGivenReviewModal] = useState(false);
+  const [savingGivenReview, setSavingGivenReview] = useState(false);
+  const [givenReviewForm, setGivenReviewForm] = useState<{
+    customerId?: number;
+    rating?: number;
+    comment?: string;
+  }>({});
+  const [givenReviewType, setGivenReviewType] = useState<
+    "customer" | "coworker" | "manager"
+  >("customer");
+  const [coworkerCustomerId, setCoworkerCustomerId] = useState<number | "">("");
+  const [assignmentsFromCustomer, setAssignmentsFromCustomer] = useState<
+    Assignment[]
+  >([]);
+  const [loadingAssignmentsFromCustomer, setLoadingAssignmentsFromCustomer] =
+    useState(false);
+  const [coworkers, setCoworkers] = useState<any[]>([]);
+  const [managersList, setManagersList] = useState<any[]>([]);
+  const [loadingWorkers, setLoadingWorkers] = useState(false);
+  const [
+    showPayrollAdvanceInsuranceModal,
+    setShowPayrollAdvanceInsuranceModal,
+  ] = useState(false);
+  const [assignmentCustomerId, setAssignmentCustomerId] = useState<
+    number | undefined
+  >();
+  const [assignmentMonth, setAssignmentMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [assignmentYear, setAssignmentYear] = useState<number>(
+    new Date().getFullYear()
+  );
   const [assignmentPage, setAssignmentPage] = useState(0);
   const [assignmentPageSize] = useState(10);
   const [assignmentTotalPages, setAssignmentTotalPages] = useState(0);
@@ -68,6 +145,44 @@ export default function EmployeeDetail() {
     }
   }, [id]);
 
+  // Load reviews created by this employee (server-side reviewer endpoint)
+  useEffect(() => {
+    const loadGivenReviews = async () => {
+      if (!id) return;
+      try {
+        setLoadingEmployeeGivenReviews(true);
+        const res = await reviewService.getByReviewerId(Number(id));
+        setEmployeeGivenReviews(res || []);
+      } catch (err) {
+        console.error("Error loading reviews given by employee:", err);
+        setEmployeeGivenReviews([]);
+      } finally {
+        setLoadingEmployeeGivenReviews(false);
+      }
+    };
+
+    loadGivenReviews();
+  }, [id]);
+
+  // Load reviews for this employee
+  useEffect(() => {
+    const loadEmployeeReviews = async () => {
+      if (!id) return;
+      try {
+        setLoadingEmployeeReviews(true);
+        const res = await reviewService.getByEmployeeId(Number(id));
+        setEmployeeReviews(res || []);
+      } catch (err) {
+        console.error("Error loading employee reviews:", err);
+        setEmployeeReviews([]);
+      } finally {
+        setLoadingEmployeeReviews(false);
+      }
+    };
+
+    loadEmployeeReviews();
+  }, [id]);
+
   const loadEmployee = async () => {
     try {
       setLoading(true);
@@ -76,11 +191,11 @@ export default function EmployeeDetail() {
       setEmployee(data);
 
       // EMPLOYEE can only view their own profile
-      if (role === 'EMPLOYEE') {
+      if (role === "EMPLOYEE") {
         const currentUser = authService.getCurrentUser();
         if (currentUser && currentUser.id !== Number(id)) {
-          toast.error('Bạn không có quyền xem thông tin nhân viên này');
-          router.push('/admin');
+          toast.error("Bạn không có quyền xem thông tin nhân viên này");
+          router.push("/admin");
           return;
         }
       }
@@ -96,13 +211,36 @@ export default function EmployeeDetail() {
     }
   };
 
-  // keep payrolls/ratings from mock for now
-  const payrolls = mockPayrolls.filter((p) => p.employeeId === id).slice(0, 6);
-  const ratings = mockRatings.filter((r) => r.employeeId === id).slice(0, 6);
-
   useEffect(() => {
     if (id) loadAssignments();
-  }, [id, assignmentCustomerId, assignmentMonth, assignmentYear, assignmentPage]);
+  }, [
+    id,
+    assignmentCustomerId,
+    assignmentMonth,
+    assignmentYear,
+    assignmentPage,
+  ]);
+
+  // when coworker flow: load assignments for selected customer to get coworkers
+  useEffect(() => {
+    if (givenReviewType !== "coworker") return;
+    if (!coworkerCustomerId) return;
+    const load = async () => {
+      try {
+        setLoadingAssignmentsFromCustomer(true);
+        const res = await assignmentService.getByCustomerId(
+          String(coworkerCustomerId)
+        );
+        setAssignmentsFromCustomer(res || []);
+      } catch (err) {
+        console.error("Error loading assignments for customer:", err);
+        setAssignmentsFromCustomer([]);
+      } finally {
+        setLoadingAssignmentsFromCustomer(false);
+      }
+    };
+    load();
+  }, [coworkerCustomerId, givenReviewType]);
 
   // Load assignment payroll details for EMPLOYEE role
   useEffect(() => {
@@ -125,7 +263,7 @@ export default function EmployeeDetail() {
       setAssignmentTotalPages(response.totalPages);
       setAssignmentTotalElements(response.totalElements);
     } catch (error) {
-      console.error('Error loading assignments:', error);
+      console.error("Error loading assignments:", error);
       setAssignments([]);
       setAssignmentTotalPages(0);
       setAssignmentTotalElements(0);
@@ -212,6 +350,27 @@ export default function EmployeeDetail() {
     const d = new Date(date);
     return d.toISOString().split("T")[0];
   };
+
+  // derive unique customers from assignments for selection lists
+  const uniqueCustomers = Array.from(
+    new Map(
+      assignments.map((a: any) => [
+        a.customerId,
+        {
+          id: a.customerId,
+          name: a.customerName || String(a.customerId),
+          code: a.customerCode || "",
+        },
+      ])
+    ).values()
+  );
+
+  const selectedNewCustomer = uniqueCustomers.find(
+    (c: any) => c.id === newReviewForm.customerId
+  );
+  const selectedGivenCustomer = uniqueCustomers.find(
+    (c: any) => c.id === givenReviewForm.customerId
+  );
 
   const getAssignmentStatusClass = (status?: string) => {
     const s = (status || "").toUpperCase();
@@ -393,7 +552,9 @@ export default function EmployeeDetail() {
     }
   };
 
-  const handleUploadEmployeeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadEmployeeImage = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (!canEdit) return;
     const files = e.target.files;
     if (!files || !id) return;
@@ -532,7 +693,7 @@ export default function EmployeeDetail() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Vai trò</p>
                 <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  {(employee as any).roleName || "N/A"}
+                  {getRoleLabel((employee as any).roleName)}
                 </span>
               </div>
             </div>
@@ -596,6 +757,606 @@ export default function EmployeeDetail() {
           </div>
         </div>
       </div>
+      {/* Reviews created by this employee */}
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Đánh giá của nhân viên
+          </h3>
+          <div>
+            <button
+              onClick={() => setShowGivenReviewModal(true)}
+              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+            >
+              + Thêm đánh giá
+            </button>
+          </div>
+        </div>
+
+        {loadingEmployeeGivenReviews ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : employeeGivenReviews.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            Chưa có đánh giá do nhân viên này tạo
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead>
+                <tr className="text-left text-sm text-gray-600">
+                  <th className="px-3 py-2">Khách hàng</th>
+                  <th className="px-3 py-2">Đánh giá</th>
+                  <th className="px-3 py-2">Bình luận</th>
+                  <th className="px-3 py-2">Ngày</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employeeGivenReviews.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-t hover:bg-gray-50 cursor-pointer"
+                    onClick={() =>
+                      r.id && router.push(`/admin/reviews/${r.id}`)
+                    }
+                  >
+                    <td className="px-3 py-3 text-sm text-gray-800">
+                      {r.customerName || r.customerId || "-"}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-700">
+                          {r.rating ?? "-"}
+                        </span>
+                        <div className="flex text-yellow-400">
+                          {Array.from({ length: r.rating || 0 }).map((_, i) => (
+                            <svg
+                              key={i}
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.18c.969 0 1.371 1.24.588 1.81l-3.383 2.455a1 1 0 00-.364 1.118l1.287 3.97c.3.922-.755 1.688-1.54 1.118L10 13.348l-3.383 2.455c-.784.57-1.84-.196-1.54-1.118l1.287-3.97a1 1 0 00-.364-1.118L2.617 9.397c-.783-.57-.38-1.81.588-1.81h4.18a1 1 0 00.95-.69l1.286-3.97z" />
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-700">
+                      {r.comment || "-"}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-400">
+                      {r.createdAt
+                        ? new Intl.DateTimeFormat("vi-VN").format(
+                          new Date(r.createdAt)
+                        )
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Đánh giá từ khách hàng */}
+      {role !== 'EMPLOYEE' && (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Đánh giá từ khách hàng
+            </h3>
+            {/* <div>
+            <button
+              onClick={() => setShowAddReviewModal(true)}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Thêm đánh giá
+            </button>
+          </div> */}
+          </div>
+
+          {loadingEmployeeReviews ? (
+            <div className="flex justify-center py-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : employeeReviews.length === 0 ? (
+            <p className="text-sm text-gray-500">Chưa có đánh giá</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto">
+                <thead>
+                  <tr className="text-left text-sm text-gray-600">
+                    <th className="px-3 py-2">Khách hàng</th>
+                    <th className="px-3 py-2">Đánh giá</th>
+                    <th className="px-3 py-2">Bình luận</th>
+                    <th className="px-3 py-2">Ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employeeReviews.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="border-t hover:bg-gray-50 cursor-pointer"
+                      onClick={() => router.push(`/admin/reviews/${r.id}`)}
+                    >
+                      <td className="px-3 py-3 text-sm text-gray-800">
+                        {r.customerName || r.customerId || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-700">
+                            {r.rating ?? "-"}
+                          </span>
+                          <div className="flex text-yellow-400">
+                            {Array.from({ length: r.rating || 0 }).map((_, i) => (
+                              <svg
+                                key={i}
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.18c.969 0 1.371 1.24.588 1.81l-3.383 2.455a1 1 0 00-.364 1.118l1.287 3.97c.3.922-.755 1.688-1.54 1.118L10 13.348l-3.383 2.455c-.784.57-1.84-.196-1.54-1.118l1.287-3.97a1 1 0 00-.364-1.118L2.617 9.397c-.783-.57-.38-1.81.588-1.81h4.18a1 1 0 00.95-.69l1.286-3.97z" />
+                              </svg>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-700">
+                        {r.comment || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-400">
+                        {r.createdAt
+                          ? new Intl.DateTimeFormat("vi-VN").format(
+                            new Date(r.createdAt)
+                          )
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Review Modal */}
+      {showAddReviewModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Thêm đánh giá</h3>
+              <button
+                onClick={() => setShowAddReviewModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-gray-600">
+                  {givenReviewType === "customer"
+                    ? "Khách hàng mà nhân viên đã phụ trách"
+                    : "Khách hàng"}
+                </label>
+                <select
+                  value={newReviewForm.customerId ?? ""}
+                  onChange={(e) =>
+                    setNewReviewForm({
+                      ...newReviewForm,
+                      customerId: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                >
+                  <option value="">Chọn khách hàng</option>
+                  {uniqueCustomers.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} - {c.code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Số sao</label>
+                <div className="flex items-center gap-2 mt-1">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const v = i + 1;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() =>
+                          setNewReviewForm({ ...newReviewForm, rating: v })
+                        }
+                        className={`text-xl ${newReviewForm.rating && newReviewForm.rating >= v
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                          }`}
+                      >
+                        ★
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Bình luận</label>
+                <textarea
+                  rows={3}
+                  value={newReviewForm.comment ?? ""}
+                  onChange={(e) =>
+                    setNewReviewForm({
+                      ...newReviewForm,
+                      comment: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowAddReviewModal(false)}
+                  className="px-3 py-1 border rounded text-sm"
+                  disabled={savingReview}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newReviewForm.customerId || !newReviewForm.rating) {
+                      toast.error("Vui lòng chọn khách hàng và số sao");
+                      return;
+                    }
+                    try {
+                      setSavingReview(true);
+                      const selectedAssignment = assignments.find(
+                        (a: any) =>
+                          a.customerId === Number(newReviewForm.customerId)
+                      );
+                      const currentUser = authService.getCurrentUser();
+                      const payload: any = {
+                        contractId: selectedAssignment?.contractId
+                          ? Number(selectedAssignment.contractId)
+                          : undefined,
+                        assignmentId: selectedAssignment?.id
+                          ? Number(selectedAssignment.id)
+                          : undefined,
+                        rating: newReviewForm.rating,
+                        comment: newReviewForm.comment,
+                        createdBy: currentUser?.id
+                          ? String(currentUser.id)
+                          : currentUser?.username || "",
+                      };
+                      const resp = await reviewService.create(payload);
+                      if (resp.success) {
+                        toast.success("Đã thêm đánh giá");
+                        // reload reviews
+                        const res = await reviewService.getAll({
+                          employeeId: Number(id),
+                          page: 0,
+                          pageSize: 50,
+                        });
+                        setEmployeeReviews(res.content || []);
+                        setShowAddReviewModal(false);
+                        setNewReviewForm({});
+                      } else {
+                        toast.error(resp.message || "Thêm thất bại");
+                      }
+                    } catch (error) {
+                      console.error("Error creating review:", error);
+                      toast.error("Có lỗi xảy ra");
+                    } finally {
+                      setSavingReview(false);
+                    }
+                  }}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                  disabled={savingReview}
+                >
+                  {savingReview ? "Đang thêm..." : "Thêm đánh giá"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add review modal for reviews created by the employee */}
+      {showGivenReviewModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                Thêm đánh giá (nhân viên)
+              </h3>
+              <button
+                onClick={() => setShowGivenReviewModal(false)}
+                className="text-gray-400"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-gray-600">Loại đánh giá</label>
+                <select
+                  value={givenReviewType}
+                  onChange={(e) =>
+                    setGivenReviewType(
+                      e.target.value as "customer" | "coworker" | "manager"
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
+                >
+                  <option value="customer">
+                    Đánh giá khách hàng đã phụ trách
+                  </option>
+                  <option value="coworker">Đánh giá nhân viên làm cùng</option>
+                  {/* <option value="manager">Đánh giá quản lý vùng</option> */}
+                </select>
+              </div>
+              {givenReviewType === "coworker" ? (
+                <>
+                  <div>
+                    <label className="text-sm text-gray-600">Khách hàng</label>
+                    <select
+                      value={coworkerCustomerId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value ? Number(e.target.value) : "";
+                        setCoworkerCustomerId(v as any);
+                        // reset selected coworker when customer changes
+                        setGivenReviewForm({
+                          ...givenReviewForm,
+                          customerId: undefined,
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    >
+                      <option value="">Chọn khách hàng</option>
+                      {uniqueCustomers.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} - {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600">Nhân viên</label>
+                    <select
+                      value={givenReviewForm.customerId ?? ""}
+                      onChange={(e) =>
+                        setGivenReviewForm({
+                          ...givenReviewForm,
+                          customerId: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    >
+                      <option value="">Chọn nhân viên</option>
+                      {loadingAssignmentsFromCustomer ? (
+                        <option value="">Đang tải...</option>
+                      ) : (
+                        // map assignments to unique employees
+                        Array.from(
+                          new Map(
+                            assignmentsFromCustomer.map((a) => [
+                              a.employeeId,
+                              {
+                                id: a.employeeId,
+                                name: a.employeeName || a.employeeId,
+                                code: a.employeeCode || "",
+                                assignmentId: a.id,
+                                contractId: a.contractId,
+                              },
+                            ])
+                          ).values()
+                        ).map((eObj: any) => (
+                          <option key={eObj.id} value={eObj.id}>
+                            {eObj.name} - {eObj.code}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="text-sm text-gray-600">
+                    {getTypeLabel(givenReviewType)}
+                  </label>
+                  {givenReviewType === "customer" &&
+                    selectedGivenCustomer?.code && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Mã khách hàng: {selectedGivenCustomer.code}
+                      </p>
+                    )}
+                  <select
+                    value={givenReviewForm.customerId ?? ""}
+                    onChange={(e) =>
+                      setGivenReviewForm({
+                        ...givenReviewForm,
+                        customerId: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                  >
+                    <option value="">
+                      Chọn {getTypeShort(givenReviewType)}
+                    </option>
+                    {givenReviewType === "customer" &&
+                      uniqueCustomers.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} - {c.code}
+                        </option>
+                      ))}
+                    {givenReviewType === "manager" &&
+                      managersList.map((e: any) => (
+                        <option key={e.id} value={e.id}>
+                          {e.name} - {e.employeeCode}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm text-gray-600">Số điển</label>
+                <div className="flex items-center gap-2 mt-1">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const v = i + 1;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() =>
+                          setGivenReviewForm({ ...givenReviewForm, rating: v })
+                        }
+                        className={`text-xl ${givenReviewForm.rating && givenReviewForm.rating >= v
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                          }`}
+                      >
+                        ★
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600">Bình luận</label>
+                <textarea
+                  rows={3}
+                  value={givenReviewForm.comment ?? ""}
+                  onChange={(e) =>
+                    setGivenReviewForm({
+                      ...givenReviewForm,
+                      comment: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowGivenReviewModal(false)}
+                  className="px-3 py-1 border rounded text-sm"
+                  disabled={savingGivenReview}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    if (givenReviewType === "coworker") {
+                      if (
+                        !coworkerCustomerId ||
+                        !givenReviewForm.customerId ||
+                        !givenReviewForm.rating
+                      ) {
+                        toast.error(
+                          "Vui lòng chọn khách hàng, nhân viên và số sao"
+                        );
+                        return;
+                      }
+                    } else {
+                      if (
+                        !givenReviewForm.customerId ||
+                        !givenReviewForm.rating
+                      ) {
+                        toast.error("Vui lòng chọn khách hàng và số sao");
+                        return;
+                      }
+                    }
+                    try {
+                      setSavingGivenReview(true);
+                      let selectedAssignment: any = undefined;
+                      if (givenReviewType === "customer") {
+                        selectedAssignment = assignments.find(
+                          (a: any) =>
+                            a.customerId === Number(givenReviewForm.customerId)
+                        );
+                      } else if (givenReviewType === "coworker") {
+                        selectedAssignment = assignmentsFromCustomer.find(
+                          (a: any) =>
+                            a.employeeId === Number(givenReviewForm.customerId)
+                        );
+                      }
+                      const currentUser = authService.getCurrentUser();
+                      const payload: any = {
+                        contractId: selectedAssignment?.contractId
+                          ? Number(selectedAssignment.contractId)
+                          : undefined,
+                        assignmentId: selectedAssignment?.id
+                          ? Number(selectedAssignment.id)
+                          : undefined,
+                        rating: givenReviewForm.rating,
+                        comment: givenReviewForm.comment,
+                        createdBy: currentUser?.id
+                          ? String(currentUser.id)
+                          : currentUser?.username || "",
+                        // legacy fields kept for compatibility
+                        reviewId: Number(id),
+                        reviewName: employee?.name,
+                        reviewType: givenReviewType,
+                      };
+                      const resp = await reviewService.create(payload);
+                      if (resp && resp.success) {
+                        toast.success("Đã thêm đánh giá");
+                        // refresh given reviews via reviewer endpoint
+                        const refreshed = await reviewService.getByReviewerId(
+                          Number(id)
+                        );
+                        setEmployeeGivenReviews(refreshed || []);
+                        setShowGivenReviewModal(false);
+                        setGivenReviewForm({});
+                      } else {
+                        toast.error(resp?.message || "Thêm thất bại");
+                      }
+                    } catch (err) {
+                      console.error("Error creating review by employee:", err);
+                      toast.error("Có lỗi xảy ra");
+                    } finally {
+                      setSavingGivenReview(false);
+                    }
+                  }}
+                  disabled={savingGivenReview}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                >
+                  {savingGivenReview ? "Đang thêm..." : "Thêm đánh giá"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* (moved above images) */}
 
       {/* Employee Images Section */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
@@ -630,12 +1391,13 @@ export default function EmployeeDetail() {
         {employeeImages.length > 0 ? (
           <>
             <div className="space-y-4 flex gap-3">
-
               {/* Main Image - Fixed size container */}
               <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
                 {employeeImages[selectedImageIndex] ? (
                   <img
-                    src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                    src={buildCloudinaryUrl(
+                      employeeImages[selectedImageIndex].cloudinaryPublicId
+                    )}
                     alt={`Employee image ${selectedImageIndex + 1}`}
                     className="w-full h-full object-contain"
                   />
@@ -697,7 +1459,9 @@ export default function EmployeeDetail() {
                       day: "numeric",
                       hour: "2-digit",
                       minute: "2-digit",
-                    }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                    }).format(
+                      new Date(employeeImages[selectedImageIndex].uploadedAt)
+                    )}
                   </p>
                 )}
               </div>
@@ -720,9 +1484,7 @@ export default function EmployeeDetail() {
       {/* Assignments */}
       <div className="mt-6">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-xl font-semibold">
-            Phân công
-          </h2>
+          <h2 className="text-xl font-semibold">Phân công</h2>
           <div className="flex gap-3 items-center">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Tháng:</label>
@@ -751,7 +1513,10 @@ export default function EmployeeDetail() {
                 }}
                 className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                {Array.from(
+                  { length: 5 },
+                  (_, i) => new Date().getFullYear() - 2 + i
+                ).map((y) => (
                   <option key={y} value={y}>
                     {y}
                   </option>
@@ -769,8 +1534,8 @@ export default function EmployeeDetail() {
         ) : (
           <div className="grid gap-4">
             {assignments.map((a) => {
-              // prefer customerName returned by API, fallback to mockCustomers
-              const customer = (a.customerName && { name: a.customerName }) || mockCustomers.find((c) => c.id === String(a.customerId));
+              // prefer customerName returned by API, fallback to id string
+              const customer = { name: a.customerName || String(a.customerId) };
               return (
                 <div
                   key={a.id}
@@ -778,7 +1543,8 @@ export default function EmployeeDetail() {
                   tabIndex={0}
                   onClick={() => router.push(`/admin/assignments/${a.id}`)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") router.push(`/admin/assignments/${a.id}`);
+                    if (e.key === "Enter")
+                      router.push(`/admin/assignments/${a.id}`);
                   }}
                   className="p-4 bg-white rounded shadow-sm border cursor-pointer hover:bg-gray-50"
                 >
@@ -799,11 +1565,17 @@ export default function EmployeeDetail() {
                         )}
                       </div>
                       <p className="text-sm text-gray-500">
-                        {(a as any).workSchedule || a.description || (a.workDays ? `${a.workDays} ngày` : "")}
+                        {(a as any).workSchedule ||
+                          a.description ||
+                          (a.workDays ? `${a.workDays} ngày` : "")}
                       </p>
                     </div>
                     <div className="text-sm text-gray-400">
-                      {a.startDate ? new Intl.DateTimeFormat("vi-VN").format(new Date(a.startDate)) : ""}
+                      {a.startDate
+                        ? new Intl.DateTimeFormat("vi-VN").format(
+                          new Date(a.startDate)
+                        )
+                        : ""}
                     </div>
                   </div>
                   {a.description && (
@@ -855,18 +1627,25 @@ export default function EmployeeDetail() {
         {!loadingAssignments && assignmentTotalPages > 1 && (
           <div className="mt-4 flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng {assignmentTotalElements} phân công)
+              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng{" "}
+              {assignmentTotalElements} phân công)
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => setAssignmentPage(Math.max(0, assignmentPage - 1))}
+                onClick={() =>
+                  setAssignmentPage(Math.max(0, assignmentPage - 1))
+                }
                 disabled={assignmentPage === 0}
                 className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 Trước
               </button>
               <button
-                onClick={() => setAssignmentPage(Math.min(assignmentTotalPages - 1, assignmentPage + 1))}
+                onClick={() =>
+                  setAssignmentPage(
+                    Math.min(assignmentTotalPages - 1, assignmentPage + 1)
+                  )
+                }
                 disabled={assignmentPage >= assignmentTotalPages - 1}
                 className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
@@ -876,43 +1655,6 @@ export default function EmployeeDetail() {
           </div>
         )}
       </div>
-
-
-      {/* Ratings */}
-      {/* <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-3">Đánh giá từ khách hàng</h2>
-        {ratings.length === 0 ? (
-          <p className="text-sm text-gray-500">Chưa có đánh giá</p>
-        ) : (
-          <div className="space-y-3">
-            {ratings.map((r) => (
-              <div key={r.id} className="p-4 bg-white rounded shadow-sm border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium">
-                      Khách hàng:{" "}
-                      {mockCustomers.find((c) => c.id === r.customerId)?.name ||
-                        r.customerId}
-                    </div>
-                    <div className="text-yellow-500">
-                      {"★".repeat(r.rating)}
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    {new Intl.DateTimeFormat("vi-VN").format(
-                      new Date(r.createdAt)
-                    )}
-                  </div>
-                </div>
-                {r.feedback && (
-                  <p className="mt-2 text-sm text-gray-600">{r.feedback}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div> */}
-
       {/* Edit Modal */}
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -982,8 +1724,6 @@ export default function EmployeeDetail() {
                 />
               </div>
 
-
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   CCCD *
@@ -1048,7 +1788,9 @@ export default function EmployeeDetail() {
                 </label>
                 <BankSelect
                   value={editForm.bankName || ""}
-                  onChange={(v: string) => setEditForm({ ...editForm, bankName: v })}
+                  onChange={(v: string) =>
+                    setEditForm({ ...editForm, bankName: v })
+                  }
                 />
               </div>
 
@@ -1145,9 +1887,6 @@ export default function EmployeeDetail() {
                 />
               </div>
 
-
-
-
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả
@@ -1164,7 +1903,7 @@ export default function EmployeeDetail() {
               </div>
               <input type="hidden" value={editForm.username || ""} />
               <input type="hidden" value={editForm.password || ""} />
-            </div>
+            </div >
 
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -1194,143 +1933,201 @@ export default function EmployeeDetail() {
                 Lưu thay đổi
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </div >
+        </div >
+      )
+      }
 
       {/* Image Management Modal */}
-      {showImageManageModal && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
-            {/* Loading Overlay */}
-            {(isUploadingImage || isDeletingImage) && (
-              <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-40">
-                <div className="bg-white rounded-lg p-6 shadow-lg flex flex-col items-center gap-3">
+      {
+        showImageManageModal && (
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
+              {/* Loading Overlay */}
+              {(isUploadingImage || isDeletingImage) && (
+                <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-40">
+                  <div className="bg-white rounded-lg p-6 shadow-lg flex flex-col items-center gap-3">
+                    <svg
+                      className="animate-spin h-10 w-10 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-700">
+                      {isDeletingImage ? "Đang xóa..." : "Đang tải..."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Quản lý hình ảnh nhân viên
+                </h2>
+                <button
+                  onClick={() => setShowImageManageModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
                   <svg
-                    className="animate-spin h-10 w-10 text-blue-600"
+                    className="w-6 h-6"
                     fill="none"
                     viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                  <p className="text-sm font-medium text-gray-700">{isDeletingImage ? "Đang xóa..." : "Đang tải..."}</p>
-                </div>
+                </button>
               </div>
-            )}
 
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Quản lý hình ảnh nhân viên
-              </h2>
-              <button
-                onClick={() => setShowImageManageModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Confirm Delete Toast */}
-            {imageToDelete && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-800">
-                    Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn tác.
-                  </p>
+              {/* Confirm Delete Toast */}
+              {imageToDelete && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-800">
+                      Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn
+                      tác.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setImageToDelete(null)}
+                      disabled={isDeletingImage}
+                      className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      onClick={() => handleDeleteImage(imageToDelete)}
+                      disabled={isDeletingImage}
+                      className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isDeletingImage ? (
+                        <>
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Đang xóa...
+                        </>
+                      ) : (
+                        "Xóa"
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setImageToDelete(null)}
-                    disabled={isDeletingImage}
-                    className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={() => handleDeleteImage(imageToDelete)}
-                    disabled={isDeletingImage}
-                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isDeletingImage ? (
-                      <>
+              )}
+
+              {/* Images Grid */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-800 mb-4">
+                  Hình ảnh hiện tại ({employeeImages.length})
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {employeeImages.map((image) => (
+                    <div key={image.id} className="relative aspect-square group">
+                      <img
+                        src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                        alt={`Employee image ${image.id}`}
+                        className="w-full h-full object-cover rounded-lg border border-gray-200"
+                      />
+                      {/* Delete button */}
+                      <button
+                        onClick={() => setImageToDelete(image.id.toString())}
+                        disabled={isDeletingImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Xóa ảnh"
+                      >
                         <svg
-                          className="animate-spin h-4 w-4"
+                          className="w-5 h-5"
                           fill="none"
                           viewBox="0 0 24 24"
+                          stroke="currentColor"
                         >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
                           <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
                           />
                         </svg>
-                        Đang xóa...
-                      </>
-                    ) : (
-                      "Xóa"
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+                      </button>
+                    </div>
+                  ))}
 
-            {/* Images Grid */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-800 mb-4">
-                Hình ảnh hiện tại ({employeeImages.length})
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {employeeImages.map((image) => (
-                  <div
-                    key={image.id}
-                    className="relative aspect-square group"
-                  >
-                    <img
-                      src={buildCloudinaryUrl(image.cloudinaryPublicId)}
-                      alt={`Employee image ${image.id}`}
-                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                  {/* Upload area */}
+                  <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleUploadImage}
+                      disabled={isUploadingImage}
+                      className="hidden"
                     />
-                    {/* Delete button */}
-                    <button
-                      onClick={() => setImageToDelete(image.id.toString())}
-                      disabled={isDeletingImage}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Xóa ảnh"
-                    >
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg
+                            className="animate-spin h-6 w-6 text-blue-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          <p className="text-xs font-medium text-gray-600">
+                            Đang tải...
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-center">
                       <svg
-                        className="w-5 h-5"
+                        className="w-8 h-8 mx-auto text-gray-400 mb-2"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1339,83 +2136,30 @@ export default function EmployeeDetail() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
+                          d="M12 4v16m8-8H4"
                         />
                       </svg>
-                    </button>
-                  </div>
-                ))}
-
-                {/* Upload area */}
-                <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleUploadImage}
-                    disabled={isUploadingImage}
-                    className="hidden"
-                  />
-                  {isUploadingImage && (
-                    <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <svg
-                          className="animate-spin h-6 w-6 text-blue-600"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                        <p className="text-xs font-medium text-gray-600">Đang tải...</p>
-                      </div>
+                      <p className="text-xs font-medium text-gray-600">
+                        {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
+                      </p>
                     </div>
-                  )}
-                  <div className="text-center">
-                    <svg
-                      className="w-8 h-8 mx-auto text-gray-400 mb-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    <p className="text-xs font-medium text-gray-600">
-                      {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
-                    </p>
-                  </div>
-                </label>
+                  </label>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  onClick={() => setShowImageManageModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Đóng
+                </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <button
-                onClick={() => setShowImageManageModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Đóng
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

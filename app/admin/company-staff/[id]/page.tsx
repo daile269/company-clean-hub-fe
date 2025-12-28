@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-import { mockCustomers } from "@/lib/mockData";
+// mock data removed — use real API data
 import { Employee } from "@/types";
 import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
@@ -57,8 +57,6 @@ export default function CompanyStaffDetailPage() {
   const [assignmentMonth, setAssignmentMonth] = useState(new Date().getMonth() + 1);
   const [assignmentYear, setAssignmentYear] = useState(new Date().getFullYear());
 
-  // Payroll advance insurance modal
-  const [showPayrollAdvanceInsuranceModal, setShowPayrollAdvanceInsuranceModal] = useState(false);
 
   // Work schedule assignment modal
   const [showWorkScheduleModal, setShowWorkScheduleModal] = useState(false);
@@ -441,26 +439,7 @@ export default function CompanyStaffDetailPage() {
               </svg>
               Nhập lịch làm việc
             </button>
-            <button
-              onClick={() => setShowPayrollAdvanceInsuranceModal(true)}
-              className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Ứng lương / Bảo hiểm
-            </button>
+
             <button
               onClick={() => router.push("/admin/company-staff")}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
@@ -939,8 +918,8 @@ export default function CompanyStaffDetailPage() {
         ) : (
           <div className="grid gap-4">
             {assignments.map((a) => {
-              // prefer customerName returned by API, fallback to mockCustomers
-              const customer = (a.customerName && { name: a.customerName }) || mockCustomers.find((c) => c.id === String(a.customerId));
+              // prefer customerName returned by API, fallback to id string
+              const customer = { name: a.customerName || String(a.customerId) };
               return (
                 <div
                   key={a.id}
@@ -1526,16 +1505,6 @@ export default function CompanyStaffDetailPage() {
         </div>
       )}
 
-      {/* Payroll Advance Insurance Modal */}
-      <PayrollAdvanceInsuranceModal
-        isOpen={showPayrollAdvanceInsuranceModal}
-        onClose={() => setShowPayrollAdvanceInsuranceModal(false)}
-        employeeId={id!}
-        employeeName={employee?.name || ""}
-        onSuccess={() => {
-          // Optional: reload employee data or other updates
-        }}
-      />
 
       {/* Work Schedule Modal */}
       {showWorkScheduleModal && (

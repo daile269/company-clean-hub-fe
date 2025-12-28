@@ -322,6 +322,28 @@ const payrollService = {
       throw error;
     }
   },
+
+  // Lấy chi tiết payroll cho các assignment (for employee view)
+  getAssignmentPayrollDetails: async (
+    employeeId: number,
+    month: number,
+    year: number
+  ): Promise<import('@/types').AssignmentPayrollDetail[]> => {
+    try {
+      const response = await apiService.get<any>(
+        `/payrolls/employee/${employeeId}/assignment-details?month=${month}&year=${year}`
+      );
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch assignment payroll details');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching assignment payroll details:', error);
+      throw error;
+    }
+  },
 };
 
 export default payrollService;

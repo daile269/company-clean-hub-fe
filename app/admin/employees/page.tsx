@@ -36,6 +36,7 @@ export default function EmployeesPage() {
     bankName: "",
     roleId: 2,
     description: "",
+    monthlyAdvanceLimit: 0,
   });
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null
@@ -164,6 +165,7 @@ export default function EmployeesPage() {
           bankName: "",
           roleId: 2,
           description: "",
+          monthlyAdvanceLimit: 0,
         });
         // Reload employees
         loadEmployees();
@@ -685,6 +687,22 @@ export default function EmployeesPage() {
                     <BankSelect
                       value={addForm.bankName || ""}
                       onChange={(v: string) => setAddForm({ ...addForm, bankName: v })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tiền xin ứng hàng tháng (VND)
+                    </label>
+                    <input
+                      type="number"
+                      value={addForm.monthlyAdvanceLimit || 0}
+                      onChange={(e) =>
+                        setAddForm({ ...addForm, monthlyAdvanceLimit: Number(e.target.value) })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="VD: 5000000"
+                      min="0"
                     />
                   </div>
 

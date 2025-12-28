@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-// mock data removed — use real API data
-import { Employee, EmployeeType } from "@/types";
+
+import { Employee, EmployeeType, AssignmentPayrollDetail } from "@/types";
+
 
 import {
   employeeService,
@@ -12,7 +13,7 @@ import {
 } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
-import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
+import payrollService, { Payroll } from "@/services/payrollService";
 import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
 import { authService } from "@/services/authService";
@@ -22,15 +23,15 @@ export default function EmployeeDetail() {
     t === "customer"
       ? "Khách hàng"
       : t === "coworker"
-      ? "Nhân viên"
-      : "Quản lý vùng";
+        ? "Nhân viên"
+        : "Quản lý vùng";
 
   const getTypeShort = (t: "customer" | "coworker" | "manager") =>
     t === "customer"
       ? "khách hàng"
       : t === "coworker"
-      ? "nhân viên"
-      : "quản lý";
+        ? "nhân viên"
+        : "quản lý";
 
   const getRoleLabel = (r?: string) => {
     if (!r) return "N/A";
@@ -63,7 +64,6 @@ export default function EmployeeDetail() {
   // Permission checks
   const canView = usePermission(["EMPLOYEE_VIEW", "EMPLOYEE_VIEW_OWN"]);
   const canEdit = usePermission("EMPLOYEE_EDIT");
-  const canPayrollAdvance = usePermission("PAYROLL_ADVANCE");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +79,12 @@ export default function EmployeeDetail() {
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  // Payroll states for insurance input in edit dialog
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [payrollId, setPayrollId] = useState<number | null>(null);
+  const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   // Reviews for this employee (from customers)
   const [employeeReviews, setEmployeeReviews] = useState<any[]>([]);
   const [loadingEmployeeReviews, setLoadingEmployeeReviews] = useState(false);
@@ -128,6 +134,11 @@ export default function EmployeeDetail() {
   const [assignmentPageSize] = useState(10);
   const [assignmentTotalPages, setAssignmentTotalPages] = useState(0);
   const [assignmentTotalElements, setAssignmentTotalElements] = useState(0);
+
+  // Assignment payroll details states (for EMPLOYEE role only)
+  const [assignmentPayrollDetails, setAssignmentPayrollDetails] = useState<AssignmentPayrollDetail[]>([]);
+  const [loadingPayrollDetails, setLoadingPayrollDetails] = useState(false);
+
   useEffect(() => {
     if (id) {
       loadEmployee();
@@ -231,6 +242,13 @@ export default function EmployeeDetail() {
     load();
   }, [coworkerCustomerId, givenReviewType]);
 
+  // Load assignment payroll details for EMPLOYEE role
+  useEffect(() => {
+    if (id && role === 'EMPLOYEE' && assignments.length > 0) {
+      loadAssignmentPayrollDetails();
+    }
+  }, [id, assignmentMonth, assignmentYear, role, assignments]);
+
   const loadAssignments = async () => {
     try {
       setLoadingAssignments(true);
@@ -251,6 +269,27 @@ export default function EmployeeDetail() {
       setAssignmentTotalElements(0);
     } finally {
       setLoadingAssignments(false);
+    }
+  };
+
+  const loadAssignmentPayrollDetails = async () => {
+    // Only load if user is EMPLOYEE role
+    if (role !== 'EMPLOYEE' || !id) return;
+
+    try {
+      setLoadingPayrollDetails(true);
+      const details = await payrollService.getAssignmentPayrollDetails(
+        Number(id),
+        assignmentMonth,
+        assignmentYear
+      );
+      setAssignmentPayrollDetails(details);
+    } catch (error) {
+      console.error('Error loading payroll details:', error);
+      // Don't show error toast - just fail silently for optional feature
+      setAssignmentPayrollDetails([]);
+    } finally {
+      setLoadingPayrollDetails(false);
     }
   };
 
@@ -371,24 +410,87 @@ export default function EmployeeDetail() {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!canEdit) return;
-    // include username and an empty password field so hidden inputs exist
+
+    // Set edit form
     setEditForm({
       ...(employee as Employee),
       username: (employee as any).username || "",
       password: (employee as any).password || "",
     });
+
+    // Load payroll for current month/year
+    await loadPayrollForMonth(selectedMonth, selectedYear);
+
     setShowEditModal(true);
+  };
+
+  const loadPayrollForMonth = async (month: number, year: number) => {
+    try {
+      setIsLoadingPayroll(true);
+      const response = await payrollService.getPayrolls({
+        month,
+        year,
+        page: 0,
+        pageSize: 100,
+      });
+
+      const employeePayroll = response.content?.find(
+        (p) => Number(p.employeeId) === Number(id)
+      );
+
+      if (employeePayroll) {
+        setPayrollId(employeePayroll.id);
+        setInsuranceAmount(employeePayroll.insuranceTotal || 0);
+      } else {
+        setPayrollId(null);
+        setInsuranceAmount(0);
+      }
+    } catch (error) {
+      console.error("Error loading payroll:", error);
+      setPayrollId(null);
+      setInsuranceAmount(0);
+    } finally {
+      setIsLoadingPayroll(false);
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editForm) return;
 
     try {
+      // 1. Save employee info
       const response = await employeeService.update(editForm.id, editForm);
       if (response.success) {
         toast.success("Đã cập nhật thông tin nhân viên thành công");
+
+        // 2. Handle payroll update/creation if insurance amount > 0
+        if (insuranceAmount > 0) {
+          try {
+            if (payrollId) {
+              // Update existing payroll
+              await payrollService.recalculatePayroll(payrollId, {
+                insuranceTotal: insuranceAmount,
+              });
+              toast.success("Đã cập nhật bảo hiểm thành công");
+            } else {
+              // Create new payroll
+              const createData = {
+                employeeId: Number(id),
+                month: selectedMonth,
+                year: selectedYear,
+                insuranceAmount: insuranceAmount,
+              };
+              await payrollService.calculatePayroll(createData);
+              toast.success("Đã tạo bảng lương và cập nhật bảo hiểm thành công");
+            }
+          } catch (payrollError: any) {
+            console.error("Error updating payroll:", payrollError);
+            toast.error(payrollError.message || "Không thể cập nhật bảo hiểm");
+          }
+        }
+
         setShowEditModal(false);
         // Reload employee data
         loadEmployee();
@@ -491,28 +593,6 @@ export default function EmployeeDetail() {
         <h1 className="text-2xl font-bold">Chi tiết nhân viên</h1>
         {employee && (
           <div className="flex items-center gap-2">
-            {canPayrollAdvance && (
-              <button
-                onClick={() => setShowPayrollAdvanceInsuranceModal(true)}
-                className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Ứng lương / Bảo hiểm
-              </button>
-            )}
             <button
               onClick={() => router.back()}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
@@ -577,11 +657,10 @@ export default function EmployeeDetail() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                    employee.status === "ACTIVE"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${employee.status === "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {employee.status === "ACTIVE"
                     ? "Hoạt động"
@@ -751,8 +830,8 @@ export default function EmployeeDetail() {
                     <td className="px-3 py-3 text-sm text-gray-400">
                       {r.createdAt
                         ? new Intl.DateTimeFormat("vi-VN").format(
-                            new Date(r.createdAt)
-                          )
+                          new Date(r.createdAt)
+                        )
                         : "-"}
                     </td>
                   </tr>
@@ -762,13 +841,15 @@ export default function EmployeeDetail() {
           </div>
         )}
       </div>
+
       {/* Đánh giá từ khách hàng */}
-      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Đánh giá từ khách hàng
-          </h3>
-          {/* <div>
+      {role !== 'EMPLOYEE' && (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Đánh giá từ khách hàng
+            </h3>
+            {/* <div>
             <button
               onClick={() => setShowAddReviewModal(true)}
               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
@@ -790,72 +871,73 @@ export default function EmployeeDetail() {
               Thêm đánh giá
             </button>
           </div> */}
-        </div>
-
-        {loadingEmployeeReviews ? (
-          <div className="flex justify-center py-6">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-        ) : employeeReviews.length === 0 ? (
-          <p className="text-sm text-gray-500">Chưa có đánh giá</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-auto">
-              <thead>
-                <tr className="text-left text-sm text-gray-600">
-                  <th className="px-3 py-2">Khách hàng</th>
-                  <th className="px-3 py-2">Đánh giá</th>
-                  <th className="px-3 py-2">Bình luận</th>
-                  <th className="px-3 py-2">Ngày</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employeeReviews.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="border-t hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/admin/reviews/${r.id}`)}
-                  >
-                    <td className="px-3 py-3 text-sm text-gray-800">
-                      {r.customerName || r.customerId || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-800">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-700">
-                          {r.rating ?? "-"}
-                        </span>
-                        <div className="flex text-yellow-400">
-                          {Array.from({ length: r.rating || 0 }).map((_, i) => (
-                            <svg
-                              key={i}
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                              className="w-4 h-4"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.18c.969 0 1.371 1.24.588 1.81l-3.383 2.455a1 1 0 00-.364 1.118l1.287 3.97c.3.922-.755 1.688-1.54 1.118L10 13.348l-3.383 2.455c-.784.57-1.84-.196-1.54-1.118l1.287-3.97a1 1 0 00-.364-1.118L2.617 9.397c-.783-.57-.38-1.81.588-1.81h4.18a1 1 0 00.95-.69l1.286-3.97z" />
-                            </svg>
-                          ))}
+
+          {loadingEmployeeReviews ? (
+            <div className="flex justify-center py-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : employeeReviews.length === 0 ? (
+            <p className="text-sm text-gray-500">Chưa có đánh giá</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto">
+                <thead>
+                  <tr className="text-left text-sm text-gray-600">
+                    <th className="px-3 py-2">Khách hàng</th>
+                    <th className="px-3 py-2">Đánh giá</th>
+                    <th className="px-3 py-2">Bình luận</th>
+                    <th className="px-3 py-2">Ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employeeReviews.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="border-t hover:bg-gray-50 cursor-pointer"
+                      onClick={() => router.push(`/admin/reviews/${r.id}`)}
+                    >
+                      <td className="px-3 py-3 text-sm text-gray-800">
+                        {r.customerName || r.customerId || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-700">
+                            {r.rating ?? "-"}
+                          </span>
+                          <div className="flex text-yellow-400">
+                            {Array.from({ length: r.rating || 0 }).map((_, i) => (
+                              <svg
+                                key={i}
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.97a1 1 0 00.95.69h4.18c.969 0 1.371 1.24.588 1.81l-3.383 2.455a1 1 0 00-.364 1.118l1.287 3.97c.3.922-.755 1.688-1.54 1.118L10 13.348l-3.383 2.455c-.784.57-1.84-.196-1.54-1.118l1.287-3.97a1 1 0 00-.364-1.118L2.617 9.397c-.783-.57-.38-1.81.588-1.81h4.18a1 1 0 00.95-.69l1.286-3.97z" />
+                              </svg>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-700">
-                      {r.comment || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-400">
-                      {r.createdAt
-                        ? new Intl.DateTimeFormat("vi-VN").format(
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-700">
+                        {r.comment || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-400">
+                        {r.createdAt
+                          ? new Intl.DateTimeFormat("vi-VN").format(
                             new Date(r.createdAt)
                           )
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Review Modal */}
       {showAddReviewModal && (
@@ -909,11 +991,10 @@ export default function EmployeeDetail() {
                         onClick={() =>
                           setNewReviewForm({ ...newReviewForm, rating: v })
                         }
-                        className={`text-xl ${
-                          newReviewForm.rating && newReviewForm.rating >= v
-                            ? "text-yellow-400"
-                            : "text-gray-300"
-                        }`}
+                        className={`text-xl ${newReviewForm.rating && newReviewForm.rating >= v
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                          }`}
                       >
                         ★
                       </button>
@@ -1156,11 +1237,10 @@ export default function EmployeeDetail() {
                         onClick={() =>
                           setGivenReviewForm({ ...givenReviewForm, rating: v })
                         }
-                        className={`text-xl ${
-                          givenReviewForm.rating && givenReviewForm.rating >= v
-                            ? "text-yellow-400"
-                            : "text-gray-300"
-                        }`}
+                        className={`text-xl ${givenReviewForm.rating && givenReviewForm.rating >= v
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                          }`}
                       >
                         ★
                       </button>
@@ -1346,11 +1426,10 @@ export default function EmployeeDetail() {
                   {employeeImages.map((image, index) => (
                     <div
                       key={image.id}
-                      className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
-                        selectedImageIndex === index
-                          ? "border-blue-500 ring-2 ring-blue-300"
-                          : "border-gray-300 hover:border-gray-400"
-                      }`}
+                      className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === index
+                        ? "border-blue-500 ring-2 ring-blue-300"
+                        : "border-gray-300 hover:border-gray-400"
+                        }`}
                       onClick={() => setSelectedImageIndex(index)}
                       onMouseEnter={() => setSelectedImageIndex(index)}
                     >
@@ -1494,8 +1573,8 @@ export default function EmployeeDetail() {
                     <div className="text-sm text-gray-400">
                       {a.startDate
                         ? new Intl.DateTimeFormat("vi-VN").format(
-                            new Date(a.startDate)
-                          )
+                          new Date(a.startDate)
+                        )
                         : ""}
                     </div>
                   </div>
@@ -1504,6 +1583,40 @@ export default function EmployeeDetail() {
                       Ghi chú: {a.description}
                     </p>
                   )}
+
+                  {/* Payroll Details - Only for EMPLOYEE role */}
+                  {role === 'EMPLOYEE' && !loadingPayrollDetails && (() => {
+                    const payrollDetail = assignmentPayrollDetails.find(
+                      d => d.assignmentId === a.id
+                    );
+
+                    if (!payrollDetail) return null;
+
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Lương CB</span>
+                            <span className="font-semibold text-gray-900">
+                              {formatCurrency(payrollDetail.baseSalary)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Ngày công</span>
+                            <span className="font-semibold text-blue-600">
+                              {payrollDetail.workDays} ngày
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Lương DK</span>
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(payrollDetail.expectedSalary)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1681,6 +1794,99 @@ export default function EmployeeDetail() {
                 />
               </div>
 
+              {/* Payroll Insurance Section */}
+              <div className="col-span-2 border-t pt-4 mt-2">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Bảo hiểm</h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tháng
+                    </label>
+                    <select
+                      value={selectedMonth}
+                      onChange={async (e) => {
+                        const month = Number(e.target.value);
+                        setSelectedMonth(month);
+                        await loadPayrollForMonth(month, selectedYear);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                        <option key={month} value={month}>
+                          Tháng {month}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Năm
+                    </label>
+                    <select
+                      value={selectedYear}
+                      onChange={async (e) => {
+                        const year = Number(e.target.value);
+                        setSelectedYear(year);
+                        await loadPayrollForMonth(selectedMonth, year);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tiền bảo hiểm (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    value={insuranceAmount}
+                    onChange={(e) => setInsuranceAmount(Number(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                    min="0"
+                    disabled={isLoadingPayroll}
+                  />
+                  {isLoadingPayroll && (
+                    <p className="text-xs text-gray-500 mt-1">Đang tải...</p>
+                  )}
+                  {!isLoadingPayroll && payrollId && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ Đã có bảng lương - sẽ cập nhật
+                    </p>
+                  )}
+                  {!isLoadingPayroll && !payrollId && insuranceAmount > 0 && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      ⓘ Sẽ tạo bảng lương mới
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tiền xin ứng hàng tháng (VND)
+                </label>
+                <input
+                  type="number"
+                  value={editForm.monthlyAdvanceLimit || 0}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, monthlyAdvanceLimit: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: 5000000"
+                  min="0"
+                />
+              </div>
+
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả
@@ -1697,7 +1903,7 @@ export default function EmployeeDetail() {
               </div>
               <input type="hidden" value={editForm.username || ""} />
               <input type="hidden" value={editForm.password || ""} />
-            </div>
+            </div >
 
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -1727,143 +1933,201 @@ export default function EmployeeDetail() {
                 Lưu thay đổi
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </div >
+        </div >
+      )
+      }
 
       {/* Image Management Modal */}
-      {showImageManageModal && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
-            {/* Loading Overlay */}
-            {(isUploadingImage || isDeletingImage) && (
-              <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-40">
-                <div className="bg-white rounded-lg p-6 shadow-lg flex flex-col items-center gap-3">
+      {
+        showImageManageModal && (
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
+              {/* Loading Overlay */}
+              {(isUploadingImage || isDeletingImage) && (
+                <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center z-40">
+                  <div className="bg-white rounded-lg p-6 shadow-lg flex flex-col items-center gap-3">
+                    <svg
+                      className="animate-spin h-10 w-10 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-700">
+                      {isDeletingImage ? "Đang xóa..." : "Đang tải..."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Quản lý hình ảnh nhân viên
+                </h2>
+                <button
+                  onClick={() => setShowImageManageModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
                   <svg
-                    className="animate-spin h-10 w-10 text-blue-600"
+                    className="w-6 h-6"
                     fill="none"
                     viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                  <p className="text-sm font-medium text-gray-700">
-                    {isDeletingImage ? "Đang xóa..." : "Đang tải..."}
-                  </p>
-                </div>
+                </button>
               </div>
-            )}
 
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Quản lý hình ảnh nhân viên
-              </h2>
-              <button
-                onClick={() => setShowImageManageModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Confirm Delete Toast */}
-            {imageToDelete && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-800">
-                    Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn
-                    tác.
-                  </p>
+              {/* Confirm Delete Toast */}
+              {imageToDelete && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-800">
+                      Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn
+                      tác.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setImageToDelete(null)}
+                      disabled={isDeletingImage}
+                      className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      onClick={() => handleDeleteImage(imageToDelete)}
+                      disabled={isDeletingImage}
+                      className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isDeletingImage ? (
+                        <>
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Đang xóa...
+                        </>
+                      ) : (
+                        "Xóa"
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setImageToDelete(null)}
-                    disabled={isDeletingImage}
-                    className="px-3 py-2 text-sm bg-white border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={() => handleDeleteImage(imageToDelete)}
-                    disabled={isDeletingImage}
-                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isDeletingImage ? (
-                      <>
+              )}
+
+              {/* Images Grid */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-800 mb-4">
+                  Hình ảnh hiện tại ({employeeImages.length})
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {employeeImages.map((image) => (
+                    <div key={image.id} className="relative aspect-square group">
+                      <img
+                        src={buildCloudinaryUrl(image.cloudinaryPublicId)}
+                        alt={`Employee image ${image.id}`}
+                        className="w-full h-full object-cover rounded-lg border border-gray-200"
+                      />
+                      {/* Delete button */}
+                      <button
+                        onClick={() => setImageToDelete(image.id.toString())}
+                        disabled={isDeletingImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Xóa ảnh"
+                      >
                         <svg
-                          className="animate-spin h-4 w-4"
+                          className="w-5 h-5"
                           fill="none"
                           viewBox="0 0 24 24"
+                          stroke="currentColor"
                         >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
                           <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
                           />
                         </svg>
-                        Đang xóa...
-                      </>
-                    ) : (
-                      "Xóa"
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+                      </button>
+                    </div>
+                  ))}
 
-            {/* Images Grid */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-800 mb-4">
-                Hình ảnh hiện tại ({employeeImages.length})
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {employeeImages.map((image) => (
-                  <div key={image.id} className="relative aspect-square group">
-                    <img
-                      src={buildCloudinaryUrl(image.cloudinaryPublicId)}
-                      alt={`Employee image ${image.id}`}
-                      className="w-full h-full object-cover rounded-lg border border-gray-200"
+                  {/* Upload area */}
+                  <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleUploadImage}
+                      disabled={isUploadingImage}
+                      className="hidden"
                     />
-                    {/* Delete button */}
-                    <button
-                      onClick={() => setImageToDelete(image.id.toString())}
-                      disabled={isDeletingImage}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Xóa ảnh"
-                    >
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg
+                            className="animate-spin h-6 w-6 text-blue-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          <p className="text-xs font-medium text-gray-600">
+                            Đang tải...
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-center">
                       <svg
-                        className="w-5 h-5"
+                        className="w-8 h-8 mx-auto text-gray-400 mb-2"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1872,96 +2136,30 @@ export default function EmployeeDetail() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
+                          d="M12 4v16m8-8H4"
                         />
                       </svg>
-                    </button>
-                  </div>
-                ))}
-
-                {/* Upload area */}
-                <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleUploadImage}
-                    disabled={isUploadingImage}
-                    className="hidden"
-                  />
-                  {isUploadingImage && (
-                    <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <svg
-                          className="animate-spin h-6 w-6 text-blue-600"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                        <p className="text-xs font-medium text-gray-600">
-                          Đang tải...
-                        </p>
-                      </div>
+                      <p className="text-xs font-medium text-gray-600">
+                        {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
+                      </p>
                     </div>
-                  )}
-                  <div className="text-center">
-                    <svg
-                      className="w-8 h-8 mx-auto text-gray-400 mb-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    <p className="text-xs font-medium text-gray-600">
-                      {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
-                    </p>
-                  </div>
-                </label>
+                  </label>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  onClick={() => setShowImageManageModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Đóng
+                </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <button
-                onClick={() => setShowImageManageModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Đóng
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-
-      {/* Payroll Advance Insurance Modal */}
-      <PayrollAdvanceInsuranceModal
-        isOpen={showPayrollAdvanceInsuranceModal}
-        onClose={() => setShowPayrollAdvanceInsuranceModal(false)}
-        employeeId={id!}
-        employeeName={employee?.name || ""}
-        onSuccess={() => {
-          // Optional: reload employee data or other updates
-        }}
-      />
-    </div>
+        )
+      }
+    </div >
   );
 }

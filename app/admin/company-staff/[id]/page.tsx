@@ -256,11 +256,16 @@ export default function CompanyStaffDetailPage() {
         ? Number(parseFormattedNumber(editForm.socialInsurance))
         : editForm.socialInsurance;
 
+      const monthlyAdvanceLimit = typeof editForm.monthlyAdvanceLimit === 'string'
+        ? Number(parseFormattedNumber(editForm.monthlyAdvanceLimit))
+        : editForm.monthlyAdvanceLimit;
+
       const response = await employeeService.updateCompanyStaff(editForm.id, {
         ...editForm,
         monthlySalary,
         allowance,
         socialInsurance,
+        monthlyAdvanceLimit,
       });
       if (response.success) {
         toast.success("Đã cập nhật thông tin nhân viên thành công");
@@ -1206,6 +1211,25 @@ export default function CompanyStaffDetailPage() {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="VD: VietBank"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tiền xin ứng hàng tháng (VND)
+                </label>
+                <input
+                  type="text"
+                  value={typeof editForm.monthlyAdvanceLimit === 'number' ? formatNumber(editForm.monthlyAdvanceLimit) : editForm.monthlyAdvanceLimit || ""}
+                  onChange={(e) => {
+                    const rawValue = handleNumberInput(e.target.value);
+                    setEditForm({
+                      ...editForm,
+                      monthlyAdvanceLimit: rawValue ? formatNumber(rawValue) as any : "" as any
+                    });
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: 5.000.000"
                 />
               </div>
 

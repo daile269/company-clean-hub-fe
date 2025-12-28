@@ -134,6 +134,7 @@ class EmployeeService {
       bankName: employee.bankName,
       description: employee.description || "",
       employmentType: "CONTRACT_STAFF",
+      monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
     };
 
     return await apiService.post<ApiEmployee>("/employees", apiEmployee);
@@ -158,6 +159,7 @@ class EmployeeService {
       bankName: employee.bankName,
       description: employee.description || "",
       employmentType: "CONTRACT_STAFF",
+      monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
     };
 
     return await apiService.put<ApiEmployee>(`/employees/${id}`, apiEmployee);

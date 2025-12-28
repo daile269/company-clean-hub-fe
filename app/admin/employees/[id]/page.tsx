@@ -8,12 +8,12 @@ import {
   mockRatings,
   mockCustomers,
 } from "@/lib/mockData";
-import { Employee, EmployeeType } from "@/types";
+import { Employee, EmployeeType, AssignmentPayrollDetail } from "@/types";
 
 import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
-import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
+import payrollService, { Payroll } from "@/services/payrollService";
 import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
 import { authService } from "@/services/authService";
@@ -29,7 +29,6 @@ export default function EmployeeDetail() {
   // Permission checks
   const canView = usePermission(["EMPLOYEE_VIEW", "EMPLOYEE_VIEW_OWN"]);
   const canEdit = usePermission("EMPLOYEE_EDIT");
-  const canPayrollAdvance = usePermission("PAYROLL_ADVANCE");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,14 +43,25 @@ export default function EmployeeDetail() {
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
-  const [showPayrollAdvanceInsuranceModal, setShowPayrollAdvanceInsuranceModal] = useState(false);
   const [assignmentCustomerId, setAssignmentCustomerId] = useState<number | undefined>();
+
+  // Payroll states for insurance input in edit dialog
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [payrollId, setPayrollId] = useState<number | null>(null);
+  const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   const [assignmentMonth, setAssignmentMonth] = useState<number>(new Date().getMonth() + 1);
   const [assignmentYear, setAssignmentYear] = useState<number>(new Date().getFullYear());
   const [assignmentPage, setAssignmentPage] = useState(0);
   const [assignmentPageSize] = useState(10);
   const [assignmentTotalPages, setAssignmentTotalPages] = useState(0);
   const [assignmentTotalElements, setAssignmentTotalElements] = useState(0);
+
+  // Assignment payroll details states (for EMPLOYEE role only)
+  const [assignmentPayrollDetails, setAssignmentPayrollDetails] = useState<AssignmentPayrollDetail[]>([]);
+  const [loadingPayrollDetails, setLoadingPayrollDetails] = useState(false);
+
   useEffect(() => {
     if (id) {
       loadEmployee();
@@ -94,6 +104,13 @@ export default function EmployeeDetail() {
     if (id) loadAssignments();
   }, [id, assignmentCustomerId, assignmentMonth, assignmentYear, assignmentPage]);
 
+  // Load assignment payroll details for EMPLOYEE role
+  useEffect(() => {
+    if (id && role === 'EMPLOYEE' && assignments.length > 0) {
+      loadAssignmentPayrollDetails();
+    }
+  }, [id, assignmentMonth, assignmentYear, role, assignments]);
+
   const loadAssignments = async () => {
     try {
       setLoadingAssignments(true);
@@ -114,6 +131,27 @@ export default function EmployeeDetail() {
       setAssignmentTotalElements(0);
     } finally {
       setLoadingAssignments(false);
+    }
+  };
+
+  const loadAssignmentPayrollDetails = async () => {
+    // Only load if user is EMPLOYEE role
+    if (role !== 'EMPLOYEE' || !id) return;
+
+    try {
+      setLoadingPayrollDetails(true);
+      const details = await payrollService.getAssignmentPayrollDetails(
+        Number(id),
+        assignmentMonth,
+        assignmentYear
+      );
+      setAssignmentPayrollDetails(details);
+    } catch (error) {
+      console.error('Error loading payroll details:', error);
+      // Don't show error toast - just fail silently for optional feature
+      setAssignmentPayrollDetails([]);
+    } finally {
+      setLoadingPayrollDetails(false);
     }
   };
 
@@ -213,24 +251,87 @@ export default function EmployeeDetail() {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!canEdit) return;
-    // include username and an empty password field so hidden inputs exist
+
+    // Set edit form
     setEditForm({
       ...(employee as Employee),
       username: (employee as any).username || "",
       password: (employee as any).password || "",
     });
+
+    // Load payroll for current month/year
+    await loadPayrollForMonth(selectedMonth, selectedYear);
+
     setShowEditModal(true);
+  };
+
+  const loadPayrollForMonth = async (month: number, year: number) => {
+    try {
+      setIsLoadingPayroll(true);
+      const response = await payrollService.getPayrolls({
+        month,
+        year,
+        page: 0,
+        pageSize: 100,
+      });
+
+      const employeePayroll = response.content?.find(
+        (p) => Number(p.employeeId) === Number(id)
+      );
+
+      if (employeePayroll) {
+        setPayrollId(employeePayroll.id);
+        setInsuranceAmount(employeePayroll.insuranceTotal || 0);
+      } else {
+        setPayrollId(null);
+        setInsuranceAmount(0);
+      }
+    } catch (error) {
+      console.error("Error loading payroll:", error);
+      setPayrollId(null);
+      setInsuranceAmount(0);
+    } finally {
+      setIsLoadingPayroll(false);
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editForm) return;
 
     try {
+      // 1. Save employee info
       const response = await employeeService.update(editForm.id, editForm);
       if (response.success) {
         toast.success("Đã cập nhật thông tin nhân viên thành công");
+
+        // 2. Handle payroll update/creation if insurance amount > 0
+        if (insuranceAmount > 0) {
+          try {
+            if (payrollId) {
+              // Update existing payroll
+              await payrollService.recalculatePayroll(payrollId, {
+                insuranceTotal: insuranceAmount,
+              });
+              toast.success("Đã cập nhật bảo hiểm thành công");
+            } else {
+              // Create new payroll
+              const createData = {
+                employeeId: Number(id),
+                month: selectedMonth,
+                year: selectedYear,
+                insuranceAmount: insuranceAmount,
+              };
+              await payrollService.calculatePayroll(createData);
+              toast.success("Đã tạo bảng lương và cập nhật bảo hiểm thành công");
+            }
+          } catch (payrollError: any) {
+            console.error("Error updating payroll:", payrollError);
+            toast.error(payrollError.message || "Không thể cập nhật bảo hiểm");
+          }
+        }
+
         setShowEditModal(false);
         // Reload employee data
         loadEmployee();
@@ -331,28 +432,6 @@ export default function EmployeeDetail() {
         <h1 className="text-2xl font-bold">Chi tiết nhân viên</h1>
         {employee && (
           <div className="flex items-center gap-2">
-            {canPayrollAdvance && (
-              <button
-                onClick={() => setShowPayrollAdvanceInsuranceModal(true)}
-                className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Ứng lương / Bảo hiểm
-              </button>
-            )}
             <button
               onClick={() => router.back()}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
@@ -732,6 +811,40 @@ export default function EmployeeDetail() {
                       Ghi chú: {a.description}
                     </p>
                   )}
+
+                  {/* Payroll Details - Only for EMPLOYEE role */}
+                  {role === 'EMPLOYEE' && !loadingPayrollDetails && (() => {
+                    const payrollDetail = assignmentPayrollDetails.find(
+                      d => d.assignmentId === a.id
+                    );
+
+                    if (!payrollDetail) return null;
+
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Lương CB</span>
+                            <span className="font-semibold text-gray-900">
+                              {formatCurrency(payrollDetail.baseSalary)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Ngày công</span>
+                            <span className="font-semibold text-blue-600">
+                              {payrollDetail.workDays} ngày
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Lương DK</span>
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(payrollDetail.expectedSalary)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -938,6 +1051,100 @@ export default function EmployeeDetail() {
                   onChange={(v: string) => setEditForm({ ...editForm, bankName: v })}
                 />
               </div>
+
+              {/* Payroll Insurance Section */}
+              <div className="col-span-2 border-t pt-4 mt-2">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Bảo hiểm</h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tháng
+                    </label>
+                    <select
+                      value={selectedMonth}
+                      onChange={async (e) => {
+                        const month = Number(e.target.value);
+                        setSelectedMonth(month);
+                        await loadPayrollForMonth(month, selectedYear);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                        <option key={month} value={month}>
+                          Tháng {month}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Năm
+                    </label>
+                    <select
+                      value={selectedYear}
+                      onChange={async (e) => {
+                        const year = Number(e.target.value);
+                        setSelectedYear(year);
+                        await loadPayrollForMonth(selectedMonth, year);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tiền bảo hiểm (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    value={insuranceAmount}
+                    onChange={(e) => setInsuranceAmount(Number(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                    min="0"
+                    disabled={isLoadingPayroll}
+                  />
+                  {isLoadingPayroll && (
+                    <p className="text-xs text-gray-500 mt-1">Đang tải...</p>
+                  )}
+                  {!isLoadingPayroll && payrollId && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ Đã có bảng lương - sẽ cập nhật
+                    </p>
+                  )}
+                  {!isLoadingPayroll && !payrollId && insuranceAmount > 0 && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      ⓘ Sẽ tạo bảng lương mới
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tiền xin ứng hàng tháng (VND)
+                </label>
+                <input
+                  type="number"
+                  value={editForm.monthlyAdvanceLimit || 0}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, monthlyAdvanceLimit: Number(e.target.value) })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: 5000000"
+                  min="0"
+                />
+              </div>
+
 
 
 
@@ -1209,17 +1416,6 @@ export default function EmployeeDetail() {
           </div>
         </div>
       )}
-
-      {/* Payroll Advance Insurance Modal */}
-      <PayrollAdvanceInsuranceModal
-        isOpen={showPayrollAdvanceInsuranceModal}
-        onClose={() => setShowPayrollAdvanceInsuranceModal(false)}
-        employeeId={id!}
-        employeeName={employee?.name || ""}
-        onSuccess={() => {
-          // Optional: reload employee data or other updates
-        }}
-      />
     </div>
   );
 }

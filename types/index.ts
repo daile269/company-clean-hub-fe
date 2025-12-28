@@ -271,3 +271,11 @@ export interface Service {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Assignment Payroll Detail (for employee view)
+export interface AssignmentPayrollDetail {
+  assignmentId: number;
+  baseSalary: number;      // Lương cơ bản
+  workDays: number;        // Ngày công thực tế
+  expectedSalary: number;  // Lương dự kiến
+}

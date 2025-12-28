@@ -35,6 +35,7 @@ export default function CompanyStaffPage() {
     monthlySalary: string;
     allowance: string;
     socialInsurance: string;
+    monthlyAdvanceLimit: string;
   }>({
     employeeCode: "",
     name: "",
@@ -50,6 +51,7 @@ export default function CompanyStaffPage() {
     monthlySalary: "",
     allowance: "",
     socialInsurance: "",
+    monthlyAdvanceLimit: "",
   });
   const [addLoading, setAddLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -163,12 +165,14 @@ export default function CompanyStaffPage() {
       const monthlySalary = addForm.monthlySalary ? Number(parseFormattedNumber(addForm.monthlySalary)) : 0;
       const allowance = addForm.allowance ? Number(parseFormattedNumber(addForm.allowance)) : 0;
       const socialInsurance = addForm.socialInsurance ? Number(parseFormattedNumber(addForm.socialInsurance)) : 0;
+      const monthlyAdvanceLimit = addForm.monthlyAdvanceLimit ? Number(parseFormattedNumber(addForm.monthlyAdvanceLimit)) : 0;
 
       const response = await employeeService.createCompanyStaff({
         ...addForm,
         monthlySalary,
         allowance,
         socialInsurance,
+        monthlyAdvanceLimit,
       });
       if (response.success) {
         toast.success("Đã thêm nhân viên văn phòng thành công");
@@ -188,6 +192,7 @@ export default function CompanyStaffPage() {
           monthlySalary: "",
           allowance: "",
           socialInsurance: "",
+          monthlyAdvanceLimit: "",
         });
         loadEmployees();
       } else {
@@ -789,6 +794,25 @@ export default function CompanyStaffPage() {
                     <BankSelect
                       value={addForm.bankName || ""}
                       onChange={(v: string) => setAddForm({ ...addForm, bankName: v })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tiền xin ứng hàng tháng (VND)
+                    </label>
+                    <input
+                      type="text"
+                      value={addForm.monthlyAdvanceLimit}
+                      onChange={(e) => {
+                        const rawValue = handleNumberInput(e.target.value);
+                        setAddForm({
+                          ...addForm,
+                          monthlyAdvanceLimit: rawValue ? formatNumber(rawValue) : "",
+                        });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="VD: 5.000.000"
                     />
                   </div>
 

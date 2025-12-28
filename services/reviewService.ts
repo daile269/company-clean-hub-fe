@@ -12,6 +12,9 @@ export interface ApiReview {
   employeeCode?: string;
   reviewId?: string;
   reviewName?: string;
+  reviewerId?: number;
+  reviewerName?: string;
+  reviewerRole?: string;
   rating?: number;
   comment?: string;
   createdBy?: string;
@@ -34,6 +37,9 @@ export interface Review {
   createdBy?: string;
   reviewId?: string;
   reviewName?: string;
+  reviewerId?: number;
+  reviewerName?: string;
+  reviewerRole?: string;
   createdAt?: Date | null;
   updatedAt?: Date | null;
 }
@@ -67,8 +73,9 @@ class ReviewService {
       employeeId: a.employeeId,
       employeeName: a.employeeName,
       employeeCode: a.employeeCode,
-      reviewId: a.reviewId,
-      reviewName: a.reviewName,
+      reviewerId: a.reviewerId ?? (a.reviewId ? Number(a.reviewId) : undefined),
+      reviewerName: a.reviewerName ?? a.reviewName,
+      reviewerRole: a.reviewerRole,
       rating: a.rating,
       comment: a.comment,
       createdBy: a.createdBy,

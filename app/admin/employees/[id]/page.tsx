@@ -102,6 +102,7 @@ export default function EmployeeDetail() {
   const [savingGivenReview, setSavingGivenReview] = useState(false);
   const [givenReviewForm, setGivenReviewForm] = useState<{
     customerId?: number;
+    employeeId?: number;
     rating?: number;
     comment?: string;
   }>({});
@@ -114,6 +115,8 @@ export default function EmployeeDetail() {
   >([]);
   const [loadingAssignmentsFromCustomer, setLoadingAssignmentsFromCustomer] =
     useState(false);
+  const [coworkerSelectedContractId, setCoworkerSelectedContractId] =
+    useState<number | "">("");
   const [coworkers, setCoworkers] = useState<any[]>([]);
   const [managersList, setManagersList] = useState<any[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(false);
@@ -1129,10 +1132,11 @@ export default function EmployeeDetail() {
                       onChange={(e) => {
                         const v = e.target.value ? Number(e.target.value) : "";
                         setCoworkerCustomerId(v as any);
-                        // reset selected coworker when customer changes
+                        // reset selected contract & coworker when customer changes
+                        setCoworkerSelectedContractId("");
                         setGivenReviewForm({
                           ...givenReviewForm,
-                          customerId: undefined,
+                          employeeId: undefined,
                         });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded"
@@ -1144,16 +1148,44 @@ export default function EmployeeDetail() {
                         </option>
                       ))}
                     </select>
+
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600">Hợp đồng</label>
+                    <select
+                      value={coworkerSelectedContractId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value ? Number(e.target.value) : "";
+                        setCoworkerSelectedContractId(v as any);
+                        // reset selected employee when contract changes
+                        setGivenReviewForm({ ...givenReviewForm, employeeId: undefined });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    >
+                      <option value="">Chọn hợp đồng</option>
+                      {Array.from(
+                        new Map(
+                          assignmentsFromCustomer
+                            .filter((a) => a.contractId && Number(a.employeeId) === Number(id))
+                            .map((a) => [String(a.contractId), { id: a.contractId, desc: a.contractDescription }])
+                        ).values()
+                      ).map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          HĐ #{c.id} - {c.desc || "N/A"}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
                     <label className="text-sm text-gray-600">Nhân viên</label>
                     <select
-                      value={givenReviewForm.customerId ?? ""}
+                      value={givenReviewForm.employeeId ?? ""}
                       onChange={(e) =>
                         setGivenReviewForm({
                           ...givenReviewForm,
-                          customerId: Number(e.target.value),
+                          employeeId: Number(e.target.value),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded"
@@ -1162,19 +1194,23 @@ export default function EmployeeDetail() {
                       {loadingAssignmentsFromCustomer ? (
                         <option value="">Đang tải...</option>
                       ) : (
-                        // map assignments to unique employees
+                        // map assignments to unique employees filtered by selected contract
                         Array.from(
                           new Map(
-                            assignmentsFromCustomer.map((a) => [
-                              a.employeeId,
-                              {
-                                id: a.employeeId,
-                                name: a.employeeName || a.employeeId,
-                                code: a.employeeCode || "",
-                                assignmentId: a.id,
-                                contractId: a.contractId,
-                              },
-                            ])
+                            assignmentsFromCustomer
+                              .filter((a) =>
+                                coworkerSelectedContractId ? String(a.contractId) === String(coworkerSelectedContractId) : true
+                              )
+                              .map((a) => [
+                                a.employeeId,
+                                {
+                                  id: a.employeeId,
+                                  name: a.employeeName || a.employeeId,
+                                  code: a.employeeCode || "",
+                                  assignmentId: a.id,
+                                  contractId: a.contractId,
+                                },
+                              ])
                           ).values()
                         ).map((eObj: any) => (
                           <option key={eObj.id} value={eObj.id}>
@@ -1277,11 +1313,12 @@ export default function EmployeeDetail() {
                     if (givenReviewType === "coworker") {
                       if (
                         !coworkerCustomerId ||
-                        !givenReviewForm.customerId ||
+                        !coworkerSelectedContractId ||
+                        !givenReviewForm.employeeId ||
                         !givenReviewForm.rating
                       ) {
                         toast.error(
-                          "Vui lòng chọn khách hàng, nhân viên và số sao"
+                          "Vui lòng chọn khách hàng, hợp đồng, nhân viên và số sao"
                         );
                         return;
                       }
@@ -1305,7 +1342,10 @@ export default function EmployeeDetail() {
                       } else if (givenReviewType === "coworker") {
                         selectedAssignment = assignmentsFromCustomer.find(
                           (a: any) =>
-                            a.employeeId === Number(givenReviewForm.customerId)
+                            a.employeeId === Number(givenReviewForm.employeeId) &&
+                            (coworkerSelectedContractId
+                              ? String(a.contractId) === String(coworkerSelectedContractId)
+                              : true)
                         );
                       }
                       const currentUser = authService.getCurrentUser();
@@ -1326,6 +1366,12 @@ export default function EmployeeDetail() {
                         reviewName: employee?.name,
                         reviewType: givenReviewType,
                       };
+                      // include employeeId when creating a coworker review
+                      if (givenReviewType === "coworker") {
+                        payload.employeeId = Number(givenReviewForm.employeeId);
+                        // ensure we do not send customerId for coworker reviews
+                        if (payload.customerId !== undefined) delete payload.customerId;
+                      }
                       const resp = await reviewService.create(payload);
                       if (resp && resp.success) {
                         toast.success("Đã thêm đánh giá");

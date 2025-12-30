@@ -340,7 +340,7 @@ export default function CustomerDetail() {
         try {
           // Check if this customer is in their assigned list
           const assignedCustomers = await customerAssignmentService.getMyAssignedCustomers();
-          const hasAccess = assignedCustomers.some((c: Customer) => String(c.id) === String(id));
+          const hasAccess = assignedCustomers.content.some((c: Customer) => String(c.id) === String(id));
 
           if (!hasAccess) {
             toast.error("Bạn không có quyền xem khách hàng này");

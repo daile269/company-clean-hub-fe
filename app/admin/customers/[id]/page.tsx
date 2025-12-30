@@ -1704,8 +1704,8 @@ export default function CustomerDetail() {
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {Array.from(
-                { length: 5 },
-                (_, i) => new Date().getFullYear() - 2 + i
+                { length: 50 },
+                (_, i) => new Date().getFullYear() - 5 + i
               ).map((year) => (
                 <option key={year} value={year}>
                   Năm {year}

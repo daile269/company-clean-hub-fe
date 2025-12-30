@@ -11,6 +11,7 @@ interface ManagerWithAssignments {
     managerId: number;
     managerName: string;
     managerUsername: string;
+    managerRole?: string;
     assignments: CustomerAssignment[];
 }
 
@@ -91,6 +92,7 @@ export default function CustomerAssignmentsPage() {
                         managerId: manager.id,
                         managerName: manager.username,
                         managerUsername: manager.username,
+                        managerRole: manager.roleName,
                         assignments,
                     };
                 })
@@ -137,6 +139,7 @@ export default function CustomerAssignmentsPage() {
                         managerId: manager.id,
                         managerName: manager.username,
                         managerUsername: manager.username,
+                        managerRole: manager.roleName,
                         assignments: filteredAssignments,
                     };
                 })
@@ -149,7 +152,20 @@ export default function CustomerAssignmentsPage() {
         }
     };
 
-    const filteredManagers = managersData.filter(
+    // Separate managers by role for QLT1
+    const qlt2Managers = managersData.filter((m) => m.managerRole === "QLT2");
+    const qlvManagers = managersData.filter((m) => m.managerRole === "QLV");
+
+    const filteredQlt2Managers = qlt2Managers.filter(
+        (manager) =>
+            manager.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            manager.managerUsername.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            manager.assignments.some((a) =>
+                a.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+    );
+
+    const filteredQlvManagers = qlvManagers.filter(
         (manager) =>
             manager.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             manager.managerUsername.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -260,86 +276,71 @@ export default function CustomerAssignmentsPage() {
                 />
             </div>
 
-            {/* Manager List */}
-            <div className="space-y-4">
-                {filteredManagers.map((manager) => (
-                    <div
-                        key={manager.managerId}
-                        className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-                    >
-                        <div
-                            className="p-6 cursor-pointer"
-                            onClick={() =>
-                                router.push(`/admin/customer-assignments/${manager.managerId}`)
-                            }
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">
-                                        {manager.managerName}
-                                    </h3>
-                                    <p className="text-sm text-gray-500">
-                                        @{manager.managerUsername}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                                        {manager.assignments.length} khách hàng
-                                    </span>
-                                    <svg
-                                        className="w-5 h-5 text-gray-400"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M9 5l7 7-7 7"
-                                        />
-                                    </svg>
-                                </div>
-                            </div>
-
-                            {manager.assignments.length > 0 && (
-                                <div className="border-t pt-4">
-                                    <p className="text-sm text-gray-600 mb-2">
-                                        Khách hàng được phân công:
-                                    </p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {manager.assignments.slice(0, 5).map((assignment) => (
-                                            <span
-                                                key={assignment.id}
-                                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                                            >
-                                                {assignment.customerName}
-                                            </span>
-                                        ))}
-                                        {manager.assignments.length > 5 && (
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
-                                                +{manager.assignments.length - 5} khác
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {manager.assignments.length === 0 && (
-                                <div className="border-t pt-4">
-                                    <p className="text-sm text-gray-500 italic">
-                                        Chưa có khách hàng nào được phân công
-                                    </p>
-                                </div>
+            {/* Manager List - Two columns for QLT1, Single column for QLT2 */}
+            {currentUser?.roleName === "QLT1" ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* QLT2 Column */}
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg
+                                className="w-6 h-6 text-blue-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                />
+                            </svg>
+                            Quản lý tổng 2 ({filteredQlt2Managers.length})
+                        </h2>
+                        <div className="space-y-4">
+                            {filteredQlt2Managers.map((manager) => (
+                                <ManagerCard key={manager.managerId} manager={manager} router={router} />
+                            ))}
+                            {filteredQlt2Managers.length === 0 && (
+                                <EmptyState message="Không có quản lý tổng 2 nào" />
                             )}
                         </div>
                     </div>
-                ))}
 
-                {filteredManagers.length === 0 && (
-                    <div className="bg-white rounded-lg shadow p-12 text-center">
+                    {/* QLV Column */}
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg
+                                className="w-6 h-6 text-green-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                />
+                            </svg>
+                            Quản lý vùng ({filteredQlvManagers.length})
+                        </h2>
+                        <div className="space-y-4">
+                            {filteredQlvManagers.map((manager) => (
+                                <ManagerCard key={manager.managerId} manager={manager} router={router} />
+                            ))}
+                            {filteredQlvManagers.length === 0 && (
+                                <EmptyState message="Không có quản lý vùng nào" />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                // For QLT2, only show QLV in single column
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <svg
-                            className="mx-auto h-12 w-12 text-gray-400"
+                            className="w-6 h-6 text-green-600"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -348,18 +349,122 @@ export default function CustomerAssignmentsPage() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                             />
                         </svg>
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">
-                            Không tìm thấy quản lý
+                        Quản lý vùng ({filteredQlvManagers.length})
+                    </h2>
+                    <div className="space-y-4">
+                        {filteredQlvManagers.map((manager) => (
+                            <ManagerCard key={manager.managerId} manager={manager} router={router} />
+                        ))}
+                        {filteredQlvManagers.length === 0 && (
+                            <EmptyState message="Không có quản lý vùng nào" />
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Manager Card Component
+function ManagerCard({ manager, router }: { manager: ManagerWithAssignments; router: any }) {
+    return (
+        <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+            <div
+                className="p-6 cursor-pointer"
+                onClick={() =>
+                    router.push(`/admin/customer-assignments/${manager.managerId}`)
+                }
+            >
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                            {manager.managerName}
                         </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Thử thay đổi từ khóa tìm kiếm
+                        <p className="text-sm text-gray-500">
+                            @{manager.managerUsername}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                            {manager.assignments.length} khách hàng
+                        </span>
+                        <svg
+                            className="w-5 h-5 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                            />
+                        </svg>
+                    </div>
+                </div>
+
+                {manager.assignments.length > 0 && (
+                    <div className="border-t pt-4">
+                        <p className="text-sm text-gray-600 mb-2">
+                            Khách hàng được phân công:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {manager.assignments.slice(0, 5).map((assignment) => (
+                                <span
+                                    key={assignment.id}
+                                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                                >
+                                    {assignment.customerName}
+                                </span>
+                            ))}
+                            {manager.assignments.length > 5 && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                    +{manager.assignments.length - 5} khác
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {manager.assignments.length === 0 && (
+                    <div className="border-t pt-4">
+                        <p className="text-sm text-gray-500 italic">
+                            Chưa có khách hàng nào được phân công
                         </p>
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+// Empty State Component
+function EmptyState({ message }: { message: string }) {
+    return (
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+            <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+            >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {message}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+                Thử thay đổi từ khóa tìm kiếm
+            </p>
         </div>
     );
 }

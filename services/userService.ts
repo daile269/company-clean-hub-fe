@@ -16,6 +16,7 @@ export interface ApiUser {
 // Interface cho query params phân trang
 export interface UserPaginationParams {
   keyword?: string;
+  roleId?: number | null;
   page: number;
   pageSize: number;
 }
@@ -32,9 +33,15 @@ export interface UserPaginationResponse {
 // Lấy danh sách user với phân trang và tìm kiếm
 export const getAll = async (params: UserPaginationParams): Promise<UserPaginationResponse> => {
   try {
-    const { keyword = '', page, pageSize } = params;
-    
-    const response = await apiService.get<any>(`/users/filter?keyword=${encodeURIComponent(keyword)}&page=${page}&pageSize=${pageSize}`);
+    const { keyword = '', roleId, page, pageSize } = params;
+
+    // Build query string
+    let queryString = `/users/filter?keyword=${encodeURIComponent(keyword)}&page=${page}&pageSize=${pageSize}`;
+    if (roleId !== null && roleId !== undefined) {
+      queryString += `&roleId=${roleId}`;
+    }
+
+    const response = await apiService.get<any>(queryString);
 
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to fetch users');

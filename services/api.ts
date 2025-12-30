@@ -1,5 +1,5 @@
 // Base API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://company-clean-hub-be.onrender.com/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://180.93.2.255:8012/api';
 
 export interface ApiResponse<T> {
   success: boolean;

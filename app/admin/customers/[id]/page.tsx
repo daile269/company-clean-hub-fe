@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
+import customerAssignmentService from "@/services/customerAssignmentService";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { employeeService } from "@/services/employeeService";
@@ -332,6 +333,27 @@ export default function CustomerDetail() {
       setLoading(true);
       const data = await customerService.getById(id!);
       setCustomer(data);
+
+      // Check if manager role (QLT2, QLV) has access to this customer
+      const currentRole = authService.getUserRole();
+      if (currentRole === "QLT2" || currentRole === "QLV") {
+        try {
+          // Check if this customer is in their assigned list
+          const assignedCustomers = await customerAssignmentService.getMyAssignedCustomers();
+          const hasAccess = assignedCustomers.some((c: Customer) => String(c.id) === String(id));
+
+          if (!hasAccess) {
+            toast.error("Bạn không có quyền xem khách hàng này");
+            router.push("/admin/customers");
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking customer access:", error);
+          toast.error("Không thể xác thực quyền truy cập");
+          router.push("/admin/customers");
+          return;
+        }
+      }
     } catch (error: any) {
       console.error("Error loading customer:", error);
       toast.error(error.message || "Không thể tải thông tin khách hàng");
@@ -1089,11 +1111,10 @@ export default function CustomerDetail() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                    customer.status === "ACTIVE"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customer.status === "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {customer.status === "ACTIVE"
                     ? "Hoạt động"
@@ -1346,19 +1367,18 @@ export default function CustomerDetail() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                          contract.paymentStatus === "PAID"
-                            ? "bg-green-100 text-green-800"
-                            : contract.paymentStatus === "PARTIAL"
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${contract.paymentStatus === "PAID"
+                          ? "bg-green-100 text-green-800"
+                          : contract.paymentStatus === "PARTIAL"
                             ? "bg-yellow-100 text-yellow-800"
                             : "bg-red-100 text-red-800"
-                        }`}
+                          }`}
                       >
                         {contract.paymentStatus === "PAID"
                           ? "Đã thanh toán"
                           : contract.paymentStatus === "PARTIAL"
-                          ? "Thanh toán 1 phần"
-                          : "Chưa thanh toán"}
+                            ? "Thanh toán 1 phần"
+                            : "Chưa thanh toán"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -1465,11 +1485,10 @@ export default function CustomerDetail() {
                             <svg
                               key={s}
                               xmlns="http://www.w3.org/2000/svg"
-                              className={`w-4 h-4 ${
-                                r.rating >= s
-                                  ? "text-yellow-400"
-                                  : "text-gray-300"
-                              }`}
+                              className={`w-4 h-4 ${r.rating >= s
+                                ? "text-yellow-400"
+                                : "text-gray-300"
+                                }`}
                               viewBox="0 0 20 20"
                               fill={r.rating >= s ? "currentColor" : "none"}
                               stroke={r.rating >= s ? "none" : "currentColor"}
@@ -1486,8 +1505,8 @@ export default function CustomerDetail() {
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {r.createdAt
                         ? new Intl.DateTimeFormat("vi-VN").format(
-                            new Date(r.createdAt)
-                          )
+                          new Date(r.createdAt)
+                        )
                         : "-"}
                     </td>
                   </tr>
@@ -1619,7 +1638,7 @@ export default function CustomerDetail() {
                         found = flattened.find((a: any) => String(a.employeeId) === reviewForm.employeeId && String(a.contractId) === reviewForm.contractId);
                       }
                       if (found) payload.assignmentId = found.id;
-                      
+
                       const res = await reviewService.create(payload);
                       if (res && (res.success === false)) {
                         toast.error(res.message || "Lỗi khi thêm đánh giá");
@@ -1923,19 +1942,18 @@ export default function CustomerDetail() {
                               </td>
                               <td className="px-4 py-3">
                                 <span
-                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                                    assignment.status === "IN_PROGRESS"
-                                      ? "bg-green-100 text-green-800"
-                                      : assignment.status === "CANCELED"
+                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${assignment.status === "IN_PROGRESS"
+                                    ? "bg-green-100 text-green-800"
+                                    : assignment.status === "CANCELED"
                                       ? "bg-red-100 text-red-800"
                                       : "bg-gray-100 text-gray-800"
-                                  }`}
+                                    }`}
                                 >
                                   {assignment.status === "IN_PROGRESS"
                                     ? "Đang thực hiện"
                                     : assignment.status === "CANCELED"
-                                    ? "Đã hủy"
-                                    : "Hoàn thành"}
+                                      ? "Đã hủy"
+                                      : "Hoàn thành"}
                                 </span>
                               </td>
                               {canViewEmployee && (
@@ -2170,11 +2188,10 @@ export default function CustomerDetail() {
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                                  history.status === "ACTIVE"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
+                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${history.status === "ACTIVE"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                                  }`}
                               >
                                 {history.status === "ACTIVE"
                                   ? "Đang áp dụng"
@@ -2529,19 +2546,18 @@ export default function CustomerDetail() {
                                       ...assignmentForm,
                                       dates: exists
                                         ? assignmentForm.dates.filter(
-                                            (d) => d !== dateStr
-                                          )
+                                          (d) => d !== dateStr
+                                        )
                                         : [...assignmentForm.dates, dateStr],
                                     });
                                   }}
                                   disabled={!enabled}
-                                  className={`w-8 h-8 flex items-center justify-center text-sm border rounded ${
-                                    selected
-                                      ? "bg-blue-600 text-white border-blue-700"
-                                      : enabled
+                                  className={`w-8 h-8 flex items-center justify-center text-sm border rounded ${selected
+                                    ? "bg-blue-600 text-white border-blue-700"
+                                    : enabled
                                       ? "bg-white text-gray-800 hover:bg-gray-50"
                                       : "bg-transparent text-gray-300 cursor-not-allowed"
-                                  }`}
+                                    }`}
                                 >
                                   {day}
                                 </button>
@@ -2761,10 +2777,10 @@ export default function CustomerDetail() {
                           <p className="text-sm font-semibold text-gray-900">
                             {employee.monthlySalary
                               ? formatCurrency(employee.monthlySalary) +
-                                "/tháng"
+                              "/tháng"
                               : employee.dailySalary
-                              ? formatCurrency(employee.dailySalary) + "/ngày"
-                              : "N/A"}
+                                ? formatCurrency(employee.dailySalary) + "/ngày"
+                                : "N/A"}
                           </p>
                         </div>
                       </div>
@@ -3159,9 +3175,8 @@ export default function CustomerDetail() {
                             "T6",
                             "T7",
                           ][d.getDay()];
-                          const displayDate = `${d.getDate()}/${
-                            d.getMonth() + 1
-                          } (${dayName})`;
+                          const displayDate = `${d.getDate()}/${d.getMonth() + 1
+                            } (${dayName})`;
 
                           dates.push(
                             <label
@@ -3176,12 +3191,12 @@ export default function CustomerDetail() {
                                 onChange={(e) => {
                                   const newDates = e.target.checked
                                     ? [
-                                        ...reassignmentForm.selectedDates,
-                                        dateStr,
-                                      ]
+                                      ...reassignmentForm.selectedDates,
+                                      dateStr,
+                                    ]
                                     : reassignmentForm.selectedDates.filter(
-                                        (d) => d !== dateStr
-                                      );
+                                      (d) => d !== dateStr
+                                    );
                                   setReassignmentForm({
                                     ...reassignmentForm,
                                     selectedDates: newDates.sort(),
@@ -3289,21 +3304,19 @@ export default function CustomerDetail() {
                           {/* Assignments under this contract */}
                           <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
                             {contractGroup.assignments &&
-                            contractGroup.assignments.length > 0 ? (
+                              contractGroup.assignments.length > 0 ? (
                               contractGroup.assignments.map(
                                 (assignment: any, aIdx: number) => (
                                   <label
-                                    key={`replaced-${
-                                      assignment.id ??
+                                    key={`replaced-${assignment.id ??
                                       assignment.employeeId ??
                                       aIdx
-                                    }`}
-                                    className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                                      reassignmentForm.replacedAssignmentId ===
+                                      }`}
+                                    className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacedAssignmentId ===
                                       assignment.id
-                                        ? "border-purple-500 bg-purple-50"
-                                        : "border-gray-200 hover:bg-gray-50"
-                                    }`}
+                                      ? "border-purple-500 bg-purple-50"
+                                      : "border-gray-200 hover:bg-gray-50"
+                                      }`}
                                   >
                                     <input
                                       type="checkbox"
@@ -3415,12 +3428,11 @@ export default function CustomerDetail() {
                         employeesPage.content.map((employee: any) => (
                           <label
                             key={`replacement-${employee.id}`}
-                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                              reassignmentForm.replacementEmployeeId ===
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacementEmployeeId ===
                               Number(employee.id)
-                                ? "border-green-500 bg-green-50"
-                                : "border-gray-200 hover:bg-gray-50"
-                            }`}
+                              ? "border-green-500 bg-green-50"
+                              : "border-gray-200 hover:bg-gray-50"
+                              }`}
                           >
                             <input
                               type="checkbox"

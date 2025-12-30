@@ -279,3 +279,24 @@ export interface AssignmentPayrollDetail {
   workDays: number;        // Ngày công thực tế
   expectedSalary: number;  // Lương dự kiến
 }
+
+// Customer Assignment (Phân công quản lý khách hàng)
+export interface CustomerAssignment {
+  id: number;
+  managerId: number;
+  managerName: string;
+  managerUsername: string;
+  customerId: number;
+  customerName: string;
+  customerCode: string;
+  assignedById: number;
+  assignedByName: string;
+  createdAt: string;
+}
+
+// Request to assign customer to manager
+export interface CustomerAssignmentRequest {
+  managerId: number;
+  customerId: number;
+}
+

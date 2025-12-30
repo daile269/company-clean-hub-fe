@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
+import customerAssignmentService from "@/services/customerAssignmentService";
+import { authService } from "@/services/authService";
 import { Customer } from "@/types";
 import CustomerContractExportModal from "@/components/CustomerContractExportModal";
 import { usePermission } from "@/hooks/usePermission";
@@ -11,6 +13,7 @@ export default function CustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Permission checks
   const canView = usePermission('CUSTOMER_VIEW');
@@ -40,10 +43,17 @@ export default function CustomersPage() {
     createdAt: new Date(),
   });
 
+  // Load current user first
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
+
   // Load customers from API with pagination
   useEffect(() => {
-    loadCustomers();
-  }, [currentPage, searchKeyword]);
+    if (currentUser) {
+      loadCustomers();
+    }
+  }, [currentPage, searchKeyword, currentUser]);
 
   // Debounce search input
   useEffect(() => {
@@ -55,17 +65,43 @@ export default function CustomersPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  const loadCurrentUser = async () => {
+    try {
+      const user = await authService.getCurrentUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error("Error loading current user:", error);
+      toast.error("Không thể tải thông tin người dùng");
+    }
+  };
+
   const loadCustomers = async () => {
     try {
       setLoading(true);
-      const response = await customerService.getAll({
-        keyword: searchKeyword,
-        page: currentPage,
-        pageSize: pageSize,
-      });
-      setCustomers(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
+
+      // If user is QLT1, get all customers
+      // Otherwise, get only assigned customers
+      if (currentUser.roleName === "QLT1" || currentUser.roleName === "ACCOUNTANT=") {
+        const response = await customerService.getAll({
+          keyword: searchKeyword,
+          page: currentPage,
+          pageSize: pageSize,
+        });
+        setCustomers(response.content);
+        setTotalPages(response.totalPages);
+        setTotalElements(response.totalElements);
+      } else {
+        // For QLT2 and QLV, get only assigned customers with backend pagination
+        const response = await customerAssignmentService.getMyAssignedCustomers({
+          keyword: searchKeyword,
+          page: currentPage,
+          pageSize: pageSize,
+        });
+
+        setCustomers(response.content);
+        setTotalPages(response.totalPages);
+        setTotalElements(response.totalElements);
+      }
     } catch (error) {
       console.error("Error loading customers:", error);
       toast.error("Không thể tải danh sách khách hàng");
@@ -489,11 +525,10 @@ export default function CustomersPage() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === pageNum
-                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                          }`}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                            }`}
                         >
                           {pageNum + 1}
                         </button>

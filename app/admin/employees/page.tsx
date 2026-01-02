@@ -43,6 +43,7 @@ export default function EmployeesPage() {
   );
   const [addLoading, setAddLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   const router = useRouter();
 
@@ -101,6 +102,23 @@ export default function EmployeesPage() {
   const formatDateInput = (date: Date) => {
     const d = new Date(date);
     return d.toISOString().split("T")[0];
+  };
+
+  const handleOpenAddModal = async () => {
+    setShowAddModal(true);
+    setGeneratingCode(true);
+    try {
+      const code = await employeeService.generateEmployeeCode("CONTRACT_STAFF");
+      setAddForm({
+        ...addForm,
+        employeeCode: code,
+      });
+    } catch (error) {
+      console.error("Error generating employee code:", error);
+      toast.error("Không thể tạo mã nhân viên tự động");
+    } finally {
+      setGeneratingCode(false);
+    }
   };
 
   const handleAddEmployee = async () => {
@@ -200,7 +218,7 @@ export default function EmployeesPage() {
         <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên làm việc theo hợp đồng của khách hàng</h1>
         {canCreate && (
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={handleOpenAddModal}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
             <svg
@@ -588,8 +606,9 @@ export default function EmployeesPage() {
                       onChange={(e) =>
                         setAddForm({ ...addForm, employeeCode: e.target.value })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: NV001"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                      placeholder={generatingCode ? "Đang tạo mã..." : "VD: NV001"}
+                      readOnly={generatingCode}
                     />
                   </div>
                   <div>

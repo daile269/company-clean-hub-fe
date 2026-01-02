@@ -11,6 +11,7 @@ export default function PayrollPage() {
   const router = useRouter();
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
+  const [navigatingToId, setNavigatingToId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMonth, setFilterMonth] = useState<string>((new Date().getMonth() + 1).toString());
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
@@ -22,6 +23,9 @@ export default function PayrollPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
   const pageSize = 10;
+
+  // Available years from database
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
 
   // Permission checks
   const canView = usePermission('PAYROLL_VIEW');
@@ -55,6 +59,21 @@ export default function PayrollPage() {
       setLoading(false);
     }
   };
+
+  // Load available years on mount
+  useEffect(() => {
+    const loadYears = async () => {
+      try {
+        const years = await payrollService.getDistinctYears();
+        setAvailableYears(years);
+      } catch (error) {
+        console.error("Failed to load years:", error);
+        // Fallback to current year if API fails
+        setAvailableYears([new Date().getFullYear()]);
+      }
+    };
+    loadYears();
+  }, []);
 
   // Load data on mount and when filters change
   useEffect(() => {
@@ -316,8 +335,9 @@ export default function PayrollPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="all">Tất cả</option>
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
+                  {availableYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
                 </select>
               </div>
 
@@ -351,38 +371,59 @@ export default function PayrollPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {payrolls.map((payroll) => (
-                    <tr
-                      key={payroll.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => router.push(`/admin/payroll/${payroll.id}`)}
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{payroll.employeeCode}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{payroll.employeeName}</td>
-                      <td className="px-6 py-4 text-sm text-center text-gray-700">
-                        Tháng {payroll.month}/{payroll.year}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center text-gray-700">
-                        {new Date(payroll.createdAt).toLocaleDateString('vi-VN')}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center text-gray-700">
-                        {payroll.updatedAt ? new Date(payroll.updatedAt).toLocaleDateString('vi-VN') : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-right font-semibold text-purple-600">
-                        {formatCurrency(payroll.baseSalary || 0)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
-                        {formatCurrency(payroll.remainingAmount)}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payroll.status)}`}
-                        >
-                          {getStatusLabel(payroll.status)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {payrolls.map((payroll) => {
+                    const isNavigating = navigatingToId === payroll.id;
+                    return (
+                      <tr
+                        key={payroll.id}
+                        className={`cursor-pointer transition-all ${isNavigating
+                            ? 'bg-blue-50 opacity-60'
+                            : 'hover:bg-gray-50'
+                          }`}
+                        onClick={() => {
+                          setNavigatingToId(payroll.id);
+                          // Small delay to show the loading state before navigation
+                          setTimeout(() => {
+                            router.push(`/admin/payroll/${payroll.id}`);
+                          }, 100);
+                        }}
+                      >
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {isNavigating ? (
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                              {payroll.employeeCode}
+                            </div>
+                          ) : (
+                            payroll.employeeCode
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{payroll.employeeName}</td>
+                        <td className="px-6 py-4 text-sm text-center text-gray-700">
+                          Tháng {payroll.month}/{payroll.year}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center text-gray-700">
+                          {new Date(payroll.createdAt).toLocaleDateString('vi-VN')}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center text-gray-700">
+                          {payroll.updatedAt ? new Date(payroll.updatedAt).toLocaleDateString('vi-VN') : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-right font-semibold text-purple-600">
+                          {formatCurrency(payroll.baseSalary || 0)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
+                          {formatCurrency(payroll.remainingAmount)}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span
+                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payroll.status)}`}
+                          >
+                            {getStatusLabel(payroll.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

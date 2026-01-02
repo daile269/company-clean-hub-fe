@@ -344,6 +344,22 @@ const payrollService = {
       throw error;
     }
   },
+
+  // Lấy danh sách các năm có dữ liệu payroll
+  getDistinctYears: async (): Promise<number[]> => {
+    try {
+      const response = await apiService.get<any>('/payrolls/years');
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch payroll years');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching payroll years:', error);
+      throw error;
+    }
+  },
 };
 
 export default payrollService;

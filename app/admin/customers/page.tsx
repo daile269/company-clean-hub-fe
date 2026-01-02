@@ -81,7 +81,7 @@ export default function CustomersPage() {
 
       // If user is QLT1, get all customers
       // Otherwise, get only assigned customers
-      if (currentUser.roleName === "QLT1" || currentUser.roleName === "ACCOUNTANT=") {
+      if (currentUser.roleName === "QLT1" || currentUser.roleName === "ACCOUNTANT") {
         const response = await customerService.getAll({
           keyword: searchKeyword,
           page: currentPage,

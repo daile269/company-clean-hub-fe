@@ -28,6 +28,7 @@ export default function CustomersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
   const [addForm, setAddForm] = useState<Partial<Customer>>({
     code: "",
     password: "",
@@ -117,6 +118,23 @@ export default function CustomersPage() {
   const formatDateInput = (date: Date) => {
     const d = new Date(date);
     return d.toISOString().split("T")[0];
+  };
+
+  const handleOpenAddModal = async () => {
+    setShowAddModal(true);
+    setGeneratingCode(true);
+    try {
+      const code = await customerService.generateCustomerCode();
+      setAddForm({
+        ...addForm,
+        code: code,
+      });
+    } catch (error) {
+      console.error("Error generating customer code:", error);
+      toast.error("Không thể tạo mã khách hàng tự động");
+    } finally {
+      setGeneratingCode(false);
+    }
   };
 
   const handleAddCustomer = async () => {
@@ -239,7 +257,7 @@ export default function CustomersPage() {
         <div className="flex gap-2">
           {canCreate && (
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={handleOpenAddModal}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
               <svg
@@ -602,8 +620,9 @@ export default function CustomersPage() {
                       onChange={(e) =>
                         setAddForm({ ...addForm, code: e.target.value })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: CUST001"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                      placeholder={generatingCode ? "Đang tạo mã..." : "VD: CUST001"}
+                      readOnly={generatingCode}
                     />
                   </div>
 

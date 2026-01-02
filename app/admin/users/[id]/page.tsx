@@ -294,7 +294,7 @@ export default function UserDetail() {
             </svg>
             Đổi mật khẩu
           </button>
-          <button
+          {/* <button
             onClick={async () => {
               if (!id) return;
               if (!confirm("Xác nhận xóa người dùng này?")) return;
@@ -326,7 +326,7 @@ export default function UserDetail() {
               />
             </svg>
             Xóa
-          </button>
+          </button> */}
         </div>
       </div>
 

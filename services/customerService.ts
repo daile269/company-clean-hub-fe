@@ -164,6 +164,20 @@ class CustomerService {
       throw error;
     }
   }
+
+  // Generate mã khách hàng tự động
+  async generateCustomerCode(): Promise<string> {
+    try {
+      const response = await apiService.get<string>('/customers/generate-code');
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return "";
+    } catch (error) {
+      console.error("Error generating customer code:", error);
+      throw error;
+    }
+  }
 }
 
 export const customerService = new CustomerService();

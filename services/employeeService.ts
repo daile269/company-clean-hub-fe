@@ -279,6 +279,22 @@ class EmployeeService {
     }
   }
 
+  // Generate mã nhân viên tự động
+  async generateEmployeeCode(employmentType: string): Promise<string> {
+    try {
+      const response = await apiService.get<string>(
+        `/employees/generate-code?employmentType=${employmentType}`
+      );
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return "";
+    } catch (error) {
+      console.error("Error generating employee code:", error);
+      throw error;
+    }
+  }
+
 }
 
 export interface EmployeeImage {

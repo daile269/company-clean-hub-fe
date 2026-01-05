@@ -1723,8 +1723,8 @@ export default function CustomerDetail() {
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {Array.from(
-                { length: 5 },
-                (_, i) => new Date().getFullYear() - 2 + i
+                { length: 50 },
+                (_, i) => new Date().getFullYear() - 5 + i
               ).map((year) => (
                 <option key={year} value={year}>
                   Năm {year}
@@ -1959,7 +1959,7 @@ export default function CustomerDetail() {
                               {canViewEmployee && (
                                 <td className="px-4 py-3 text-right">
 
-                                  {role === 'CUSTOMER' ? (
+                                  {role === 'CUSTOMER' || role === 'QLV' ? (
                                     <div className="group relative flex items-center justify-center h-6  cursor-help">
                                       {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
                                       <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
@@ -1974,7 +1974,7 @@ export default function CustomerDetail() {
                                         Bạn không có quyền xem
                                       </span>
                                     </div>
-                                  ) : (
+                                    ) : (
                                     <span className="text-sm font-semibold text-gray-900">
                                       {formatCurrency(assignment.salaryAtTime)}
                                     </span>
@@ -2773,16 +2773,18 @@ export default function CustomerDetail() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {employee.monthlySalary
-                              ? formatCurrency(employee.monthlySalary) +
-                              "/tháng"
-                              : employee.dailySalary
+                        {(role === "QLT1" || role === "QLT2") && (
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {employee.monthlySalary
+                                ? formatCurrency(employee.monthlySalary) +
+                                  "/tháng"
+                                : employee.dailySalary
                                 ? formatCurrency(employee.dailySalary) + "/ngày"
                                 : "N/A"}
-                          </p>
-                        </div>
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

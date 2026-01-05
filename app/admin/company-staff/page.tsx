@@ -56,6 +56,7 @@ export default function CompanyStaffPage() {
   });
   const [addLoading, setAddLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
   const role = authService.getUserRole();
   const router = useRouter();
 
@@ -116,6 +117,23 @@ export default function CompanyStaffPage() {
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
+  };
+
+  const handleOpenAddModal = async () => {
+    setShowAddModal(true);
+    setGeneratingCode(true);
+    try {
+      const code = await employeeService.generateEmployeeCode("COMPANY_STAFF");
+      setAddForm({
+        ...addForm,
+        employeeCode: code,
+      });
+    } catch (error) {
+      console.error("Error generating employee code:", error);
+      toast.error("Không thể tạo mã nhân viên tự động");
+    } finally {
+      setGeneratingCode(false);
+    }
   };
 
   const handleAddEmployee = async () => {
@@ -212,10 +230,10 @@ export default function CompanyStaffPage() {
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên văn phòng</h1>
-        <div className="flex gap-2">
+          <div className="flex gap-2">
           {role !== 'QLV' && (
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={handleOpenAddModal}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
               <svg
@@ -641,8 +659,9 @@ export default function CompanyStaffPage() {
                       onChange={(e) =>
                         setAddForm({ ...addForm, employeeCode: e.target.value })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="VD: NV001"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                      placeholder={generatingCode ? "Đang tạo mã..." : "VD: NV001"}
+                      readOnly={generatingCode}
                     />
                   </div>
                   <div>

@@ -143,12 +143,30 @@ export const deleteUser = async (id: string): Promise<void> => {
   }
 };
 
+// Đổi mật khẩu cho user theo ID
+export const changePassword = async (
+  id: string,
+  payload: { newPassword: string; confirmPassword: string }
+): Promise<void> => {
+  try {
+    const response = await apiService.post<any>(`/users/${id}/change-password`, payload);
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to change password');
+    }
+  } catch (error) {
+    console.error('Error changing password:', error);
+    throw error;
+  }
+};
+
 const userService = {
   getAll,
   getById,
   create,
   update,
   delete: deleteUser,
+  changePassword,
 };
 
 export default userService;

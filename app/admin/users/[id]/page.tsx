@@ -26,6 +26,8 @@ export default function UserDetail() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [changingPasswordLoading, setChangingPasswordLoading] = useState(false);
 
   // Load user detail
   useEffect(() => {
@@ -141,7 +143,11 @@ export default function UserDetail() {
     if (!id) return;
 
     // Validate username
-    if (!editForm.username || editForm.username.length < 3 || editForm.username.length > 50) {
+    if (
+      !editForm.username ||
+      editForm.username.length < 3 ||
+      editForm.username.length > 50
+    ) {
       toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
       return;
     }
@@ -174,6 +180,7 @@ export default function UserDetail() {
     }
 
     try {
+      setSavingEdit(true);
       // Send update with a placeholder password (backend requirement)
       await userService.update(id, {
         ...editForm,
@@ -186,8 +193,11 @@ export default function UserDetail() {
       const updatedUser = await userService.getById(id);
       setUser(updatedUser);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      const errorMessage =
+        error instanceof Error ? error.message : "Có lỗi xảy ra";
       toast.error(`Lỗi: ${errorMessage}`);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -206,7 +216,13 @@ export default function UserDetail() {
     }
 
     try {
-      // TODO: Implement change password API
+      if (!id) return;
+      setChangingPasswordLoading(true);
+      await userService.changePassword(id, {
+        newPassword: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword,
+      });
+
       toast.success("Đã đổi mật khẩu thành công");
       setShowPasswordModal(false);
       setPasswordForm({
@@ -215,8 +231,11 @@ export default function UserDetail() {
         confirmPassword: "",
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+      const errorMessage =
+        error instanceof Error ? error.message : "Có lỗi xảy ra";
       toast.error(`Lỗi: ${errorMessage}`);
+    } finally {
+      setChangingPasswordLoading(false);
     }
   };
 
@@ -287,7 +306,7 @@ export default function UserDetail() {
             </svg>
             Đổi mật khẩu
           </button>
-          <button
+          {/* <button
             onClick={async () => {
               if (!id) return;
               if (!confirm("Xác nhận xóa người dùng này?")) return;
@@ -297,7 +316,8 @@ export default function UserDetail() {
                 toast.success("Xóa người dùng thành công");
                 router.push("/admin/users");
               } catch (error: unknown) {
-                const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra";
+                const errorMessage =
+                  error instanceof Error ? error.message : "Có lỗi xảy ra";
                 toast.error(`Lỗi: ${errorMessage}`);
               }
             }}
@@ -318,7 +338,7 @@ export default function UserDetail() {
               />
             </svg>
             Xóa
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -527,22 +547,27 @@ export default function UserDetail() {
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                disabled={savingEdit}
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 ${savingEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+                {savingEdit ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                )}
                 Lưu thay đổi
               </button>
             </div>
@@ -577,24 +602,6 @@ export default function UserDetail() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mật khẩu hiện tại
-                </label>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) =>
-                    setPasswordForm({
-                      ...passwordForm,
-                      currentPassword: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập mật khẩu hiện tại"
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mật khẩu mới
@@ -641,22 +648,27 @@ export default function UserDetail() {
               </button>
               <button
                 onClick={handleChangePassword}
-                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 inline-flex items-center gap-2"
+                disabled={changingPasswordLoading}
+                className={`px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 inline-flex items-center gap-2 ${changingPasswordLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+                {changingPasswordLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                )}
                 Đổi mật khẩu
               </button>
             </div>

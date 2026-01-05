@@ -119,7 +119,25 @@ export default function ReviewsPage() {
       setDeletingId(null);
     }
   };
-
+const getReviewerRoleLabel = (role?: string) => {
+    if (!role) return undefined;
+    switch (role) {
+      case "CUSTOMER":
+        return "Khách hàng";
+      case "QLT1":
+        return "Quản lý tổng 1";
+      case "QLT2":
+        return "Quản lý tổng 2";
+      case "QLV":
+        return "Quản lý vùng";
+      case "EMPLOYEE":
+        return "Nhân viên";
+      case "ACCOUNTANT":
+        return "Kế toán";
+      default:
+        return role;
+    }
+  };
   // If forbidden, render an early no-access message to avoid calling APIs
   if (forbidden) {
     return (
@@ -215,7 +233,7 @@ export default function ReviewsPage() {
                     <td className="py-2">{r.customerName ?? r.customerId ?? '-'}</td>
                     <td className="py-2">{r.rating ?? '-'}</td>
                     <td className="py-2">{r.comment ?? '-'}</td>
-                    <td className="py-2">{r.createdBy ?? '-'}</td>
+                    <td className="py-2">{r.reviewerName ?? '-'} - {r.reviewerRole ? getReviewerRoleLabel(r.reviewerRole) : ''}</td>
                     <td className="py-2">{r.createdAt ? new Intl.DateTimeFormat('vi-VN').format(new Date(r.createdAt)) : '-'}</td>
                     
                   </tr>

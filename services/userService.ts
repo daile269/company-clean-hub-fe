@@ -4,6 +4,7 @@ import { apiService } from './api';
 export interface ApiUser {
   id: number;
   username: string;
+  name: string;
   phone: string;
   email: string;
   roleId: number;
@@ -82,6 +83,7 @@ export const create = async (userData: any): Promise<ApiUser> => {
   try {
     const payload = {
       username: userData.username,
+      name: userData.name,
       phone: userData.phone,
       email: userData.email,
       password: userData.password,
@@ -106,6 +108,7 @@ export const update = async (id: string, userData: any): Promise<ApiUser> => {
   try {
     const payload = {
       username: userData.username,
+      name: userData.name,
       phone: userData.phone,
       email: userData.email,
       password: userData.password, // Required by backend

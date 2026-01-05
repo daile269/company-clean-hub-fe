@@ -15,6 +15,7 @@ export default function UserDetail() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editForm, setEditForm] = useState({
     username: "",
+    name: "",
     email: "",
     phone: "",
     roleId: 2,
@@ -30,7 +31,7 @@ export default function UserDetail() {
   useEffect(() => {
     const loadUser = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         const data = await userService.getById(id);
@@ -127,6 +128,7 @@ export default function UserDetail() {
   const handleEdit = () => {
     setEditForm({
       username: user.username,
+      name: user.name,
       email: user.email,
       phone: user.phone,
       roleId: user.roleId,
@@ -141,6 +143,16 @@ export default function UserDetail() {
     // Validate username
     if (!editForm.username || editForm.username.length < 3 || editForm.username.length > 50) {
       toast.error("Tên đăng nhập phải có độ dài từ 3 đến 50 ký tự");
+      return;
+    }
+
+    // Validate name
+    if (!editForm.name) {
+      toast.error("Họ tên bắt buộc");
+      return;
+    }
+    if (editForm.name.length > 100) {
+      toast.error("Họ tên không được vượt quá 100 ký tự");
       return;
     }
 
@@ -169,7 +181,7 @@ export default function UserDetail() {
       });
       toast.success("Cập nhật người dùng thành công");
       setShowEditModal(false);
-      
+
       // Reload user data
       const updatedUser = await userService.getById(id);
       setUser(updatedUser);
@@ -279,7 +291,7 @@ export default function UserDetail() {
             onClick={async () => {
               if (!id) return;
               if (!confirm("Xác nhận xóa người dùng này?")) return;
-              
+
               try {
                 await userService.delete(id);
                 toast.success("Xóa người dùng thành công");
@@ -331,6 +343,10 @@ export default function UserDetail() {
             <p className="text-sm text-gray-900">{user.email || "N/A"}</p>
           </div>
           <div>
+            <p className="text-sm text-gray-600">Họ tên</p>
+            <p className="text-sm text-gray-900">{user.name || "N/A"}</p>
+          </div>
+          <div>
             <p className="text-sm text-gray-600">Số điện thoại</p>
             <p className="text-sm text-gray-900">{user.phone || "N/A"}</p>
           </div>
@@ -350,11 +366,10 @@ export default function UserDetail() {
             <p className="text-sm text-gray-600">Trạng thái</p>
             <p className="mt-1">
               <span
-                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  user.status === "ACTIVE"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
+                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === "ACTIVE"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+                  }`}
               >
                 {user.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
               </span>
@@ -417,6 +432,22 @@ export default function UserDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   minLength={3}
                   maxLength={50}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Họ tên *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: Nguyễn Văn A"
+                  maxLength={100}
                 />
               </div>
 
@@ -632,7 +663,7 @@ export default function UserDetail() {
           </div>
         </div>
       )}
-      
+
       <Toaster position="top-right" />
     </div>
   );

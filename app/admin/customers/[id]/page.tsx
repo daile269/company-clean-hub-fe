@@ -241,6 +241,9 @@ export default function CustomerDetail() {
   useEffect(() => {
     const loadCustomerReviews = async () => {
       if (!id) return;
+      // Skip loading reviews for QLV and EMPLOYEE roles
+      if (role === 'QLV' || role === 'EMPLOYEE') return;
+      
       try {
         setLoadingCustomerReviews(true);
         const res = await reviewService.getByCustomerId(Number(id));
@@ -1396,7 +1399,9 @@ export default function CustomerDetail() {
       </div>
 
       {/* Card X: Đánh giá của khách hàng (với nhân viên được phân công) */}
-      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+      {role !== 'QLV' && role !== 'EMPLOYEE' && (
+        <>
+          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4 pb-2 border-b">
           <h3 className="text-lg font-semibold text-gray-800">Đánh giá nhân viên</h3>
           <div>
@@ -1673,6 +1678,9 @@ export default function CustomerDetail() {
             </div>
           </div>
         </div>
+
+      )}
+        </>
       )}
 
       {/* Card 4: Nhân viên đang phụ trách */}
@@ -2460,7 +2468,7 @@ export default function CustomerDetail() {
                         className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
                       >
                         {Array.from(
-                          { length: 5 },
+                          { length: 15 },
                           (_, i) => new Date().getFullYear() - 2 + i
                         ).map((y) => (
                           <option key={y} value={y}>
@@ -2684,7 +2692,7 @@ export default function CustomerDetail() {
                   className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
                 >
                   {Array.from(
-                    { length: 5 },
+                    { length: 15 },
                     (_, i) => new Date().getFullYear() - 2 + i
                   ).map((y) => (
                     <option key={y} value={y}>

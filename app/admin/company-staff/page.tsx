@@ -124,6 +124,7 @@ export default function CompanyStaffPage() {
     setGeneratingCode(true);
     try {
       const code = await employeeService.generateEmployeeCode("COMPANY_STAFF");
+      console.log("Generated employee code:", code);
       setAddForm({
         ...addForm,
         employeeCode: code,

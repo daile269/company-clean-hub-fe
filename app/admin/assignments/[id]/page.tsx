@@ -649,7 +649,7 @@ export default function AssignmentDetail() {
                 className="px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 {Array.from(
-                  { length: 5 },
+                  { length: 15 },
                   (_, i) => new Date().getFullYear() - 2 + i
                 ).map((y) => (
                   <option key={y} value={y}>

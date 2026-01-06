@@ -152,8 +152,8 @@ export default function ReviewDetailPage() {
               <div>
                 <div className="text-xs text-gray-500">Người đánh giá</div>
                 <div>
-                  {review.reviewerName ?? (review.reviewerId ? `#${review.reviewerId}` : (review.customerName ?? "-"))}
-                  {(review.reviewerRole && (review.reviewerName || review.reviewerId)) ? (
+                  {review.reviewerName ?? (review.reviewerId ? `#${review.reviewerId}` : (review.customerName ?? "-"))} -
+                  {review.reviewerRole ? (
                     <span className="ml-2 text-xs text-gray-500">({getReviewerRoleLabel(review.reviewerRole)})</span>
                   ) : null}
                 </div>
@@ -163,7 +163,7 @@ export default function ReviewDetailPage() {
                   <div className="text-xs text-gray-500">
                     Nhân viên được đánh giá
                   </div>
-                  <div className="font-medium">{review.employeeName}</div>
+                  <div className="font-medium">{review.employeeName} - {review.employeeRole ? getReviewerRoleLabel(review.employeeRole) : "-"}</div>
                 </div>
               )}
 

@@ -64,9 +64,14 @@ const customerAssignmentService = {
 
     /**
      * Lấy danh sách manager được phân công cho một customer
+     * @param role optional role to filter assignments (sent as query param)
      */
-    getAssignmentsByCustomer: async (customerId: number): Promise<CustomerAssignment[]> => {
-        const response = await apiService.get<CustomerAssignment[]>(`/customer-assignments/customer/${customerId}`);
+    getAssignmentsByCustomer: async (customerId: number, role?: string): Promise<CustomerAssignment[]> => {
+        let url = `/customer-assignments/customer/${customerId}`;
+        if (role) {
+            url += `?role=${encodeURIComponent(role)}`;
+        }
+        const response = await apiService.get<CustomerAssignment[]>(url);
         return response.data;
     },
 };

@@ -105,21 +105,27 @@ export default function ContractDetailPage() {
   });
   const [savingReview, setSavingReview] = useState(false);
 
-  // Derive employees for select from assignments (only employees of this contract)
+  // Load employees who are assigned to this contract and use them as select options
   useEffect(() => {
-    const loadEmployees = async () => {
+    const loadAssignedEmployees = async () => {
+      if (!contractId) return;
       try {
-        const res = await (
-          await import("@/services/employeeService")
-        ).employeeService.getAll({ page: 0, pageSize: 200 });
-        setEmployeeOptions(res.content || []);
+        const res = await assignmentService.getByContractMonthYear(Number(contractId), undefined, undefined, 0, 200);
+        const items = res.content || [];
+        const options = items.map((a: any) => ({
+          id: String(a.employeeId ?? a.employeeId),
+          name: a.employeeName || a.name || `ID:${a.employeeId}`,
+          employeeCode: a.employeeCode || a.employeeCode || "",
+        }));
+        setEmployeeOptions(options);
       } catch (err) {
-        console.error("Error loading employees:", err);
+        console.error("Error loading assigned employees:", err);
+        setEmployeeOptions([]);
       }
     };
 
-    loadEmployees();
-  }, []);
+    loadAssignedEmployees();
+  }, [contractId]);
 
   // Load deleted attendances (leave days)
   useEffect(() => {
@@ -1357,7 +1363,7 @@ export default function ContractDetailPage() {
                 className="px-2 py-1 border border-gray-300 rounded-md text-sm"
               >
                 {Array.from(
-                  { length: 5 },
+                  { length: 15 },
                   (_, i) => assignmentsYear - 2 + i
                 ).map((y) => (
                   <option key={y} value={y}>
@@ -1404,9 +1410,11 @@ export default function ContractDetailPage() {
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Dự kiến
                     </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Lương
-                    </th>
+                    {canManageCost && (
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Lương
+                      </th>
+                    )}
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Phụ cấp
                     </th>
@@ -1466,11 +1474,13 @@ export default function ContractDetailPage() {
                       <td className="px-4 py-3 text-sm text-right text-gray-700">
                         {a.plannedDays ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">
-                        {a.salaryAtTime
-                          ? formatCurrency(Number(a.salaryAtTime))
-                          : "-"}
-                      </td>
+                      {canManageCost && (
+                        <td className="px-4 py-3 text-sm text-right text-gray-700">
+                          <span className="text-sm font-medium text-gray-700">
+                            {a.salaryAtTime ? formatCurrency(Number(a.salaryAtTime)) : "-"}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-sm text-right text-gray-700">
                         {a.additionalAllowance
                           ? formatCurrency(Number(a.additionalAllowance))

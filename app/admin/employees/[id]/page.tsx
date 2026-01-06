@@ -13,6 +13,7 @@ import {
 } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
+import customerAssignmentService from "@/services/customerAssignmentService";
 import payrollService, { Payroll } from "@/services/payrollService";
 import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
@@ -120,6 +121,10 @@ export default function EmployeeDetail() {
   const [coworkers, setCoworkers] = useState<any[]>([]);
   const [managersList, setManagersList] = useState<any[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(false);
+  // Manager review states
+  const [managerCustomerId, setManagerCustomerId] = useState<number | "">("");
+  const [managersFromCustomer, setManagersFromCustomer] = useState<any[]>([]);
+  const [loadingManagersFromCustomer, setLoadingManagersFromCustomer] = useState(false);
   const [
     showPayrollAdvanceInsuranceModal,
     setShowPayrollAdvanceInsuranceModal,
@@ -185,6 +190,48 @@ export default function EmployeeDetail() {
 
     loadEmployeeReviews();
   }, [id]);
+
+  // Load managers from customer when managerCustomerId changes
+  useEffect(() => {
+    const loadManagersFromCustomer = async () => {
+      if (!managerCustomerId) {
+        setManagersFromCustomer([]);
+        return;
+      }
+      try {
+        setLoadingManagersFromCustomer(true);
+        const assignments = await customerAssignmentService.getAssignmentsByCustomer(
+          Number(managerCustomerId),
+          'QLV'
+        );
+        // Extract unique managers from assignments
+        const uniqueManagers = Array.from(
+          new Map(
+            assignments
+              .filter(a => a.managerId)
+              .map(a => [
+                a.managerId,
+                {
+                  id: a.managerId,
+                  name: a.managerName || a.managerId,
+                  code: a.managerUsername || '',
+                  assignmentId: a.id,
+                }
+              ])
+          ).values()
+        );
+        setManagersFromCustomer(uniqueManagers as any[]);
+      } catch (err) {
+        console.error('Error loading managers from customer:', err);
+        setManagersFromCustomer([]);
+        toast.error('Không thể tải danh sách quản lý vùng');
+      } finally {
+        setLoadingManagersFromCustomer(false);
+      }
+    };
+
+    loadManagersFromCustomer();
+  }, [managerCustomerId]);
 
   const loadEmployee = async () => {
     try {
@@ -760,8 +807,184 @@ export default function EmployeeDetail() {
           </div>
         </div>
       </div>
+      {/* Assignments */}
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl font-semibold">Phân công</h2>
+          <div className="flex gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Tháng:</label>
+              <select
+                value={assignmentMonth}
+                onChange={(e) => {
+                  setAssignmentMonth(Number(e.target.value));
+                  setAssignmentPage(0);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Năm:</label>
+              <select
+                value={assignmentYear}
+                onChange={(e) => {
+                  setAssignmentYear(Number(e.target.value));
+                  setAssignmentPage(0);
+                }}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {Array.from(
+                  { length: 15 },
+                  (_, i) => new Date().getFullYear() - 2 + i
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+        {loadingAssignments ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : assignments.length === 0 ? (
+          <p className="text-sm text-gray-500">Chưa có phân công nào</p>
+        ) : (
+          <div className="grid gap-4">
+            {assignments.map((a) => {
+              // prefer customerName returned by API, fallback to id string
+              const customer = { name: a.customerName || String(a.customerId) };
+              return (
+                <div
+                  key={a.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/admin/assignments/${a.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter")
+                      router.push(`/admin/assignments/${a.id}`);
+                  }}
+                  className="p-4 bg-white rounded shadow-sm border cursor-pointer hover:bg-gray-50"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">
+                          {customer?.name || a.customerId}
+                        </p>
+                        {a.status && (
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getAssignmentStatusClass(
+                              a.status
+                            )}`}
+                          >
+                            {getAssignmentStatusLabel(a.status)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {(a as any).workSchedule ||
+                          a.description ||
+                          (a.workDays ? `${a.workDays} ngày` : "")}
+                      </p>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {a.startDate
+                        ? new Intl.DateTimeFormat("vi-VN").format(
+                          new Date(a.startDate)
+                        )
+                        : ""}
+                    </div>
+                  </div>
+                  {a.description && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Ghi chú: {a.description}
+                    </p>
+                  )}
+
+                  {/* Payroll Details - Only for EMPLOYEE role */}
+                  {role === 'EMPLOYEE' && !loadingPayrollDetails && (() => {
+                    const payrollDetail = assignmentPayrollDetails.find(
+                      d => d.assignmentId === a.id
+                    );
+
+                    if (!payrollDetail) return null;
+
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Lương CB</span>
+                            <span className="font-semibold text-gray-900">
+                              {formatCurrency(payrollDetail.baseSalary)}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Ngày công</span>
+                            <span className="font-semibold text-blue-600">
+                              {payrollDetail.workDays} ngày
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Lương DK</span>
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(payrollDetail.expectedSalary)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loadingAssignments && assignmentTotalPages > 1 && (
+          <div className="mt-4 flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng{" "}
+              {assignmentTotalElements} phân công)
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  setAssignmentPage(Math.max(0, assignmentPage - 1))
+                }
+                disabled={assignmentPage === 0}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() =>
+                  setAssignmentPage(
+                    Math.min(assignmentTotalPages - 1, assignmentPage + 1)
+                  )
+                }
+                disabled={assignmentPage >= assignmentTotalPages - 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       {/* Reviews created by this employee */}
-      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+      {role !== 'QLV' && (
+        <>
+          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4 pb-2 border-b">
           <h3 className="text-lg font-semibold text-gray-800">
             Đánh giá của nhân viên
@@ -1104,6 +1327,29 @@ export default function EmployeeDetail() {
               </button>
             </div>
 
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Lưu ý:</p>
+                  <p className="mt-1">Vui lòng chọn tháng năm ở mục "Phân công" phía trên trước khi thực hiện đánh giá.</p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <div>
                 <label className="text-sm text-gray-600">Loại đánh giá</label>
@@ -1120,7 +1366,7 @@ export default function EmployeeDetail() {
                     Đánh giá khách hàng đã phụ trách
                   </option>
                   <option value="coworker">Đánh giá nhân viên làm cùng</option>
-                  {/* <option value="manager">Đánh giá quản lý vùng</option> */}
+                  <option value="manager">Đánh giá quản lý vùng</option>
                 </select>
               </div>
               {givenReviewType === "coworker" ? (
@@ -1221,6 +1467,57 @@ export default function EmployeeDetail() {
                     </select>
                   </div>
                 </>
+              ) : givenReviewType === "manager" ? (
+                <>
+                  <div>
+                    <label className="text-sm text-gray-600">Khách hàng</label>
+                    <select
+                      value={managerCustomerId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value ? Number(e.target.value) : "";
+                        setManagerCustomerId(v as any);
+                        // reset selected manager when customer changes
+                        setGivenReviewForm({
+                          ...givenReviewForm,
+                          employeeId: undefined,
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    >
+                      <option value="">Chọn khách hàng</option>
+                      {uniqueCustomers.map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} - {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600">Quản lý vùng</label>
+                    <select
+                      value={givenReviewForm.employeeId ?? ""}
+                      onChange={(e) =>
+                        setGivenReviewForm({
+                          ...givenReviewForm,
+                          employeeId: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    >
+                      <option value="">Chọn quản lý vùng</option>
+                      {loadingManagersFromCustomer ? (
+                        <option value="">Đang tải...</option>
+                      ) : (
+                        managersFromCustomer.map((manager: any) => (
+                          <option key={manager.id} value={manager.id}>
+                            {manager.name} - {manager.code}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </>
               ) : (
                 <div>
                   <label className="text-sm text-gray-600">
@@ -1249,12 +1546,6 @@ export default function EmployeeDetail() {
                       uniqueCustomers.map((c: any) => (
                         <option key={c.id} value={c.id}>
                           {c.name} - {c.code}
-                        </option>
-                      ))}
-                    {givenReviewType === "manager" &&
-                      managersList.map((e: any) => (
-                        <option key={e.id} value={e.id}>
-                          {e.name} - {e.employeeCode}
                         </option>
                       ))}
                   </select>
@@ -1322,6 +1613,17 @@ export default function EmployeeDetail() {
                         );
                         return;
                       }
+                    } else if (givenReviewType === "manager") {
+                      if (
+                        !managerCustomerId ||
+                        !givenReviewForm.employeeId ||
+                        !givenReviewForm.rating
+                      ) {
+                        toast.error(
+                          "Vui lòng chọn khách hàng, quản lý vùng và số sao"
+                        );
+                        return;
+                      }
                     } else {
                       if (
                         !givenReviewForm.customerId ||
@@ -1347,6 +1649,11 @@ export default function EmployeeDetail() {
                               ? String(a.contractId) === String(coworkerSelectedContractId)
                               : true)
                         );
+                      } else if (givenReviewType === "manager") {
+                        // Tìm assignment của nhân viên hiện tại với khách hàng đã chọn
+                        selectedAssignment = assignments.find(
+                          (a: any) => a.customerId === Number(managerCustomerId)
+                        );
                       }
                       const currentUser = authService.getCurrentUser();
                       const payload: any = {
@@ -1366,12 +1673,18 @@ export default function EmployeeDetail() {
                         reviewName: employee?.name,
                         reviewType: givenReviewType,
                       };
-                      // include employeeId when creating a coworker review
+                      // include employeeId when creating a coworker or manager review
                       if (givenReviewType === "coworker") {
                         payload.employeeId = Number(givenReviewForm.employeeId);
-                        // ensure we do not send customerId for coworker reviews
+                        // ensure we do not send customerId for coworker/manager reviews
+                        if (payload.customerId !== undefined) delete payload.customerId;
+                      } else if (givenReviewType === "manager") {
+                        // employeeId là managerId được chọn (đã được map từ managerId -> id)
+                        payload.employeeId = Number(givenReviewForm.employeeId);
+                        // ensure we do not send customerId for manager reviews
                         if (payload.customerId !== undefined) delete payload.customerId;
                       }
+                      console.log("Review payload:", payload);
                       const resp = await reviewService.create(payload);
                       if (resp && resp.success) {
                         toast.success("Đã thêm đánh giá");
@@ -1401,6 +1714,9 @@ export default function EmployeeDetail() {
             </div>
           </div>
         </div>
+      )}
+
+        </>
       )}
       {/* (moved above images) */}
 
@@ -1527,180 +1843,7 @@ export default function EmployeeDetail() {
         )}
       </div>
 
-      {/* Assignments */}
-      <div className="mt-6">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-xl font-semibold">Phân công</h2>
-          <div className="flex gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Tháng:</label>
-              <select
-                value={assignmentMonth}
-                onChange={(e) => {
-                  setAssignmentMonth(Number(e.target.value));
-                  setAssignmentPage(0);
-                }}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Năm:</label>
-              <select
-                value={assignmentYear}
-                onChange={(e) => {
-                  setAssignmentYear(Number(e.target.value));
-                  setAssignmentPage(0);
-                }}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {Array.from(
-                  { length: 5 },
-                  (_, i) => new Date().getFullYear() - 2 + i
-                ).map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-        {loadingAssignments ? (
-          <div className="flex justify-center py-6">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : assignments.length === 0 ? (
-          <p className="text-sm text-gray-500">Chưa có phân công nào</p>
-        ) : (
-          <div className="grid gap-4">
-            {assignments.map((a) => {
-              // prefer customerName returned by API, fallback to id string
-              const customer = { name: a.customerName || String(a.customerId) };
-              return (
-                <div
-                  key={a.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/admin/assignments/${a.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter")
-                      router.push(`/admin/assignments/${a.id}`);
-                  }}
-                  className="p-4 bg-white rounded shadow-sm border cursor-pointer hover:bg-gray-50"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">
-                          {customer?.name || a.customerId}
-                        </p>
-                        {a.status && (
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getAssignmentStatusClass(
-                              a.status
-                            )}`}
-                          >
-                            {getAssignmentStatusLabel(a.status)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        {(a as any).workSchedule ||
-                          a.description ||
-                          (a.workDays ? `${a.workDays} ngày` : "")}
-                      </p>
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      {a.startDate
-                        ? new Intl.DateTimeFormat("vi-VN").format(
-                          new Date(a.startDate)
-                        )
-                        : ""}
-                    </div>
-                  </div>
-                  {a.description && (
-                    <p className="mt-2 text-sm text-gray-600">
-                      Ghi chú: {a.description}
-                    </p>
-                  )}
-
-                  {/* Payroll Details - Only for EMPLOYEE role */}
-                  {role === 'EMPLOYEE' && !loadingPayrollDetails && (() => {
-                    const payrollDetail = assignmentPayrollDetails.find(
-                      d => d.assignmentId === a.id
-                    );
-
-                    if (!payrollDetail) return null;
-
-                    return (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="grid grid-cols-3 gap-3 text-sm">
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-xs mb-1">Lương CB</span>
-                            <span className="font-semibold text-gray-900">
-                              {formatCurrency(payrollDetail.baseSalary)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-xs mb-1">Ngày công</span>
-                            <span className="font-semibold text-blue-600">
-                              {payrollDetail.workDays} ngày
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-xs mb-1">Lương DK</span>
-                            <span className="font-semibold text-green-600">
-                              {formatCurrency(payrollDetail.expectedSalary)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {!loadingAssignments && assignmentTotalPages > 1 && (
-          <div className="mt-4 flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng{" "}
-              {assignmentTotalElements} phân công)
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() =>
-                  setAssignmentPage(Math.max(0, assignmentPage - 1))
-                }
-                disabled={assignmentPage === 0}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Trước
-              </button>
-              <button
-                onClick={() =>
-                  setAssignmentPage(
-                    Math.min(assignmentTotalPages - 1, assignmentPage + 1)
-                  )
-                }
-                disabled={assignmentPage >= assignmentTotalPages - 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Sau
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      
       {/* Edit Modal */}
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">

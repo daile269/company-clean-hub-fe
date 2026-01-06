@@ -295,7 +295,7 @@ export default function AttendancesPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {Array.from(
-                { length: 5 },
+                { length: 15 },
                 (_, i) => new Date().getFullYear() - i
               ).map((year) => (
                 <option key={year} value={year}>

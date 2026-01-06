@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import {
@@ -20,6 +20,7 @@ export default function AssignmentDetail() {
   const id = params?.id as string | undefined;
   const router = useRouter();
   const role = authService.getUserRole();
+  const currentUserId = authService.getUserId();
   // Permission checks
   const canView = usePermission("ASSIGNMENT_VIEW");
   const canEdit = usePermission("ASSIGNMENT_UPDATE");
@@ -31,6 +32,11 @@ export default function AssignmentDetail() {
   const [editForm, setEditForm] = useState<Partial<Assignment>>({});
   const [contractDetails, setContractDetails] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // QLV can view salary if they are the assigner
+  const canViewSalary = useMemo(() => {
+    return role !== 'QLV' || ((assignment as any)?.assignedById === currentUserId);
+  }, [role, assignment, currentUserId]);
   // Attendances (work days) states
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loadingAttendances, setLoadingAttendances] = useState(false);
@@ -525,7 +531,7 @@ export default function AssignmentDetail() {
                 {assignment.workDays} ngày
               </p>
             </div>
-            {role !== 'QLV' && (
+            {canViewSalary && (
               <div className="pt-3 border-t">
 
                 <p className="text-xs text-gray-500 mb-1">
@@ -536,15 +542,15 @@ export default function AssignmentDetail() {
                 </p>
               </div>
             )}
-             {role !== 'QLV' && (
-            <div className="pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(
-                  (assignment.additionalAllowance ?? 0) as number
-                )}
-              </p>
-            </div>
+            {canViewSalary && (
+              <div className="pt-3 border-t">
+                <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(
+                    (assignment.additionalAllowance ?? 0) as number
+                  )}
+                </p>
+              </div>
             )}
 
             <div className="pt-3 border-t">
@@ -839,43 +845,43 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-                 {role !== 'QLV' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lương (VND) *
-                </label>
-                <input
-                  type="text"
-                  value={String(editForm.salaryAtTime ?? "")}
-                  onChange={(e) => {
-                    const raw = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      salaryAtTime: formatNumber(raw) as any,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-)} {role !== 'QLV' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phụ cấp (VND)
-                </label>
-                <input
-                  type="text"
-                  value={String(editForm.additionalAllowance ?? "")}
-                  onChange={(e) => {
-                    const raw = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      additionalAllowance: formatNumber(raw) as any,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-)}
+              {canViewSalary && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương (VND) *
+                  </label>
+                  <input
+                    type="text"
+                    value={String(editForm.salaryAtTime ?? "")}
+                    onChange={(e) => {
+                      const raw = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        salaryAtTime: formatNumber(raw) as any,
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )} {canViewSalary && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phụ cấp (VND)
+                  </label>
+                  <input
+                    type="text"
+                    value={String(editForm.additionalAllowance ?? "")}
+                    onChange={(e) => {
+                      const raw = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        additionalAllowance: formatNumber(raw) as any,
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả

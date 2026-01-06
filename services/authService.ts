@@ -109,6 +109,14 @@ class AuthService {
     const user = this.getCurrentUser();
     return user ? user.roleName : null;
   }
+
+  getUserId(): number | null {
+    if (typeof window !== 'undefined') {
+      const userId = localStorage.getItem('userId');
+      return userId ? parseInt(userId, 10) : null;
+    }
+    return null;
+  }
 }
 
 export const authService = new AuthService();

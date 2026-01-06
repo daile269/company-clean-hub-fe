@@ -587,13 +587,15 @@ export default function PayrollDetailPage() {
 
                     <div className="flex items-center gap-3">
                       <input
-                        type="number"
-                        step="1000"
-                        min="0"
-                        value={advanceNote}
-                        onChange={(e) => setAdvanceNote(Number(e.target.value))}
+                        type="text"
+                        value={advanceNote.toLocaleString('vi-VN')}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '');
+                          setAdvanceNote(value ? Number(value) : 0);
+                        }}
                         className="flex-1 px-4 py-2 text-lg font-semibold border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
                         disabled={!canEdit || isEditingAdvance}
+                        placeholder="0"
                       />
                       {canEdit && (
                         <button

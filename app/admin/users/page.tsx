@@ -23,6 +23,7 @@ export default function UsersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({
     username: "",
+    name: "",
     email: "",
     phone: "",
     password: "",
@@ -49,7 +50,7 @@ export default function UsersPage() {
           page: currentPage,
           pageSize: pageSize,
         });
-
+        console.log("user", data);
         setUsers(Array.isArray(data.content) ? data.content : []);
         setTotalElements(data.totalElements);
         setTotalPages(data.totalPages);
@@ -94,6 +95,16 @@ export default function UsersPage() {
       return;
     }
 
+    // Validate name
+    if (!addForm.name) {
+      toast.error("Họ tên bắt buộc");
+      return;
+    }
+    if (addForm.name.length > 100) {
+      toast.error("Họ tên không được vượt quá 100 ký tự");
+      return;
+    }
+
     // Validate password
     if (!addForm.password) {
       toast.error("Mật khẩu bắt buộc");
@@ -131,6 +142,7 @@ export default function UsersPage() {
       setShowAddModal(false);
       setAddForm({
         username: "",
+        name: "",
         email: "",
         phone: "",
         password: "",
@@ -401,6 +413,9 @@ export default function UsersPage() {
                   Người dùng
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Họ tên
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Số điện thoại
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -414,7 +429,7 @@ export default function UsersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex justify-center items-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
@@ -422,7 +437,7 @@ export default function UsersPage() {
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <svg
                       className="mx-auto h-12 w-12 text-gray-400"
                       fill="none"
@@ -472,6 +487,9 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.name || "N/A"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.phone || "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -485,11 +503,10 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === "ACTIVE"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {user.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
                       </span>
@@ -545,11 +562,10 @@ export default function UsersPage() {
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                          currentPage === pageNum
-                            ? "bg-blue-600 text-white"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
+                        className={`px-3 py-1 rounded-lg text-sm font-medium ${currentPage === pageNum
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                          }`}
                       >
                         {pageNum + 1}
                       </button>
@@ -615,6 +631,22 @@ export default function UsersPage() {
                   placeholder="VD: john_doe (3-50 ký tự)"
                   minLength={3}
                   maxLength={50}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Họ tên *
+                </label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: Nguyễn Văn A"
+                  maxLength={100}
                 />
               </div>
 

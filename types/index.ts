@@ -134,9 +134,9 @@ export interface Employee {
   status?: string;               // Trạng thái
   description?: string;          // Mô tả
   regionalManagerId?: string;    // Thuộc QLV nào
-  joinDate: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  joinDate: string | Date;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 // API Employee Response (Backend model)

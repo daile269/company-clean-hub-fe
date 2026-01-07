@@ -2487,14 +2487,21 @@ export default function CustomerDetail() {
                             (c: any) =>
                               String(c.id) === String(assignmentForm.contractId)
                           );
-                          const contractStart =
-                            selectedContract && selectedContract.startDate
-                              ? new Date(selectedContract.startDate)
-                              : null;
-                          const contractEnd =
-                            selectedContract && selectedContract.endDate
-                              ? new Date(selectedContract.endDate)
-                              : null;
+                          
+                          // Helper to extract date string in YYYY-MM-DD format
+                          const toDateStr = (dateInput: any) => {
+                            if (!dateInput) return null;
+                            if (dateInput instanceof Date) {
+                              return dateInput.toISOString().split("T")[0];
+                            }
+                            if (typeof dateInput === "string") {
+                              return dateInput.split("T")[0];
+                            }
+                            return String(dateInput).split("T")[0];
+                          };
+                          
+                          const contractStartStr = toDateStr(selectedContract?.startDate);
+                          const contractEndStr = toDateStr(selectedContract?.endDate);
                           const rawWorkingDays: any[] =
                             (selectedContract &&
                               (selectedContract.workingDaysPerWeek ||
@@ -2531,11 +2538,12 @@ export default function CustomerDetail() {
                           }
                           for (let day = 1; day <= days; day++) {
                             const date = new Date(year, month - 1, day);
-                            const dateStr = date.toISOString().split("T")[0];
+                            // Format date as YYYY-MM-DD without timezone conversion
+                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                             const weekday = date.getDay();
                             const inRange =
-                              (!contractStart || date >= contractStart) &&
-                              (!contractEnd || date <= contractEnd);
+                              (!contractStartStr || dateStr >= contractStartStr) &&
+                              (!contractEndStr || dateStr <= contractEndStr);
                             const allowedByWeekday =
                               allowedWeekdays.length === 0 ||
                               allowedWeekdays.includes(weekday);

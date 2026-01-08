@@ -25,6 +25,126 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Slightly reduce base font-size on small screens so content fits better */
+@media (max-width: 480px) {
+  html {
+    font-size: 14px; /* default browsers are 16px, reduce to 14px on narrow screens */
+  }
+  /* Reduce large paddings on very small screens */
+  .p-6 {
+    padding: 0.75rem; /* 12px */
+  }
+  .p-8 {
+    padding: 1rem; /* 16px */
+  }
+}
+
+/* Broader mobile fallback: apply on small and narrow tablets too, use !important to ensure override */
+@media (max-width: 640px) {
+  html {
+    font-size: 13px !important;
+  }
+  body {
+    font-size: 13px !important;
+  }
+  .p-6 {
+    padding: 0.5rem !important; /* 8px */
+  }
+  .p-8 {
+    padding: 0.75rem !important; /* 12px */
+  }
+  /* Reduce gap utilities that may create large horizontal space */
+  .gap-2 {
+    gap: 0.25rem !important;
+  }
+}
+
+/* Aggressive compact mode for very small screens */
+@media (max-width: 480px) {
+  /* further decrease to make mid-mobile denser */
+  html {
+    font-size: 9px !important;
+  }
+  body {
+    font-size: 9px !important;
+  }
+
+  /* Reduce paddings used in many cards/layouts */
+  .p-6 {
+    padding: 0.1875rem !important; /* 3px */
+  }
+  .p-8 {
+    padding: 0.3125rem !important; /* 5px */
+  }
+
+  /* Reduce table cell paddings to keep rows compact */
+  th, td {
+    padding-top: 0.0625rem !important;
+    padding-bottom: 0.0625rem !important;
+    padding-left: 0.3125rem !important;
+    padding-right: 0.3125rem !important;
+  }
+
+  /* Slightly reduce heading sizes */
+  h1 { font-size: 0.95rem !important; }
+  h2 { font-size: 0.9rem !important; }
+  h3 { font-size: 0.85rem !important; }
+
+  /* Shrink common utility gaps and button paddings */
+  .gap-2 { gap: 0.03125rem !important; }
+  .px-3 { padding-left: 0.1875rem !important; padding-right: 0.1875rem !important; }
+  .py-1 { padding-top: 0.0625rem !important; padding-bottom: 0.0625rem !important; }
+
+  /* Make modals and cards slightly narrower on phone */
+  .max-w-md { max-width: 14rem !important; }
+}
+
+/* Extra compact steps for very narrow devices */
+@media (max-width: 420px) {
+  html { font-size: 11px !important; }
+  body { font-size: 11px !important; }
+
+  .p-6 { padding: 0.25rem !important; } /* 4px */
+  .p-8 { padding: 0.375rem !important; } /* 6px */
+
+  th, td { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; padding-left: 0.375rem !important; padding-right: 0.375rem !important; }
+
+  .px-3 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+  .py-1 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
+
+  h1 { font-size: 1.0rem !important; }
+  h2 { font-size: 0.95rem !important; }
+}
+
+@media (max-width: 360px) {
+  /* further tightened for smallest phones */
+  html { font-size: 5px !important; }
+  body { font-size: 5px !important; }
+
+  .p-6 { padding: 0 !important; }
+  .p-8 { padding: 0 !important; }
+
+  th, td { padding: 0 !important; }
+
+  .gap-2 { gap: 0 !important; }
+  .max-w-md { max-width: 8rem !important; }
+}
+
+/* Ultra compact for very narrow screens (older small phones) */
+@media (max-width: 320px) {
+  /* ultra-tight for very narrow devices */
+  html { font-size: 4px !important; }
+  body { font-size: 4px !important; }
+
+  .p-6 { padding: 0 !important; }
+  .p-8 { padding: 0 !important; }
+
+  th, td { padding: 0 !important; }
+
+  .gap-2 { gap: 0 !important; }
+  .max-w-md { max-width: 7.5rem !important; }
+}
+
 /* Pulse zoom animation for CTA elements */
 @keyframes pulseZoom {
   0% {

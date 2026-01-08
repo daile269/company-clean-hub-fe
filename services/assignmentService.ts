@@ -492,6 +492,29 @@ class AssignmentService {
     return await apiService.put<Assignment>(`/assignments/${id}`, data);
   }
 
+  async terminate(
+    id: number,
+    data: { endDate: string; reason?: string }
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiService.put<any>(`/assignments/${id}/terminate`, data);
+      return response;
+    } catch (error) {
+      console.error("Error terminating assignment:", error);
+      throw error;
+    }
+  }
+
+  async rollbackTerminate(id: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiService.post<any>(`/assignments/${id}/terminate/rollback`, {});
+      return response;
+    } catch (error) {
+      console.error("Error rollback terminate assignment:", error);
+      throw error;
+    }
+  }
+
   async updateAllowance(
     id: number,
     allowance: number

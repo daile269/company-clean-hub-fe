@@ -313,8 +313,12 @@ export default function ContractDetailPage() {
     switch (status) {
       case "IN_PROGRESS":
         return "Đang thực hiện";
-      case "CANCELED":
+      case "CANCELLED":
         return "Đã hủy";
+      case "SCHEDULED":
+        return "Chưa bắt đầu";
+      case "TERMINATED":
+        return "Kết thúc giữa chừng";
       case "PENDING":
         return "Chưa bắt đầu";
       case "COMPLETED":
@@ -330,9 +334,13 @@ export default function ContractDetailPage() {
     switch (status) {
       case "IN_PROGRESS":
         return "bg-green-100 text-green-800";
+      case "SCHEDULED":
+        return "bg-yellow-100 text-yellow-800";
       case "COMPLETED":
         return "bg-blue-100 text-blue-800";
-      case "CANCELED":
+      case "TERMINATED":
+        return "bg-orange-100 text-orange-800";
+      case "CANCELLED":
         return "bg-red-100 text-red-800";
       default:
         return "bg-yellow-100 text-yellow-800";
@@ -1341,9 +1349,11 @@ export default function ContractDetailPage() {
                 className="px-2 py-1 border border-gray-300 rounded-md text-sm"
               >
                 <option value="">Chọn trạng thái</option>
+                <option value="SCHEDULED">Chưa bắt đầu</option>
                 <option value="IN_PROGRESS">Đang thực hiện</option>
                 <option value="COMPLETED">Hoàn thành</option>
-                <option value="CANCELED">Đã hủy</option>
+                <option value="TERMINATED">Kết thúc giữa chừng</option>
+                <option value="CANCELLED">Đã hủy</option>
               </select>
               <select
                 value={assignmentsMonth}

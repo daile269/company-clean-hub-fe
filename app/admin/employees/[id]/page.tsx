@@ -80,12 +80,16 @@ export default function EmployeeDetail() {
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
-  // Payroll states for insurance input in edit dialog
+  // Payroll states for insurance and advance input in edit dialog
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
   const [payrollId, setPayrollId] = useState<number | null>(null);
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
+  // Time-based edit restriction states (for QLV role)
+  const [isEditingRestricted, setIsEditingRestricted] = useState<boolean>(false);
+  const [restrictionMessage, setRestrictionMessage] = useState<string>("");
   // Reviews for this employee (from customers)
   const [employeeReviews, setEmployeeReviews] = useState<any[]>([]);
   const [loadingEmployeeReviews, setLoadingEmployeeReviews] = useState(false);
@@ -479,6 +483,33 @@ export default function EmployeeDetail() {
     // Load payroll for current month/year
     await loadPayrollForMonth(selectedMonth, selectedYear);
 
+    // Check time-based edit restriction for QLV role
+    if (role === "QLV" && employee?.createdAt) {
+      const createdAt = new Date(employee.createdAt);
+      const now = new Date();
+      const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+      if (hoursSinceCreation >= 1) {
+        setIsEditingRestricted(true);
+        const formattedTime = createdAt.toLocaleString('vi-VN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        setRestrictionMessage(
+          `Quá thời gian tạo 1 tiếng (${formattedTime}) nên không thể sửa thông tin ngoại trừ tiền ứng`
+        );
+      } else {
+        setIsEditingRestricted(false);
+        setRestrictionMessage("");
+      }
+    } else {
+      setIsEditingRestricted(false);
+      setRestrictionMessage("");
+    }
+
     setShowEditModal(true);
   };
 
@@ -499,14 +530,17 @@ export default function EmployeeDetail() {
       if (employeePayroll) {
         setPayrollId(employeePayroll.id);
         setInsuranceAmount(employeePayroll.insuranceTotal || 0);
+        setAdvanceAmount(employeePayroll.advanceTotal || 0);
       } else {
         setPayrollId(null);
         setInsuranceAmount(0);
+        setAdvanceAmount(0);
       }
     } catch (error) {
       console.error("Error loading payroll:", error);
       setPayrollId(null);
       setInsuranceAmount(0);
+      setAdvanceAmount(0);
     } finally {
       setIsLoadingPayroll(false);
     }
@@ -515,47 +549,61 @@ export default function EmployeeDetail() {
   const handleSaveEdit = async () => {
     if (!editForm) return;
 
+    // Track results of both operations
+    let employeeUpdateSuccess = false;
+    let payrollUpdateSuccess = false;
+
+    // Action 1: Update employee info (always execute)
     try {
-      // 1. Save employee info
       const response = await employeeService.update(editForm.id, editForm);
       if (response.success) {
-        toast.success("Đã cập nhật thông tin nhân viên thành công");
-
-        // 2. Handle payroll update/creation if insurance amount > 0
-        if (insuranceAmount > 0) {
-          try {
-            if (payrollId) {
-              // Update existing payroll
-              await payrollService.recalculatePayroll(payrollId, {
-                insuranceTotal: insuranceAmount,
-              });
-              toast.success("Đã cập nhật bảo hiểm thành công");
-            } else {
-              // Create new payroll
-              const createData = {
-                employeeId: Number(id),
-                month: selectedMonth,
-                year: selectedYear,
-                insuranceAmount: insuranceAmount,
-              };
-              await payrollService.calculatePayroll(createData);
-              toast.success("Đã tạo bảng lương và cập nhật bảo hiểm thành công");
-            }
-          } catch (payrollError: any) {
-            console.error("Error updating payroll:", payrollError);
-            toast.error(payrollError.message || "Không thể cập nhật bảo hiểm");
-          }
-        }
-
-        setShowEditModal(false);
-        // Reload employee data
-        loadEmployee();
+        employeeUpdateSuccess = true;
+        toast.success("Đã cập nhật thông tin nhân viên thành công", { duration: 5000 });
       } else {
-        toast.error(response.message || "Cập nhật thất bại");
+        toast.error(response.message || "Cập nhật nhân viên thất bại", { duration: 5000 });
       }
     } catch (error: any) {
       console.error("Error updating employee:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật nhân viên", { duration: 5000 });
+    }
+
+    // Action 2: Update/create payroll (independent of Action 1)
+    if (insuranceAmount > 0 || advanceAmount > 0) {
+      try {
+        if (payrollId) {
+          // Update existing payroll with both insurance and advance
+          await payrollService.recalculatePayroll(payrollId, {
+            insuranceTotal: insuranceAmount,
+            advanceTotal: advanceAmount,
+          });
+          payrollUpdateSuccess = true;
+          toast.success("Đã cập nhật bảo hiểm và tiền ứng thành công", { duration: 5000 });
+        } else {
+          // Create new payroll
+          const createData = {
+            employeeId: Number(id),
+            month: selectedMonth,
+            year: selectedYear,
+            insuranceAmount: insuranceAmount > 0 ? insuranceAmount : undefined,
+            advanceSalary: advanceAmount > 0 ? advanceAmount : undefined,
+          };
+          await payrollService.calculatePayroll(createData);
+          payrollUpdateSuccess = true;
+          toast.success("Đã tạo bảng lương thành công", { duration: 5000 });
+        }
+      } catch (payrollError: any) {
+        console.error("Error updating payroll:", payrollError);
+        toast.error(payrollError.message || "Không thể cập nhật bảng lương", { duration: 5000 });
+      }
+    }
+
+    // Reload page if at least one action succeeded
+    if (employeeUpdateSuccess || payrollUpdateSuccess) {
+      setShowEditModal(false);
+      // Wait 2 seconds for toast to display before reloading
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     }
   };
 
@@ -770,13 +818,25 @@ export default function EmployeeDetail() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
                 <p className="text-sm text-gray-900">
-                  {employee.createdAt ? formatDate(employee.createdAt) : "N/A"}
+                  {
+                    employee.createdAt
+                      ? (employee.createdAt instanceof Date
+                        ? employee.createdAt.toLocaleString('vi-VN')
+                        : employee.createdAt)
+                      : "N/A"
+                  }
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
                 <p className="text-sm text-gray-900">
-                  {employee.updatedAt ? formatDate(employee.updatedAt) : "N/A"}
+                  {
+                    employee.updatedAt
+                      ? (employee.updatedAt instanceof Date
+                        ? employee.updatedAt.toLocaleDateString('vi-VN')
+                        : employee.updatedAt)
+                      : "N/A"
+                  }
                 </p>
               </div>
             </div>
@@ -1878,6 +1938,18 @@ export default function EmployeeDetail() {
               </button>
             </div>
 
+            {/* Time Restriction Warning Banner */}
+            {isEditingRestricted && (
+              <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                <div className="flex items-start">
+                  <span className="text-red-600 text-2xl mr-3 font-bold">*</span>
+                  <p className="text-sm text-red-700 font-medium">
+                    {restrictionMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1901,7 +1973,8 @@ export default function EmployeeDetail() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, name: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1915,7 +1988,8 @@ export default function EmployeeDetail() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, phone: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1929,7 +2003,8 @@ export default function EmployeeDetail() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, idCard: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1942,7 +2017,8 @@ export default function EmployeeDetail() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, status: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 >
                   <option value="ACTIVE">Hoạt động</option>
                   <option value="INACTIVE">Không hoạt động</option>
@@ -1959,7 +2035,8 @@ export default function EmployeeDetail() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, address: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1973,7 +2050,8 @@ export default function EmployeeDetail() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, bankAccount: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1991,7 +2069,7 @@ export default function EmployeeDetail() {
 
               {/* Payroll Insurance Section */}
               <div className="col-span-2 border-t pt-4 mt-2">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Bảo hiểm</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Bảo hiểm và lương xin ứng </h4>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -2045,10 +2123,10 @@ export default function EmployeeDetail() {
                     type="number"
                     value={insuranceAmount}
                     onChange={(e) => setInsuranceAmount(Number(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     placeholder="0"
                     min="0"
-                    disabled={isLoadingPayroll}
+                    disabled={isLoadingPayroll || isEditingRestricted}
                   />
                   {isLoadingPayroll && (
                     <p className="text-xs text-gray-500 mt-1">Đang tải...</p>
@@ -2058,28 +2136,30 @@ export default function EmployeeDetail() {
                       ✓ Đã có bảng lương - sẽ cập nhật
                     </p>
                   )}
-                  {!isLoadingPayroll && !payrollId && insuranceAmount > 0 && (
+                  {!isLoadingPayroll && !payrollId && (insuranceAmount > 0 || advanceAmount > 0) && (
                     <p className="text-xs text-blue-600 mt-1">
                       ⓘ Sẽ tạo bảng lương mới
                     </p>
                   )}
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tiền xin ứng hàng tháng (VND)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.monthlyAdvanceLimit || 0}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, monthlyAdvanceLimit: Number(e.target.value) })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="VD: 5000000"
-                  min="0"
-                />
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tiền ứng lương (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    value={advanceAmount}
+                    onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                    min="0"
+                    disabled={isLoadingPayroll}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Số tiền ứng lương cho tháng {selectedMonth}/{selectedYear}
+                  </p>
+                </div>
               </div>
 
               <div className="col-span-2">

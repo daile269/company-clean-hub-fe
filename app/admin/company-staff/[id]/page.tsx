@@ -22,6 +22,9 @@ export default function CompanyStaffDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Employee | null>(null);
   const [savingEmployee, setSavingEmployee] = useState(false);
+  // Time-based edit restriction states (for QLV role)
+  const [isEditingRestricted, setIsEditingRestricted] = useState<boolean>(false);
+  const [restrictionMessage, setRestrictionMessage] = useState<string>("");
   const role = authService.getUserRole();
   // Format number utilities
   const formatNumber = (num: number | string) => {
@@ -241,6 +244,34 @@ export default function CompanyStaffDetailPage() {
       username: (employee as any).username || "",
       password: (employee as any).password || "",
     });
+
+    // Check time-based edit restriction for QLV role
+    if (role === "QLV" && employee?.createdAt) {
+      const createdAt = new Date(employee.createdAt);
+      const now = new Date();
+      const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+      if (hoursSinceCreation >= 1) {
+        setIsEditingRestricted(true);
+        const formattedTime = createdAt.toLocaleString('vi-VN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        setRestrictionMessage(
+          `Quá thời gian tạo 1 tiếng (${formattedTime}) nên không thể sửa thông tin ngoại trừ lương xin ứng`
+        );
+      } else {
+        setIsEditingRestricted(false);
+        setRestrictionMessage("");
+      }
+    } else {
+      setIsEditingRestricted(false);
+      setRestrictionMessage("");
+    }
+
     setShowEditModal(true);
   };
 
@@ -250,27 +281,39 @@ export default function CompanyStaffDetailPage() {
     setSavingEmployee(true);
     try {
       // Parse formatted numbers if they are strings
-      const monthlySalary = typeof editForm.monthlySalary === 'string'
-        ? Number(parseFormattedNumber(editForm.monthlySalary))
-        : editForm.monthlySalary;
-      const allowance = typeof editForm.allowance === 'string'
-        ? Number(parseFormattedNumber(editForm.allowance))
-        : editForm.allowance;
-      const socialInsurance = typeof editForm.socialInsurance === 'string'
-        ? Number(parseFormattedNumber(editForm.socialInsurance))
-        : editForm.socialInsurance;
-
       const monthlyAdvanceLimit = typeof editForm.monthlyAdvanceLimit === 'string'
         ? Number(parseFormattedNumber(editForm.monthlyAdvanceLimit))
         : editForm.monthlyAdvanceLimit;
 
-      const response = await employeeService.updateCompanyStaff(editForm.id, {
-        ...editForm,
-        monthlySalary,
-        allowance,
-        socialInsurance,
-        monthlyAdvanceLimit,
-      });
+      let response;
+
+      // If editing is restricted (QLV after 1 hour), only update advance salary
+      if (isEditingRestricted) {
+        response = await employeeService.updateAdvanceSalary(
+          editForm.id,
+          monthlyAdvanceLimit || 0
+        );
+      } else {
+        // Normal update flow
+        const monthlySalary = typeof editForm.monthlySalary === 'string'
+          ? Number(parseFormattedNumber(editForm.monthlySalary))
+          : editForm.monthlySalary;
+        const allowance = typeof editForm.allowance === 'string'
+          ? Number(parseFormattedNumber(editForm.allowance))
+          : editForm.allowance;
+        const socialInsurance = typeof editForm.socialInsurance === 'string'
+          ? Number(parseFormattedNumber(editForm.socialInsurance))
+          : editForm.socialInsurance;
+
+        response = await employeeService.updateCompanyStaff(editForm.id, {
+          ...editForm,
+          monthlySalary,
+          allowance,
+          socialInsurance,
+          monthlyAdvanceLimit,
+        });
+      }
+
       if (response.success) {
         toast.success("Đã cập nhật thông tin nhân viên thành công");
         setShowEditModal(false);
@@ -563,13 +606,25 @@ export default function CompanyStaffDetailPage() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
                 <p className="text-sm text-gray-900">
-                  {employee.createdAt ? formatDate(employee.createdAt) : "N/A"}
+                  {
+                    employee.createdAt
+                      ? (employee.createdAt instanceof Date
+                        ? employee.createdAt.toLocaleString('vi-VN')
+                        : employee.createdAt)
+                      : "N/A"
+                  }
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
                 <p className="text-sm text-gray-900">
-                  {employee.updatedAt ? formatDate(employee.updatedAt) : "N/A"}
+                  {
+                    employee.updatedAt
+                      ? (employee.updatedAt instanceof Date
+                        ? employee.updatedAt.toLocaleDateString('vi-VN')
+                        : employee.updatedAt)
+                      : "N/A"
+                  }
                 </p>
               </div>
             </div>
@@ -1026,6 +1081,18 @@ export default function CompanyStaffDetailPage() {
               </button>
             </div>
 
+            {/* Time Restriction Warning Banner */}
+            {isEditingRestricted && (
+              <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                <div className="flex items-start">
+                  <span className="text-red-600 text-2xl mr-3 font-bold">*</span>
+                  <p className="text-sm text-red-700 font-medium">
+                    {restrictionMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1049,7 +1116,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, name: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1063,7 +1131,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, phone: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1077,7 +1146,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, idCard: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1090,7 +1160,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, status: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 >
                   <option value="ACTIVE">Hoạt động</option>
                   <option value="INACTIVE">Không hoạt động</option>
@@ -1107,7 +1178,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, address: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1180,7 +1252,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, bankAccount: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                 />
               </div>
 
@@ -1194,7 +1267,8 @@ export default function CompanyStaffDetailPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, bankName: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                   placeholder="VD: VietBank"
                 />
               </div>
@@ -1228,7 +1302,8 @@ export default function CompanyStaffDetailPage() {
                     setEditForm({ ...editForm, description: e.target.value })
                   }
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                   placeholder="Ghi chú thêm về nhân viên..."
                 />
               </div>

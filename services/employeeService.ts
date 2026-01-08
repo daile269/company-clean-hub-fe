@@ -295,6 +295,19 @@ class EmployeeService {
     }
   }
 
+  async updateAdvanceSalary(
+    id: string,
+    monthlyAdvanceLimit: number
+  ): Promise<ApiResponse<ApiEmployee>> {
+    const requestBody = {
+      monthlyAdvanceLimit: monthlyAdvanceLimit,
+    };
+    return await apiService.put<ApiEmployee>(
+      `/employees/${id}/advance-salary`,
+      requestBody
+    );
+  }
+
 }
 
 export interface EmployeeImage {

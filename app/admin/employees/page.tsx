@@ -410,9 +410,13 @@ export default function EmployeesPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.updatedAt
-                          ? formatDate(employee.updatedAt)
-                          : "N/A"}
+                        {
+                          employee.updatedAt
+                            ? (employee.updatedAt instanceof Date
+                              ? employee.updatedAt.toLocaleDateString('vi-VN')
+                              : employee.updatedAt)
+                            : "N/A"
+                        }
                       </td>
                     </tr>
                   ))}

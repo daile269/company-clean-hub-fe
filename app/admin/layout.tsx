@@ -47,7 +47,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 admin-root">
       {/* Top Navigation */}
       <nav className="bg-white shadow-sm border-b border-gray-200 fixed w-full z-30">
         <div className="px-4 sm:px-6 lg:px-8">

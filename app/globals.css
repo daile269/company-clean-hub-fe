@@ -59,44 +59,25 @@ body {
   }
 }
 
-/* Aggressive compact mode for very small screens */
+/* Aggressive compact mode for very small screens (scoped to admin) */
 @media (max-width: 480px) {
-  /* further decrease to make mid-mobile denser */
-  html {
-    font-size: 9px !important;
-  }
-  body {
-    font-size: 9px !important;
-  }
+  /* apply only inside admin pages */
+  .admin-root { font-size: 9px !important; }
 
-  /* Reduce paddings used in many cards/layouts */
-  .p-6 {
-    padding: 0.1875rem !important; /* 3px */
-  }
-  .p-8 {
-    padding: 0.3125rem !important; /* 5px */
-  }
+  .admin-root .p-6 { padding: 3px !important; }
+  .admin-root .p-8 { padding: 5px !important; }
 
-  /* Reduce table cell paddings to keep rows compact */
-  th, td {
-    padding-top: 0.0625rem !important;
-    padding-bottom: 0.0625rem !important;
-    padding-left: 0.3125rem !important;
-    padding-right: 0.3125rem !important;
-  }
+  .admin-root th, .admin-root td { padding-top: 1px !important; padding-bottom: 1px !important; padding-left: 5px !important; padding-right: 5px !important; }
 
-  /* Slightly reduce heading sizes */
-  h1 { font-size: 0.95rem !important; }
-  h2 { font-size: 0.9rem !important; }
-  h3 { font-size: 0.85rem !important; }
+  .admin-root h1 { font-size: 15px !important; }
+  .admin-root h2 { font-size: 14px !important; }
+  .admin-root h3 { font-size: 13px !important; }
 
-  /* Shrink common utility gaps and button paddings */
-  .gap-2 { gap: 0.03125rem !important; }
-  .px-3 { padding-left: 0.1875rem !important; padding-right: 0.1875rem !important; }
-  .py-1 { padding-top: 0.0625rem !important; padding-bottom: 0.0625rem !important; }
+  .admin-root .gap-2 { gap: 1px !important; }
+  .admin-root .px-3 { padding-left: 3px !important; padding-right: 3px !important; }
+  .admin-root .py-1 { padding-top: 1px !important; padding-bottom: 1px !important; }
 
-  /* Make modals and cards slightly narrower on phone */
-  .max-w-md { max-width: 14rem !important; }
+  .admin-root .max-w-md { max-width: 224px !important; }
 }
 
 /* Extra compact steps for very narrow devices */
@@ -117,32 +98,22 @@ body {
 }
 
 @media (max-width: 360px) {
-  /* further tightened for smallest phones */
-  html { font-size: 5px !important; }
-  body { font-size: 5px !important; }
+  .admin-root { font-size: 5px !important; }
 
-  .p-6 { padding: 0 !important; }
-  .p-8 { padding: 0 !important; }
-
-  th, td { padding: 0 !important; }
-
-  .gap-2 { gap: 0 !important; }
-  .max-w-md { max-width: 8rem !important; }
+  .admin-root .p-6, .admin-root .p-8 { padding: 0 !important; }
+  .admin-root th, .admin-root td { padding: 0 !important; }
+  .admin-root .gap-2 { gap: 0 !important; }
+  .admin-root .max-w-md { max-width: 128px !important; }
 }
 
 /* Ultra compact for very narrow screens (older small phones) */
 @media (max-width: 320px) {
-  /* ultra-tight for very narrow devices */
-  html { font-size: 4px !important; }
-  body { font-size: 4px !important; }
+  .admin-root { font-size: 4px !important; }
 
-  .p-6 { padding: 0 !important; }
-  .p-8 { padding: 0 !important; }
-
-  th, td { padding: 0 !important; }
-
-  .gap-2 { gap: 0 !important; }
-  .max-w-md { max-width: 7.5rem !important; }
+  .admin-root .p-6, .admin-root .p-8 { padding: 0 !important; }
+  .admin-root th, .admin-root td { padding: 0 !important; }
+  .admin-root .gap-2 { gap: 0 !important; }
+  .admin-root .max-w-md { max-width: 120px !important; }
 }
 
 /* Pulse zoom animation for CTA elements */

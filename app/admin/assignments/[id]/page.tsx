@@ -31,6 +31,13 @@ export default function AssignmentDetail() {
   const [editForm, setEditForm] = useState<Partial<Assignment>>({});
   const [contractDetails, setContractDetails] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [terminating, setTerminating] = useState(false);
+  const [rollingBack, setRollingBack] = useState(false);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [terminateForm, setTerminateForm] = useState<{
+    endDate: string;
+    reason: string;
+  }>({ endDate: "", reason: "" });
   // Attendances (work days) states
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loadingAttendances, setLoadingAttendances] = useState(false);
@@ -229,7 +236,7 @@ export default function AssignmentDetail() {
             : undefined,
         additionalAllowance:
           editForm.additionalAllowance !== undefined &&
-            editForm.additionalAllowance !== null
+          editForm.additionalAllowance !== null
             ? Number(parseFormattedNumber(String(editForm.additionalAllowance)))
             : undefined,
         workingDaysPerWeek:
@@ -258,31 +265,102 @@ export default function AssignmentDetail() {
   const handleDelete = async () => {
     if (!assignment || !canDelete) return;
 
-    if (confirm("Bạn có chắc chắn muốn xóa phân công này?")) {
-      try {
-        setDeleting(true);
-        const response = await assignmentService.delete(assignment.id);
-        if (response.success) {
-          toast.success("Đã xóa phân công thành công");
-          router.push("/admin/assignments");
-        } else {
-          toast.error(response.message || "Xóa thất bại");
-        }
-      } catch (error: any) {
-        console.error("Error deleting assignment:", error);
-        toast.error(error.message || "Có lỗi xảy ra khi xóa");
-      } finally {
-        setDeleting(false);
+    try {
+      setDeleting(true);
+      const response = await assignmentService.delete(assignment.id);
+      if (response.success) {
+        toast.success("Đã xóa phân công thành công");
+        router.push("/admin/assignments");
+      } else {
+        toast.error(response.message || "Xóa thất bại");
       }
+    } catch (error: any) {
+      console.error("Error deleting assignment:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi xóa");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleTerminate = () => {
+    if (!assignment || !canEdit) return;
+    const today = new Date();
+    const defaultDate = today.toISOString().split("T")[0];
+    setTerminateForm({ endDate: defaultDate, reason: "" });
+    setShowTerminateModal(true);
+  };
+
+  const submitTerminate = async () => {
+    if (!assignment) return;
+    const { endDate, reason } = terminateForm;
+    if (!endDate) {
+      toast.error("Vui lòng chọn ngày kết thúc");
+      return;
+    }
+
+    let toastId;
+    try {
+      setTerminating(true);
+      toastId = toast.loading("Đang gửi yêu cầu dừng phân công...");
+
+      const response = await assignmentService.terminate(assignment.id, {
+        endDate,
+        reason,
+      });
+
+      if (response && response.success) {
+        toast.dismiss(toastId);
+        toast.success("Đã dừng phân công");
+        setShowTerminateModal(false);
+        await loadAssignment();
+      } else {
+        toast.dismiss(toastId);
+        toast.error(response?.message || "Dừng phân công thất bại");
+      }
+    } catch (error: any) {
+      if (toastId) toast.dismiss(toastId);
+      console.error("Error terminating assignment:", error);
+      toast.error(error?.message || "Không thể dừng phân công");
+    } finally {
+      setTerminating(false);
+    }
+  };
+
+  const handleRollbackTerminate = async () => {
+    if (!assignment || !canEdit) return;
+
+    try {
+      setRollingBack(true);
+      const toastId = toast.loading("Đang hoàn tác tạm dừng phân công...");
+
+      const response = await assignmentService.rollbackTerminate(assignment.id);
+
+      toast.dismiss(toastId);
+      setRollingBack(false);
+
+      if (response && response.success) {
+        toast.success("Đã hoàn tác tạm dừng phân công");
+        await loadAssignment();
+      } else {
+        toast.error(response?.message || "Hoàn tác thất bại");
+      }
+    } catch (error: any) {
+      setRollingBack(false);
+      console.error("Error rollback terminate:", error);
+      toast.error(error?.message || "Không thể hoàn tác");
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "SCHEDULED":
+        return "bg-yellow-100 text-yellow-800";
       case "IN_PROGRESS":
         return "bg-blue-100 text-blue-800";
       case "COMPLETED":
         return "bg-green-100 text-green-800";
+      case "TERMINATED":
+        return "bg-orange-100 text-orange-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -290,10 +368,14 @@ export default function AssignmentDetail() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case "SCHEDULED":
+        return "Chưa bắt đầu";
       case "IN_PROGRESS":
         return "Đang thực hiện";
       case "COMPLETED":
         return "Hoàn thành";
+      case "TERMINATED":
+        return "Kết thúc giữa chừng";
       default:
         return status;
     }
@@ -347,12 +429,124 @@ export default function AssignmentDetail() {
               Sửa
             </button>
           )}
+          {canEdit && assignment.status !== "TERMINATED" && (
+            <button
+              onClick={handleTerminate}
+              disabled={terminating}
+              aria-busy={terminating}
+              className={`px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2 ${
+                terminating ? "opacity-60 cursor-not-allowed" : ""
+              }`}
+            >
+              {terminating ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                  Đang dừng...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  Dừng phân công phụ trách
+                </>
+              )}
+            </button>
+          )}
+          {canEdit && assignment.status === "TERMINATED" && (
+            <button
+              onClick={handleRollbackTerminate}
+              disabled={rollingBack}
+              aria-busy={rollingBack}
+              className={`px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 ${
+                rollingBack ? "opacity-60 cursor-not-allowed" : ""
+              }`}
+            >
+              {rollingBack ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                  Đang hoàn tác...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                    />
+                  </svg>
+                  Hoàn tác tạm dừng
+                </>
+              )}
+            </button>
+          )}
           {canDelete && (
             <button
               onClick={handleDelete}
               disabled={deleting}
               aria-busy={deleting}
-              className={`px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2 ${deleting ? "opacity-60 cursor-not-allowed" : ""}`}
+              className={`px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2 ${
+                deleting ? "opacity-60 cursor-not-allowed" : ""
+              }`}
             >
               {deleting ? (
                 <>
@@ -466,6 +660,7 @@ export default function AssignmentDetail() {
                 })()}
               </p>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày bắt đầu</p>
@@ -504,7 +699,7 @@ export default function AssignmentDetail() {
 
             {assignment.description && (
               <div className="pt-3 border-t">
-                <p className="text-xs text-gray-500 mb-1">Mô tả</p>
+                <p className="text-xs text-gray-500 mb-1">Thông tin thêm</p>
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {assignment.description}
                 </p>
@@ -525,9 +720,8 @@ export default function AssignmentDetail() {
                 {assignment.workDays} ngày
               </p>
             </div>
-            {role !== 'QLV' && (
+            {role !== "QLV" && (
               <div className="pt-3 border-t">
-
                 <p className="text-xs text-gray-500 mb-1">
                   Lương tại thời điểm phân công
                 </p>
@@ -536,15 +730,15 @@ export default function AssignmentDetail() {
                 </p>
               </div>
             )}
-             {role !== 'QLV' && (
-            <div className="pt-3 border-t">
-              <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(
-                  (assignment.additionalAllowance ?? 0) as number
-                )}
-              </p>
-            </div>
+            {role !== "QLV" && (
+              <div className="pt-3 border-t">
+                <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(
+                    (assignment.additionalAllowance ?? 0) as number
+                  )}
+                </p>
+              </div>
             )}
 
             <div className="pt-3 border-t">
@@ -554,56 +748,59 @@ export default function AssignmentDetail() {
 
               {((contractDetails && contractDetails.name) ||
                 (assignment as any)?.contractName) && (
-                  <p className="text-sm text-gray-700 mt-1">
-                    Tên hợp đồng:{" "}
-                    {(contractDetails && contractDetails.name) ??
-                      (assignment as any).contractName}
-                  </p>
-                )}
+                <p className="text-sm text-gray-700 mt-1">
+                  Tên hợp đồng:{" "}
+                  {(contractDetails && contractDetails.name) ??
+                    (assignment as any).contractName}
+                </p>
+              )}
 
               {((contractDetails && contractDetails.type) ||
                 (assignment as any)?.contractType) && (
-                  <p className="text-sm text-gray-700 mt-1">
-                    Loại hợp đồng: {(() => {
-                      const type = (contractDetails && contractDetails.type) ?? (assignment as any).contractType;
-                      switch (type) {
-                        case "ONE_TIME":
-                          return "Hợp đồng 1 lần (trọn gói)";
-                        case "MONTHLY_FIXED":
-                          return "Hợp đồng hàng tháng cố định";
-                        case "MONTHLY_ACTUAL":
-                          return "Hợp đồng hàng tháng theo ngày thực tế";
-                        default:
-                          return type || "N/A";
-                      }
-                    })()}
-                  </p>
-                )}
+                <p className="text-sm text-gray-700 mt-1">
+                  Loại hợp đồng:{" "}
+                  {(() => {
+                    const type =
+                      (contractDetails && contractDetails.type) ??
+                      (assignment as any).contractType;
+                    switch (type) {
+                      case "ONE_TIME":
+                        return "Hợp đồng 1 lần (trọn gói)";
+                      case "MONTHLY_FIXED":
+                        return "Hợp đồng hàng tháng cố định";
+                      case "MONTHLY_ACTUAL":
+                        return "Hợp đồng hàng tháng theo ngày thực tế";
+                      default:
+                        return type || "N/A";
+                    }
+                  })()}
+                </p>
+              )}
 
               {((contractDetails && contractDetails.workDays !== undefined) ||
                 (assignment as any)?.contractWorkDays) && (
-                  <p className="text-sm text-gray-700 mt-1">
-                    Số ngày làm:{" "}
-                    {(contractDetails && contractDetails.workDays) ??
-                      (assignment as any).contractWorkDays}{" "}
-                    ngày
-                  </p>
-                )}
+                <p className="text-sm text-gray-700 mt-1">
+                  Số ngày làm:{" "}
+                  {(contractDetails && contractDetails.workDays) ??
+                    (assignment as any).contractWorkDays}{" "}
+                  ngày
+                </p>
+              )}
 
               {((contractDetails && contractDetails.finalPrice) ||
                 (assignment as any)?.contractFinalPrice ||
                 (assignment as any)?.contract?.finalPrice) && (
-                  <p className="text-sm text-gray-700 mt-1">
-                    Giá hợp đồng:{" "}
-                    {formatCurrency(
-                      Number(
-                        ((contractDetails && contractDetails.finalPrice) ??
-                          (assignment as any).contractFinalPrice ??
-                          (assignment as any).contract?.finalPrice) as number
-                      )
-                    )}
-                  </p>
-                )}
+                <p className="text-sm text-gray-700 mt-1">
+                  Giá hợp đồng:{" "}
+                  {formatCurrency(
+                    Number(
+                      ((contractDetails && contractDetails.finalPrice) ??
+                        (assignment as any).contractFinalPrice ??
+                        (assignment as any).contract?.finalPrice) as number
+                    )
+                  )}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -775,7 +972,6 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Khách hàng
@@ -787,7 +983,6 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ngày bắt đầu *
@@ -796,7 +991,7 @@ export default function AssignmentDetail() {
                   type="date"
                   value={
                     editForm.startDate
-                      ? formatDateInput(editForm.startDate)
+                      ? formatDateInput(String(editForm.startDate))
                       : ""
                   }
                   onChange={(e) =>
@@ -805,7 +1000,6 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Trạng thái *
@@ -817,12 +1011,13 @@ export default function AssignmentDetail() {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
+                  <option value="SCHEDULED">Chưa bắt đầu</option>
                   <option value="IN_PROGRESS">Đang thực hiện</option>
                   <option value="COMPLETED">Hoàn thành</option>
-                  <option value="CANCELED">Đã hủy</option>
+                  <option value="TERMINATED">Kết thúc giữa chừng</option>
+                  <option value="CANCELLED">Đã hủy</option>
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Số ngày làm việc *
@@ -839,46 +1034,47 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-                 {role !== 'QLV' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lương (VND) *
-                </label>
-                <input
-                  type="text"
-                  value={String(editForm.salaryAtTime ?? "")}
-                  onChange={(e) => {
-                    const raw = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      salaryAtTime: formatNumber(raw) as any,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-)} {role !== 'QLV' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phụ cấp (VND)
-                </label>
-                <input
-                  type="text"
-                  value={String(editForm.additionalAllowance ?? "")}
-                  onChange={(e) => {
-                    const raw = handleNumberInput(e.target.value);
-                    setEditForm({
-                      ...editForm,
-                      additionalAllowance: formatNumber(raw) as any,
-                    });
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-)}
+              {role !== "QLV" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lương (VND) *
+                  </label>
+                  <input
+                    type="text"
+                    value={String(editForm.salaryAtTime ?? "")}
+                    onChange={(e) => {
+                      const raw = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        salaryAtTime: formatNumber(raw) as any,
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}{" "}
+              {role !== "QLV" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phụ cấp (VND)
+                  </label>
+                  <input
+                    type="text"
+                    value={String(editForm.additionalAllowance ?? "")}
+                    onChange={(e) => {
+                      const raw = handleNumberInput(e.target.value);
+                      setEditForm({
+                        ...editForm,
+                        additionalAllowance: formatNumber(raw) as any,
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mô tả
+                  Thông tin thêm
                 </label>
                 <textarea
                   value={editForm.description || ""}
@@ -918,6 +1114,64 @@ export default function AssignmentDetail() {
                   />
                 </svg>
                 Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showTerminateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black opacity-40"></div>
+          <div className="bg-white rounded-lg shadow-lg z-60 w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-3">Dừng phân công</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-600">Ngày kết thúc</label>
+                <input
+                  type="date"
+                  value={terminateForm.endDate}
+                  onChange={(e) =>
+                    setTerminateForm((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                  className="w-full mt-1 px-3 py-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600">
+                  Lý do (tùy chọn)
+                </label>
+                <textarea
+                  value={terminateForm.reason}
+                  onChange={(e) =>
+                    setTerminateForm((prev) => ({
+                      ...prev,
+                      reason: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  className="w-full mt-1 px-3 py-2 border rounded"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowTerminateModal(false)}
+                className="px-3 py-1 bg-gray-200 rounded"
+                disabled={terminating}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={submitTerminate}
+                className={`px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 ${
+                  terminating ? "opacity-60 cursor-not-allowed" : ""
+                }`}
+                disabled={terminating}
+              >
+                {terminating ? "Đang dừng..." : "Xác nhận dừng"}
               </button>
             </div>
           </div>

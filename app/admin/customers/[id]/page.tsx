@@ -1760,7 +1760,7 @@ export default function CustomerDetail() {
               <option value="">Tất cả trạng thái</option>
               <option value="IN_PROGRESS">Đang thực hiện</option>
               <option value="COMPLETED">Hoàn thành</option>
-              <option value="CANCELED">Đã hủy</option>
+              <option value="CANCELLED">Đã hủy</option>
             </select> */}
 
             {/* <select
@@ -1950,18 +1950,30 @@ export default function CustomerDetail() {
                               </td>
                               <td className="px-4 py-3">
                                 <span
-                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${assignment.status === "IN_PROGRESS"
-                                    ? "bg-green-100 text-green-800"
-                                    : assignment.status === "CANCELED"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
+                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${assignment.status === "SCHEDULED"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : assignment.status === "IN_PROGRESS"
+                                      ? "bg-green-100 text-green-800"
+                                      : assignment.status === "COMPLETED"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : assignment.status === "TERMINATED"
+                                          ? "bg-orange-100 text-orange-800"
+                                          : assignment.status === "CANCELLED"
+                                            ? "bg-red-100 text-red-800"
+                                            : "bg-gray-100 text-gray-800"
                                     }`}
                                 >
-                                  {assignment.status === "IN_PROGRESS"
-                                    ? "Đang thực hiện"
-                                    : assignment.status === "CANCELED"
-                                      ? "Đã hủy"
-                                      : "Hoàn thành"}
+                                  {assignment.status === "SCHEDULED"
+                                    ? "Chưa bắt đầu"
+                                    : assignment.status === "IN_PROGRESS"
+                                      ? "Đang thực hiện"
+                                      : assignment.status === "COMPLETED"
+                                        ? "Hoàn thành"
+                                        : assignment.status === "TERMINATED"
+                                          ? "Kết thúc giữa chừng"
+                                          : assignment.status === "CANCELLED"
+                                            ? "Đã hủy"
+                                            : (assignment.status || "N/A")}
                                 </span>
                               </td>
                               {canViewEmployee && (

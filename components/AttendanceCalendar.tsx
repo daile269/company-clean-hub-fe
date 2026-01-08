@@ -58,7 +58,9 @@ const getStatusAssignment = (status: string | undefined) => {
     if (status === undefined) return "Chưa cập nhật";
     if (status === "COMPLETED") return "Hoàn thành";
     if (status === "IN_PROGRESS") return "Đang thực hiện";
-    if (status === "CANCELED") return "Đã hủy";
+    if (status === "SCHEDULED") return "Chưa bắt đầu";
+    if (status === "TERMINATED") return "Kết thúc giữa chừng";
+    if (status === "CANCELLED") return "Đã hủy";
 }
 const getAssignmentType = (type: string | undefined) => {
     if (type === undefined) return "Chưa cập nhật";
@@ -248,7 +250,7 @@ export default function AttendanceCalendar({
                     const realWorkDays = calculateRealWorkDays(assignmentAttendances);
 
                     // Kiểm tra status - nếu đã hủy thì phủ nền xám
-                    const isCancelled = assignment?.status === "CANCELLED" || assignment?.status === "CANCELED";
+                    const isCancelled = assignment?.status === "CANCELLED" || assignment?.status === "CANCELLED";
 
                     return (
                         <div key={assignmentId} className="flex gap-4 bg-white rounded-lg shadow p-4">

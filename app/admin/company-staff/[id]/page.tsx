@@ -195,13 +195,16 @@ export default function CompanyStaffDetailPage() {
     switch (s) {
       case "PENDING":
         return "bg-yellow-100 text-yellow-800";
+      case "SCHEDULED":
+        return "bg-yellow-100 text-yellow-800";
       case "IN_PROGRESS":
       case "ACTIVE":
         return "bg-blue-100 text-blue-800";
       case "COMPLETED":
         return "bg-green-100 text-green-800";
+      case "TERMINATED":
+        return "bg-orange-100 text-orange-800";
       case "CANCELLED":
-      case "CANCELED":
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -214,13 +217,16 @@ export default function CompanyStaffDetailPage() {
     switch (s) {
       case "PENDING":
         return "Chờ xử lý";
+      case "SCHEDULED":
+        return "Chưa bắt đầu";
       case "IN_PROGRESS":
       case "ACTIVE":
         return "Đang thực hiện";
       case "COMPLETED":
         return "Hoàn thành";
+      case "TERMINATED":
+        return "Kết thúc giữa chừng";
       case "CANCELLED":
-      case "CANCELED":
         return "Đã hủy";
       default:
         // Fallback to raw status with capitalization

@@ -24,7 +24,7 @@ export default function Header() {
                 <img
                   src="/logo.png"
                   alt="PANPACIFIC"
-                  className="w-full h-full object-contain transform scale-150"
+                  className="w-full h-full object-contain transform scale-180 ml-8"
                 />
               </div>
             </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
@@ -28,7 +28,6 @@ export default function CustomerDetail() {
 
   // Role check for routing
   const role = authService.getUserRole();
-  const currentUserId = authService.getUserId();
 
   const routerForEmployee = (
     employeeId: string | number,
@@ -1960,37 +1959,26 @@ export default function CustomerDetail() {
                               {canViewEmployee && (
                                 <td className="px-4 py-3 text-right">
 
-                                  {(() => {
-                                    // Check if current user can view salary for THIS specific assignment
-                                    const canViewSalaryForThisAssignment =
-                                      role !== 'QLV' && role !== 'CUSTOMER' ||
-                                      ((assignment as any).assignedById === currentUserId);
+                                  {role === 'CUSTOMER' ? (
+                                    <div className="group relative flex items-center justify-center h-6  cursor-help">
+                                      {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
+                                      <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
+                                        <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
+                                        <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
+                                          ********
+                                        </span>
+                                      </div>
 
-                                    if (!canViewSalaryForThisAssignment) {
-                                      return (
-                                        <div className="group relative flex items-center justify-center h-6  cursor-help">
-                                          {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
-                                          <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
-                                            <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
-                                            <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
-                                              ********
-                                            </span>
-                                          </div>
-
-                                          {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
-                                          <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
-                                            Bạn không có quyền xem
-                                          </span>
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <span className="text-sm font-semibold text-gray-900">
-                                        {formatCurrency(assignment.salaryAtTime)}
+                                      {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
+                                      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
+                                        Bạn không có quyền xem
                                       </span>
-                                    );
-                                  })()}
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm font-semibold text-gray-900">
+                                      {formatCurrency(assignment.salaryAtTime)}
+                                    </span>
+                                  )}
                                 </td>
                               )}
                               <td className="px-4 py-3 text-center">

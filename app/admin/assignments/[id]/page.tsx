@@ -202,7 +202,11 @@ export default function AssignmentDetail() {
   const handleNumberInput = (value: string) => {
     return value.replace(/[^0-9]/g, "");
   };
-
+  const contractName =
+    contractDetails?.name ??
+    (assignment as any)?.contractName ??
+    (assignment as any)?.contractId ??
+    (assignment as any)?.contract?.id;
   const handleEdit = () => {
     if (!canEdit) return;
     setEditForm({
@@ -211,6 +215,7 @@ export default function AssignmentDetail() {
       additionalAllowance: (assignment as any)?.additionalAllowance
         ? (formatNumber((assignment as any).additionalAllowance) as any)
         : "",
+      plannedDays: (assignment as any)?.plannedDays ?? undefined,
     });
     setShowEditModal(true);
   };
@@ -242,10 +247,16 @@ export default function AssignmentDetail() {
         workingDaysPerWeek:
           (editForm as any).workingDaysPerWeek ??
           (assignment as any).workingDaysPerWeek,
+        plannedDays:
+          (editForm as any).plannedDays !== undefined
+            ? Number(editForm.plannedDays)
+            : (assignment as any).plannedDays,
         description: editForm.description ?? assignment.description,
         // include previous contract id so backend can act accordingly if needed
         previousContractId: (assignment as any).contractId ?? undefined,
       };
+
+      // plannedDays validation handled by backend; skip client-side check
 
       const response = await assignmentService.update(assignment.id, payload);
 
@@ -719,6 +730,12 @@ export default function AssignmentDetail() {
               <p className="text-2xl font-bold text-blue-600">
                 {assignment.workDays} ngày
               </p>
+              {(assignment as any)?.plannedDays !== undefined &&
+                (assignment as any)?.plannedDays !== null && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Kế hoạch: {(assignment as any).plannedDays} ngày
+                  </p>
+                )}
             </div>
             {role !== "QLV" && (
               <div className="pt-3 border-t">
@@ -730,7 +747,7 @@ export default function AssignmentDetail() {
                 </p>
               </div>
             )}
-            {role !== 'QLV' && (
+            {role !== "QLV" && (
               <div className="pt-3 border-t">
                 <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
                 <p className="text-2xl font-bold text-green-600">
@@ -742,16 +759,19 @@ export default function AssignmentDetail() {
             )}
 
             <div className="pt-3 border-t">
-              <p className="text-xs font-semibold text-gray-900 mb-1">
-                Hợp đồng
-              </p>
+              {contractName ? (
+                <>
+                  <p className="text-xs font-semibold text-gray-900 mb-1">
+                    Hợp đồng
+                  </p>
 
-              {((contractDetails && contractDetails.name) ||
-                (assignment as any)?.contractName) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Tên hợp đồng:{" "}
-                  {(contractDetails && contractDetails.name) ??
-                    (assignment as any).contractName}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Tên hợp đồng: {contractName}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1 italic">
+                  Làm việc tại công ty
                 </p>
               )}
 
@@ -1034,7 +1054,27 @@ export default function AssignmentDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              {role !== 'QLV' && (
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số ngày làm theo kế hoạch 
+                </label>
+                <input
+                  type="number"
+                  value={
+                    editForm.plannedDays !== undefined
+                      ? Number(editForm.plannedDays)
+                      : (assignment as any).plannedDays ?? 0
+                  }
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      plannedDays: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div> */}
+              {role !== "QLV" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Lương (VND) *
@@ -1054,7 +1094,6 @@ export default function AssignmentDetail() {
                 </div>
               )}{" "}
               {role !== "QLV" && (
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phụ cấp (VND)

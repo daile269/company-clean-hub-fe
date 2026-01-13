@@ -10,6 +10,7 @@ export interface AssignmentCreateRequest {
   status?: string;
   salaryAtTime?: number;
   assignmentType?: string;
+  plannedDays?: number;
   additionalAllowance?: number;
   dates?: string[];
   workingDaysPerWeek?: string[];  // Required for COMPANY scope

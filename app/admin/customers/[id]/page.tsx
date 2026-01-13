@@ -1891,6 +1891,9 @@ export default function CustomerDetail() {
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
                             Ngày công
                           </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                            Dự kiến
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2004,6 +2007,11 @@ export default function CustomerDetail() {
                               <td className="px-4 py-3 text-center">
                                 <span className="text-sm font-medium text-gray-700">
                                   {assignment.workDays} ngày
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-sm font-medium text-gray-700">
+                                  {assignment.plannedDays} ngày
                                 </span>
                               </td>
                             </tr>

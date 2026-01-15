@@ -1320,6 +1320,9 @@ export default function CustomerDetail() {
                     Mã HĐ
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Loại HĐ
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                     Dịch vụ
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
@@ -1349,8 +1352,19 @@ export default function CustomerDetail() {
                     className="border-b hover:bg-gray-50 cursor-pointer"
                   >
                     <td className="px-4 py-3">
-                      <span className="text-sm font-mono font-medium text-blue-600">
+                      <span className="text-sm font-medium text-blue-600">
                         {contract.id}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-blue-600">
+                        {contract.contractType === "ONE_TIME"
+                          ? "Một lần"
+                          : contract.contractType === "MONTHLY_FIXED"
+                          ? "Hàng tháng (cố định)"
+                          : contract.contractType === "MONTHLY_ACTUAL"
+                          ? "Hàng tháng (thực tế)"
+                          : "N/A"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -2430,9 +2444,15 @@ export default function CustomerDetail() {
                     {contracts.map((contract) => (
                       <option key={contract.id} value={contract.id}>
                         HĐ #{contract.id} -{" "}
-                        {contract.services?.map((s: any) => s.title).join(", ")}{" "}
-                        ({formatDate(contract.startDate)} -{" "}
-                        {formatDate(contract.endDate)})
+                        {contract.services?.map((s: any) => s.title).join(", ")} {" "}
+                          ({formatDate(contract.startDate)} -{" "}
+                          {formatDate(contract.endDate)}) - Hợp đồng {contract.contractType === "ONE_TIME"
+                          ? "Một lần"
+                          : contract.contractType === "MONTHLY_FIXED"
+                          ? "Hàng tháng (cố định)"
+                          : contract.contractType === "MONTHLY_ACTUAL"
+                          ? "Hàng tháng (thực tế)"
+                          : "N/A"}
                       </option>
                     ))}
                   </select>

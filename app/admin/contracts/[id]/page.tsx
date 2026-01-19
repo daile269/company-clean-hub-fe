@@ -71,6 +71,14 @@ export default function ContractDetailPage() {
   );
   const [assignmentsStatus, setAssignmentsStatus] = useState<string>("");
 
+  // Service display filters (month/year based on service.effectiveFrom)
+  const [servicesMonth, setServicesMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [servicesYear, setServicesYear] = useState<number>(
+    new Date().getFullYear()
+  );
+
   // Leave (deleted attendances) list + filters
   const [leaveMonth, setLeaveMonth] = useState<number>(
     new Date().getMonth() + 1
@@ -1054,28 +1062,57 @@ export default function ContractDetailPage() {
             <h3 className="text-lg font-semibold text-gray-800">
               Dịch vụ trong hợp đồng
             </h3>
-            {canCreateService && (
-              <button
-                onClick={handleAddService}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
+
+            <div className="flex items-center gap-2">
+              <select
+                value={servicesMonth}
+                onChange={(e) => setServicesMonth(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    Tháng {m}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={servicesYear}
+                onChange={(e) => setServicesYear(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                {Array.from({ length: 7 }, (_, i) => servicesYear - 3 + i).map(
+                  (y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  )
+                )}
+              </select>
+
+              {canCreateService && (
+                <button
+                  onClick={handleAddService}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 text-sm"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Thêm dịch vụ
-              </button>
-            )}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Thêm dịch vụ
+                </button>
+              )}
+            </div>
           </div>
 
           {contract.services && contract.services.length > 0 ? (
@@ -1091,6 +1128,9 @@ export default function ContractDetailPage() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Loại dịch vụ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ngày bắt đầu
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mô tả
@@ -1110,7 +1150,15 @@ export default function ContractDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {contract.services.map((service, index) => (
+                  {(contract.services.filter((service: any) => {
+                    if (!service) return false;
+                    const type = service?.serviceType;
+                    if (type === "RECURRING") return true;
+                    const eff = service?.effectiveFrom;
+                    if (!eff) return true;
+                    const d = new Date(eff);
+                    return d.getMonth() + 1 === servicesMonth && d.getFullYear() === servicesYear;
+                  }) as any[]).map((service, index) => (
                     <tr key={service.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {index + 1}
@@ -1128,6 +1176,11 @@ export default function ContractDetailPage() {
                               ? "Định kỳ hàng tháng"
                               : (service as any).serviceType}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">
+                          {formatDate(service.effectiveFrom) || "—"}
+                        </p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-600 line-clamp-2">

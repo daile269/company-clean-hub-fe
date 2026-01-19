@@ -186,7 +186,7 @@ export default function LoginPage() {
           </form>
 
           {/* Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          {/* <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600 mb-3 font-medium">
               Tài khoản thử nghiệm:
             </p>
@@ -203,7 +203,7 @@ export default function LoginPage() {
                 <p className="text-gray-600 font-bold">Mật khẩu dùng chung: Pass123456</p>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Back to Home */}

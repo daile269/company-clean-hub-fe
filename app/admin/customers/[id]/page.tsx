@@ -205,6 +205,8 @@ export default function CustomerDetail() {
   const [filterYear, setFilterYear] = useState<number>(
     new Date().getFullYear()
   );
+  const [contractFilterMonth, setContractFilterMonth] = useState<number | "">(new Date().getMonth() + 1);
+  const [contractFilterYear, setContractFilterYear] = useState<number | "">(new Date().getFullYear());
   const [sortBy, setSortBy] = useState<string>("startDate_desc");
 
   // Pagination states
@@ -278,6 +280,43 @@ export default function CustomerDetail() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, historyContractFilter, historyPage, historyPageSize]);
+
+  // Filter contracts by selected month/year (client-side)
+  const displayedContracts = (contracts || []).filter((c: any) => {
+    if (!contractFilterMonth && !contractFilterYear) return true;
+
+    const startRaw = c.startDate || c.createdAt;
+    const endRaw = c.endDate || c.updatedAt;
+
+    const matches = (raw: any) => {
+      if (!raw) return false;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return false;
+      const monthOk = contractFilterMonth ? d.getMonth() + 1 === Number(contractFilterMonth) : true;
+      const yearOk = contractFilterYear ? d.getFullYear() === Number(contractFilterYear) : true;
+      return monthOk && yearOk;
+    };
+
+    // If start or end date falls exactly in selected month/year, include
+    if (matches(startRaw) || matches(endRaw)) return true;
+
+    // If both start and end exist, check whether the selected month intersects the contract period
+    if (startRaw && endRaw) {
+      const s = new Date(startRaw);
+      const e = new Date(endRaw);
+      if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+        const selYear = contractFilterYear ? Number(contractFilterYear) : null;
+        const selMonth = contractFilterMonth ? Number(contractFilterMonth) : null;
+        if (selYear && selMonth) {
+          const firstOfMonth = new Date(selYear, selMonth - 1, 1);
+          const lastOfMonth = new Date(selYear, selMonth, 0, 23, 59, 59, 999);
+          if (firstOfMonth <= e && lastOfMonth >= s) return true;
+        }
+      }
+    }
+
+    return false;
+  });
 
   const loadNotAssignedEmployees = async (
     page = 0,
@@ -1218,6 +1257,35 @@ export default function CustomerDetail() {
         <div className="flex items-center justify-between mb-4 pb-2 border-b">
           <h3 className="text-lg font-semibold text-gray-800">Hợp đồng</h3>
           <div className="flex items-center gap-2">
+            <select
+              value={contractFilterMonth}
+              onChange={(e) =>
+                setContractFilterMonth(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
+            >
+              <option value="">Tháng (Tất cả)</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={contractFilterYear}
+              onChange={(e) =>
+                setContractFilterYear(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
+            >
+              <option value="">Năm (Tất cả)</option>
+              {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 3 + i).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
             <button
               onClick={loadContracts}
               className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
@@ -1337,7 +1405,7 @@ export default function CustomerDetail() {
                 </tr>
               </thead>
               <tbody>
-                {contracts.map((contract) => (
+                {displayedContracts.map((contract) => (
                   <tr
                     key={contract.id}
                     role="button"

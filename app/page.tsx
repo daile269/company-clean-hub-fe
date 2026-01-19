@@ -2,6 +2,7 @@ import Intro from "../components/Intro";
 import FadeInSection from "../components/FadeInSection";
 import ClientsSlider from "../components/ClientsSlider";
 import Link from "next/link";
+import NewsSlider from "../components/NewsSlider";
 
 export default function Home() {
   return (
@@ -84,10 +85,10 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Vệ sinh kính-alu */}
-              <Link href="/services/ve-sinh-kinh-alu" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-alu.jpg"
                     alt="Vệ sinh kính-alu"
@@ -102,15 +103,15 @@ export default function Home() {
                     Dịch vụ vệ sinh kính, cửa nhôm kính chuyên nghiệp cho tòa
                     nhà, văn phòng với đội ngũ lành nghề và thiết bị hiện đại.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Vệ sinh văn phòng */}
-              <Link href="/services/ve-sinh-van-phong" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-vp.jpg"
                     alt="Vệ sinh văn phòng"
@@ -125,15 +126,15 @@ export default function Home() {
                     Duy trì văn phòng luôn sạch sẽ, thoáng mát với quy trình
                     chuyên nghiệp, đảm bảo môi trường làm việc tốt nhất.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Vệ sinh theo giờ */}
-              <Link href="/services/ve-sinh-theo-gio" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-time.jpg"
                     alt="Vệ sinh theo giờ"
@@ -148,15 +149,15 @@ export default function Home() {
                     Dịch vụ vệ sinh linh hoạt theo giờ, phù hợp với mọi nhu cầu
                     và thời gian của quý khách hàng, nhanh chóng – tiện lợi.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Vệ sinh trường học */}
-              <Link href="/services/ve-sinh-truong-hoc" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-sc.jpg"
                     alt="Vệ sinh trường học"
@@ -171,15 +172,15 @@ export default function Home() {
                     Dịch vụ vệ sinh chuyên biệt cho trường học, đảm bảo môi
                     trường học tập an toàn và sạch sẽ cho học sinh.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Vệ sinh, giặt ghế thảm */}
-              <Link href="/services/ve-sinh-giat-ghe-tham" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-tham.jpg"
                     alt="Vệ sinh, giặt ghế thảm"
@@ -194,15 +195,15 @@ export default function Home() {
                     Giặt hấp ghế sofa, thảm chuyên nghiệp với công nghệ hiện
                     đại, loại bỏ vi khuẩn và mùi hôi hiệu quả.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Tổng vệ sinh */}
-              <Link href="/services/tong-ve-sinh" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-tong.jpg"
                     alt="Tổng vệ sinh"
@@ -217,15 +218,15 @@ export default function Home() {
                     Dịch vụ tổng vệ sinh toàn diện sau xây dựng, sự kiện hoặc
                     định kỳ nhanh chóng với đội ngũ chuyên nghiệp.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Vệ sinh TTTM-siêu thị */}
-              <Link href="/services/ve-sinh-tttm-sieu-thi" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-st.webp"
                     alt="Vệ sinh TTTM - siêu thị"
@@ -240,15 +241,15 @@ export default function Home() {
                     Vệ sinh trung tâm thương mại, siêu thị với quy trình chuyên
                     nghiệp, đảm bảo môi trường mua sắm sạch sẽ.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
 
               {/* Vệ sinh nhà xưởng */}
-              <Link href="/services/ve-sinh-nha-xuong" className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
+              <div className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
                   <img
                     src="/vs-nx.jpg"
                     alt="Vệ sinh nhà xưởng"
@@ -263,11 +264,11 @@ export default function Home() {
                     Vệ sinh nhà máy, xưởng sản xuất theo tiêu chuẩn công nghiệp,
                     đảm bảo sạch sẽ,an toàn và vệ sinh lao động.
                   </p>
-                  <span className="text-blue-600 font-medium hover:text-blue-800">
+                  {/* <span className="text-blue-600 font-medium hover:text-blue-800">
                     Xem Thêm →
-                  </span>
+                  </span> */}
                 </div>
-              </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -297,91 +298,17 @@ export default function Home() {
               <h2 className="text-4xl font-bold text-gray-900 mb-4">Tin Tức</h2>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Article 1 */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-                <img
-                  src="/rb.png"
-                  alt="News 1"
-                  className="w-full h-48 object-cover"
-                  width="400"
-                  height="192"
-                />
-                <div className="p-6">
-                  <span className="text-sm text-[#4CCF96] font-semibold">
-                    Công nghệ
-                  </span>
-                  <h3 className="text-xl font-bold mt-2 mb-3 text-[#4CCF96]">
-                    Robot vệ sinh thông minh - Xu hướng mới trong ngành
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Công nghệ robot vệ sinh đang dần thay đổi cách thức quản lý
-                    vệ sinh tại các tòa nhà lớn...
-                  </p>
-                  <a
-                    href="/news/robot-ve-sinh"
-                    className="text-blue-600 font-medium hover:text-blue-800"
-                  >
-                    Đọc thêm →
-                  </a>
-                </div>
-              </div>
-
-              {/* Article 2 */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-                <img
-                  src="/mt.png"
-                  alt="News 2"
-                  className="w-full h-48 object-cover"
-                  width="400"
-                  height="192"
-                />
-                <div className="p-6">
-                  <span className="text-sm text-[#4CCF96] font-semibold">
-                    Môi trường
-                  </span>
-                  <h3 className="text-xl font-bold mt-2 mb-3 text-[#4CCF96]">
-                    Sử dụng hóa chất thân thiện với môi trường
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    PANPACIFIC cam kết sử dụng các sản phẩm vệ sinh không gây
-                    hại cho môi trường và sức khỏe...
-                  </p>
-                  <a
-                    href="/news/hoa-chat-xanh"
-                    className="text-blue-600 font-medium hover:text-blue-800"
-                  >
-                    Đọc thêm →
-                  </a>
-                </div>
-              </div>
-
-              {/* Article 3 */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
-                <img
-                  src="/dd.png"
-                  alt="News 3"
-                  className="w-full h-48 object-cover"
-                  width="400"
-                  height="192"
-                />
-                <div className="p-6">
-                  <span className="text-sm text-[#4CCF96] font-semibold">
-                    Dự án
-                  </span>
-                  <h3 className="text-xl font-bold mt-2 mb-3 text-[#4CCF96]">
-                    Ký kết hợp đồng với tập đoàn Samsung
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    PANPACIFIC vinh dự trở thành đối tác vệ sinh công nghiệp cho
-                    các nhà máy Samsung tại Việt Nam...
-                  </p>
-                  <a
-                    href="/news/hop-tac-samsung"
-                    className="text-blue-600 font-medium hover:text-blue-800"
-                  >
-                    Đọc thêm →
-                  </a>
+            <div className="">
+              {/* News slider replaces grid */}
+              <div className="max-w-7xl mx-auto">
+                <div className="px-4 sm:px-6 lg:px-8">
+                  {/* Lazy load client component on client side only */}
+                  {/* eslint-disable-next-line @next/next/no-jsx-in-html-comments */}
+                  <div>
+                    {/* Importing component directly */}
+                    {/* @ts-ignore */}
+                    <NewsSlider />
+                  </div>
                 </div>
               </div>
             </div>
@@ -455,10 +382,17 @@ export default function Home() {
                 <p className="text-gray-700 mb-2">
                   <span className="font-semibold">Email:</span>{" "}
                   <a
-                    href="mailto:panpacific365@gmail.com"
-                    className="text-blue-600 hover:text-blue-800"
+                    href="mailto: info@opticlean.com.vn"
+                    className="text-blue-600 hover:text-blue-800 mr-2"
                   >
-                    panpacific365@gmail.com
+                   info@opticlean.com.vn
+                  </a>
+                  hoặc
+                  <a
+                    href="mailto: info@opticlean.com.vn"
+                    className="text-blue-600 hover:text-blue-800 ml-2"
+                  >
+                   info@opticlean.com.vn
                   </a>
                 </p>
                 <p className="text-gray-700">

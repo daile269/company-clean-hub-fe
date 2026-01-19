@@ -87,22 +87,29 @@ export default function ClientLayout({
                     </a>
                   </p>
                   <p>
-                    ✉️{" "}
+                    📧{" "}
                     <a
-                      href="mailto:panpacific365@gmail.com"
-                      className="hover:text-white"
+                      href="mailto: info@opticlean.com.vn"
+                      className="hover:text-white mr-2"
                     >
-                      panpacific365@gmail.com
+                       info@opticlean.com.vn
+                    </a>
+                    hoặc
+                    <a
+                      href="mailto: info@opticlean.com.vn"
+                      className="hover:text-white ml-2"
+                    >
+                       info@opticlean.com.vn
                     </a>
                   </p>
                   <p>
                     🌐{" "}
                     <a
-                      href="https://www.panpacific.com.vn"
+                      href="https://opticlean.com.vn/"
                       target="_blank"
                       className="hover:text-white"
                     >
-                      www.panpacific.com.vn
+                      www.opticlean.com.vn
                     </a>
                   </p>
                 </div>

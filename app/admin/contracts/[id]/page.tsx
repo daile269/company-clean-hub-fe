@@ -104,6 +104,8 @@ export default function ContractDetailPage() {
     comment: "",
   });
   const [savingReview, setSavingReview] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Load employees who are assigned to this contract and use them as select options
   useEffect(() => {
@@ -440,16 +442,22 @@ export default function ContractDetailPage() {
 
   const handleDelete = async () => {
     if (!contract || !canDelete) return;
+    setShowDeleteModal(true);
+  };
 
-    if (confirm("Xác nhận xóa hợp đồng này?")) {
-      try {
-        await contractService.delete(contract.id);
-        toast.success("Đã xóa hợp đồng thành công");
-        router.push("/admin/contracts");
-      } catch (error: any) {
-        console.error("Error deleting contract:", error);
-        toast.error(error.message || "Không thể xóa hợp đồng");
-      }
+  const doDelete = async () => {
+    if (!contract) return;
+    setDeleting(true);
+    try {
+      await contractService.delete(contract.id);
+      toast.success("Đã xóa hợp đồng thành công");
+      setShowDeleteModal(false);
+      router.back();
+    } catch (error: any) {
+      console.error("Error deleting contract:", error);
+      toast.error(error.message || "Không thể xóa hợp đồng");
+    } finally {
+      setDeleting(false);
     }
   };
   const handleAddService = () => {
@@ -1895,6 +1903,44 @@ export default function ContractDetailPage() {
           </div>
         )
       }
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Xác nhận xóa hợp đồng</h3>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-700 mb-4">
+              Bạn có chắc chắn muốn xóa hợp đồng này? Hành động này không thể hoàn tác.
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 border rounded-md text-gray-700"
+                disabled={deleting}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={doDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? "Đang xóa..." : "Xóa hợp đồng"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Leave modal */}
       {

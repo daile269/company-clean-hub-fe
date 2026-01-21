@@ -77,8 +77,8 @@ export default function VeSinhKinhAlu() {
             </h2>
             <div className="grid md:grid-cols-3 gap-6 mb-16">
               {/* Vệ Sinh Kính Mặt Ngoài */}
-              <a href="/services/ve-sinh-kinh-mat-ngoai" className="group">
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition">
+              <div className="group">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition cursor-default">
                   <div className="relative h-48">
                     <img
                       src="/vs-kmtt.jpg"
@@ -92,11 +92,11 @@ export default function VeSinhKinhAlu() {
                     </h3>
                   </div>
                 </div>
-              </a>
+              </div>
 
               {/* Vệ Sinh Kính Mặt Trong */}
-              <a href="/services/ve-sinh-kinh-mat-trong" className="group">
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition">
+              <div className="group">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition cursor-default">
                   <div className="relative h-48">
                     <img
                       src="/vs-kmt.jpg"
@@ -110,11 +110,11 @@ export default function VeSinhKinhAlu() {
                     </h3>
                   </div>
                 </div>
-              </a>
+              </div>
 
               {/* Vệ Sinh Alu */}
-              <a href="/services/ve-sinh-alu" className="group">
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition">
+              <div className="group">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition cursor-default">
                   <div className="relative h-48">
                     <img
                       src="/vs-alu.jpg"
@@ -128,11 +128,11 @@ export default function VeSinhKinhAlu() {
                     </h3>
                   </div>
                 </div>
-              </a>
+              </div>
 
               {/* Vệ Sinh Logo - Bảng Hiệu */}
-              <a href="/services/ve-sinh-logo-bang-hieu" className="group">
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition">
+              <div className="group">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition cursor-default">
                   <div className="relative h-48">
                     <img
                       src="/vs-bh.jpg"
@@ -146,11 +146,11 @@ export default function VeSinhKinhAlu() {
                     </h3>
                   </div>
                 </div>
-              </a>
+              </div>
 
               {/* Vệ Sinh Kính Sào Xây Dựng */}
-              <a href="/services/ve-sinh-kinh-sao-xay-dung" className="group">
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition">
+              <div className="group">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition cursor-default">
                   <div className="relative h-48">
                     <img
                       src="/vsk-s.jpg"
@@ -164,11 +164,11 @@ export default function VeSinhKinhAlu() {
                     </h3>
                   </div>
                 </div>
-              </a>
+              </div>
 
               {/* Tẩy Ố Trên Kính */}
-              <a href="/services/tay-o-tren-kinh" className="group">
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition">
+              <div className="group">
+                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition cursor-default">
                   <div className="relative h-48">
                     <img
                       src="/tayok.jpg"
@@ -182,7 +182,7 @@ export default function VeSinhKinhAlu() {
                     </h3>
                   </div>
                 </div>
-              </a>
+              </div>
             </div>
 
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-4 mt-16">

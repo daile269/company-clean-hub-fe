@@ -68,14 +68,14 @@ export default function Header() {
               </a>
               <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="py-2">
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh kính-alu</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh văn phòng</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh theo giờ</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh trường học</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh, giặt ghế thảm</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Tổng vệ sinh</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh TTTM-siêu thị</div>
-                  <div className="block px-4 py-2 text-gray-700 transition">Vệ sinh nhà xưởng</div>
+                  <a href="/services/ve-sinh-kinh-alu" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh kính-alu</a>
+                  <a href="/services/ve-sinh-van-phong" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh văn phòng</a>
+                  <a href="/services/ve-sinh-theo-gio" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh theo giờ</a>
+                  <a href="/services/ve-sinh-truong-hoc" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh trường học</a>
+                  <a href="/services/ve-sinh-giat-ghe-tham" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh, giặt ghế thảm</a>
+                  <a href="/services/tong-ve-sinh" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Tổng vệ sinh</a>
+                  <a href="/services/ve-sinh-tttm-sieu-thi" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh TTTM-siêu thị</a>
+                  <a href="/services/ve-sinh-nha-xuong" className="block px-4 py-2 text-gray-700 transition hover:bg-gray-100">Vệ sinh nhà xưởng</a>
                 </div>
               </div>
             </div>
@@ -167,14 +167,14 @@ export default function Header() {
               <div className="border-l-2 border-white/30 pl-3">
                 <p className="text-white/80 text-sm uppercase mb-2">Dịch vụ</p>
                 <div className="flex flex-col gap-2">
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh kính-alu</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh văn phòng</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh theo giờ</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh trường học</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh, giặt ghế thảm</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Tổng vệ sinh</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh TTTM-siêu thị</div>
-                  <div className="text-white py-1.5 px-3 rounded transition text-sm">Vệ sinh nhà xưởng</div>
+                  <a href="/services/ve-sinh-kinh-alu" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh kính-alu</a>
+                  <a href="/services/ve-sinh-van-phong" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh văn phòng</a>
+                  <a href="/services/ve-sinh-theo-gio" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh theo giờ</a>
+                  <a href="/services/ve-sinh-truong-hoc" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh trường học</a>
+                  <a href="/services/ve-sinh-giat-ghe-tham" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh, giặt ghế thảm</a>
+                  <a href="/services/tong-ve-sinh" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Tổng vệ sinh</a>
+                  <a href="/services/ve-sinh-tttm-sieu-thi" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh TTTM-siêu thị</a>
+                  <a href="/services/ve-sinh-nha-xuong" onClick={() => setMobileMenuOpen(false)} className="text-white py-1.5 px-3 rounded transition text-sm hover:bg-[#159461]">Vệ sinh nhà xưởng</a>
                 </div>
               </div>
 

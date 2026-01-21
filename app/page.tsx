@@ -87,8 +87,8 @@ export default function Home() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Vệ sinh kính-alu */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-kinh-alu" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-alu.jpg"
                     alt="Vệ sinh kính-alu"
@@ -107,11 +107,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Vệ sinh văn phòng */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-van-phong" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-vp.jpg"
                     alt="Vệ sinh văn phòng"
@@ -130,11 +130,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Vệ sinh theo giờ */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-theo-gio" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-time.jpg"
                     alt="Vệ sinh theo giờ"
@@ -153,11 +153,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Vệ sinh trường học */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-truong-hoc" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-sc.jpg"
                     alt="Vệ sinh trường học"
@@ -176,11 +176,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Vệ sinh, giặt ghế thảm */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-giat-ghe-tham" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-tham.jpg"
                     alt="Vệ sinh, giặt ghế thảm"
@@ -199,11 +199,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Tổng vệ sinh */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/tong-ve-sinh" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-tong.jpg"
                     alt="Tổng vệ sinh"
@@ -222,11 +222,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Vệ sinh TTTM-siêu thị */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-tttm-sieu-thi" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-st.webp"
                     alt="Vệ sinh TTTM - siêu thị"
@@ -245,11 +245,11 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
 
               {/* Vệ sinh nhà xưởng */}
-              <div className="block">
-                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition">
+              <Link href="/services/ve-sinh-nha-xuong" className="block">
+                <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition cursor-pointer">
                   <img
                     src="/vs-nx.jpg"
                     alt="Vệ sinh nhà xưởng"
@@ -268,7 +268,7 @@ export default function Home() {
                     Xem Thêm →
                   </span> */}
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </section>

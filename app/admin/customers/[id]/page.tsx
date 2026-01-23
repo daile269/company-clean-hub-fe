@@ -244,7 +244,7 @@ export default function CustomerDetail() {
       if (!id) return;
       // Skip loading reviews for QLV and EMPLOYEE roles
       if (role === 'QLV' || role === 'EMPLOYEE') return;
-      
+
       try {
         setLoadingCustomerReviews(true);
         const res = await reviewService.getByCustomerId(Number(id));
@@ -381,7 +381,9 @@ export default function CustomerDetail() {
       if (currentRole === "QLT2" || currentRole === "QLV") {
         try {
           // Check if this customer is in their assigned list
-          const assignedCustomers = await customerAssignmentService.getMyAssignedCustomers();
+          const assignedCustomers = await customerAssignmentService.getMyAssignedCustomer2();
+          console.log("Assigned customers:", assignedCustomers);
+          console.log("Current customer ID:", id);
           const hasAccess = assignedCustomers.content.some((c: Customer) => String(c.id) === String(id));
 
           if (!hasAccess) {
@@ -1429,10 +1431,10 @@ export default function CustomerDetail() {
                         {contract.contractType === "ONE_TIME"
                           ? "Một lần"
                           : contract.contractType === "MONTHLY_FIXED"
-                          ? "Hàng tháng (cố định)"
-                          : contract.contractType === "MONTHLY_ACTUAL"
-                          ? "Hàng tháng (thực tế)"
-                          : "N/A"}
+                            ? "Hàng tháng (cố định)"
+                            : contract.contractType === "MONTHLY_ACTUAL"
+                              ? "Hàng tháng (thực tế)"
+                              : "N/A"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -1483,284 +1485,284 @@ export default function CustomerDetail() {
       {role !== 'QLV' && role !== 'EMPLOYEE' && (
         <>
           <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">Đánh giá nhân viên</h3>
-          <div>
-            <button
-              onClick={async () => {
-                await loadAssignedEmployees();
-                await loadContracts();
-                setShowAddReviewModal(true);
-              }}
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              + Thêm đánh giá
-            </button>
-          </div>
-        </div>
-
-        {loadingCustomerReviews ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : customerReviews.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm">
-              Chưa có đánh giá của khách hàng liên quan tới nhân viên này
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    #
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nhân viên
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Mã nhân viên
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Hợp đồng
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Điểm
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Bình luận
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ngày
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {customerReviews.map((r: any, idx: number) => (
-                  <tr
-                    key={r.id || idx}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      r.id && router.push(`/admin/reviews/${r.id}`)
-                    }
-                    onKeyDown={(e) => {
-                      if ((e as any).key === "Enter" && r.id)
-                        router.push(`/admin/reviews/${r.id}`);
-                    }}
-                    className="hover:bg-gray-50 cursor-pointer"
-                  >
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {idx + 1}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {r.employeeName ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {r.employeeCode ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {r.contractId ?? "-"} - {r.contractDescription ?? ""}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      <div className="flex items-center gap-2">
-                        <span>{r.rating ?? "-"}</span>
-                        <div className="flex items-center">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <svg
-                              key={s}
-                              xmlns="http://www.w3.org/2000/svg"
-                              className={`w-4 h-4 ${r.rating >= s
-                                ? "text-yellow-400"
-                                : "text-gray-300"
-                                }`}
-                              viewBox="0 0 20 20"
-                              fill={r.rating >= s ? "currentColor" : "none"}
-                              stroke={r.rating >= s ? "none" : "currentColor"}
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L9.05 2.927z" />
-                            </svg>
-                          ))}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {r.comment ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {r.createdAt
-                        ? new Intl.DateTimeFormat("vi-VN").format(
-                          new Date(r.createdAt)
-                        )
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Add Review Modal (customer adds review for employee) */}
-      {showAddReviewModal && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Thêm đánh giá</h3>
-              <button onClick={() => setShowAddReviewModal(false)} className="text-gray-500">Đóng</button>
-            </div>
-
-            <div className="space-y-3">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">Đánh giá nhân viên</h3>
               <div>
-                <label className="text-sm text-gray-600">Hợp đồng</label>
-                <select
-                  value={reviewForm.contractId}
-                  onChange={async (e) => {
-                    const newContractId = e.target.value;
-                    setReviewForm({ ...reviewForm, contractId: newContractId, employeeId: "", assignmentId: "" });
-                    await loadAssignmentsForContract(newContractId);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
-                >
-                  <option value="">Chọn hợp đồng</option>
-                  {contracts.map((c: any) => (
-                    <option key={c.id} value={String(c.id)}>
-                      HĐ #{c.id} - {c.description || c.services?.map((s: any) => s.title).join(", ")}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Nhân viên</label>
-                <select
-                  value={reviewForm.employeeId}
-                  onChange={(e) =>
-                    setReviewForm({ ...reviewForm, employeeId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
-                >
-                  <option value="">Chọn nhân viên</option>
-                  {loadingContractAssignments ? (
-                    <option value="">Đang tải...</option>
-                  ) : (
-                    contractAssignments
-                      .reduce((acc: any[], a: any) => {
-                        if (!acc.find((x) => x.employeeId === a.employeeId)) acc.push(a);
-                        return acc;
-                      }, [])
-                      .map((a: any, idx: number) => (
-                        <option key={`${a.employeeId}-${idx}`} value={String(a.employeeId)}>
-                          {a.employeeName || a.employeeId} - {a.employeeCode || ""}
-                        </option>
-                      ))
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Số điểm</label>
-                <div className="flex items-center gap-2 mt-1">
-                  {Array.from({ length: 5 }).map((_, i) => {
-                    const v = i + 1;
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setReviewForm({ ...reviewForm, rating: v })}
-                        className={`text-xl ${reviewForm.rating >= v ? "text-yellow-400" : "text-gray-300"}`}
-                      >
-                        ★
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-600">Bình luận</label>
-                <textarea
-                  rows={3}
-                  value={reviewForm.comment}
-                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setShowAddReviewModal(false)}
-                  className="px-3 py-1 border rounded text-sm"
-                  disabled={savingReview}
-                >
-                  Hủy
-                </button>
                 <button
                   onClick={async () => {
-                    if (!reviewForm.contractId || !reviewForm.employeeId || !reviewForm.rating) {
-                      toast.error("Vui lòng chọn hợp đồng, nhân viên và số điểm");
-                      return;
-                    }
-                    try {
-                      setSavingReview(true);
-                      const payload: any = {
-                        contractId: Number(reviewForm.contractId),
-                        employeeId: Number(reviewForm.employeeId),
-                        rating: reviewForm.rating,
-                        comment: reviewForm.comment,
-                      };
-                      // find assignment: prefer contractAssignments (assignments for selected contract)
-                      let found: any = undefined;
-                      if (contractAssignments && contractAssignments.length > 0) {
-                        found = contractAssignments.find((a: any) => String(a.employeeId) === reviewForm.employeeId && (a.contractId ? String(a.contractId) === reviewForm.contractId : true));
-                      }
-                      // fallback: assignedEmployees might be grouped by contract (each item has .assignments)
-                      if (!found && assignedEmployees && assignedEmployees.length > 0) {
-                        const flattened: any[] = assignedEmployees[0] && assignedEmployees[0].assignments
-                          ? assignedEmployees.flatMap((g: any) => g.assignments || [])
-                          : assignedEmployees;
-                        found = flattened.find((a: any) => String(a.employeeId) === reviewForm.employeeId && String(a.contractId) === reviewForm.contractId);
-                      }
-                      if (found) payload.assignmentId = found.id;
-
-                      const res = await reviewService.create(payload);
-                      if (res && (res.success === false)) {
-                        toast.error(res.message || "Lỗi khi thêm đánh giá");
-                      } else {
-                        toast.success("Đã thêm đánh giá");
-                        setShowAddReviewModal(false);
-                        // reload reviews
-                        try {
-                          setLoadingCustomerReviews(true);
-                          const r = await reviewService.getByCustomerId(Number(id));
-                          setCustomerReviews(r || []);
-                        } catch (err) {
-                          console.error(err);
-                        } finally {
-                          setLoadingCustomerReviews(false);
-                        }
-                      }
-                    } catch (err: any) {
-                      console.error(err);
-                      toast.error(err?.message || "Có lỗi");
-                    } finally {
-                      setSavingReview(false);
-                    }
+                    await loadAssignedEmployees();
+                    await loadContracts();
+                    setShowAddReviewModal(true);
                   }}
-                  disabled={savingReview}
-                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                 >
-                  {savingReview ? "Đang thêm..." : "Thêm đánh giá"}
+                  + Thêm đánh giá
                 </button>
               </div>
             </div>
-          </div>
-        </div>
 
-      )}
+            {loadingCustomerReviews ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : customerReviews.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-sm">
+                  Chưa có đánh giá của khách hàng liên quan tới nhân viên này
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        #
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Nhân viên
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mã nhân viên
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Hợp đồng
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Điểm
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Bình luận
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ngày
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {customerReviews.map((r: any, idx: number) => (
+                      <tr
+                        key={r.id || idx}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
+                          r.id && router.push(`/admin/reviews/${r.id}`)
+                        }
+                        onKeyDown={(e) => {
+                          if ((e as any).key === "Enter" && r.id)
+                            router.push(`/admin/reviews/${r.id}`);
+                        }}
+                        className="hover:bg-gray-50 cursor-pointer"
+                      >
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {idx + 1}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {r.employeeName ?? "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {r.employeeCode ?? "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {r.contractId ?? "-"} - {r.contractDescription ?? ""}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <span>{r.rating ?? "-"}</span>
+                            <div className="flex items-center">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <svg
+                                  key={s}
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className={`w-4 h-4 ${r.rating >= s
+                                    ? "text-yellow-400"
+                                    : "text-gray-300"
+                                    }`}
+                                  viewBox="0 0 20 20"
+                                  fill={r.rating >= s ? "currentColor" : "none"}
+                                  stroke={r.rating >= s ? "none" : "currentColor"}
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L9.05 2.927z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {r.comment ?? "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {r.createdAt
+                            ? new Intl.DateTimeFormat("vi-VN").format(
+                              new Date(r.createdAt)
+                            )
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Add Review Modal (customer adds review for employee) */}
+          {showAddReviewModal && (
+            <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Thêm đánh giá</h3>
+                  <button onClick={() => setShowAddReviewModal(false)} className="text-gray-500">Đóng</button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-gray-600">Hợp đồng</label>
+                    <select
+                      value={reviewForm.contractId}
+                      onChange={async (e) => {
+                        const newContractId = e.target.value;
+                        setReviewForm({ ...reviewForm, contractId: newContractId, employeeId: "", assignmentId: "" });
+                        await loadAssignmentsForContract(newContractId);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
+                    >
+                      <option value="">Chọn hợp đồng</option>
+                      {contracts.map((c: any) => (
+                        <option key={c.id} value={String(c.id)}>
+                          HĐ #{c.id} - {c.description || c.services?.map((s: any) => s.title).join(", ")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600">Nhân viên</label>
+                    <select
+                      value={reviewForm.employeeId}
+                      onChange={(e) =>
+                        setReviewForm({ ...reviewForm, employeeId: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
+                    >
+                      <option value="">Chọn nhân viên</option>
+                      {loadingContractAssignments ? (
+                        <option value="">Đang tải...</option>
+                      ) : (
+                        contractAssignments
+                          .reduce((acc: any[], a: any) => {
+                            if (!acc.find((x) => x.employeeId === a.employeeId)) acc.push(a);
+                            return acc;
+                          }, [])
+                          .map((a: any, idx: number) => (
+                            <option key={`${a.employeeId}-${idx}`} value={String(a.employeeId)}>
+                              {a.employeeName || a.employeeId} - {a.employeeCode || ""}
+                            </option>
+                          ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600">Số điểm</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      {Array.from({ length: 5 }).map((_, i) => {
+                        const v = i + 1;
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setReviewForm({ ...reviewForm, rating: v })}
+                            className={`text-xl ${reviewForm.rating >= v ? "text-yellow-400" : "text-gray-300"}`}
+                          >
+                            ★
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600">Bình luận</label>
+                    <textarea
+                      rows={3}
+                      value={reviewForm.comment}
+                      onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setShowAddReviewModal(false)}
+                      className="px-3 py-1 border rounded text-sm"
+                      disabled={savingReview}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!reviewForm.contractId || !reviewForm.employeeId || !reviewForm.rating) {
+                          toast.error("Vui lòng chọn hợp đồng, nhân viên và số điểm");
+                          return;
+                        }
+                        try {
+                          setSavingReview(true);
+                          const payload: any = {
+                            contractId: Number(reviewForm.contractId),
+                            employeeId: Number(reviewForm.employeeId),
+                            rating: reviewForm.rating,
+                            comment: reviewForm.comment,
+                          };
+                          // find assignment: prefer contractAssignments (assignments for selected contract)
+                          let found: any = undefined;
+                          if (contractAssignments && contractAssignments.length > 0) {
+                            found = contractAssignments.find((a: any) => String(a.employeeId) === reviewForm.employeeId && (a.contractId ? String(a.contractId) === reviewForm.contractId : true));
+                          }
+                          // fallback: assignedEmployees might be grouped by contract (each item has .assignments)
+                          if (!found && assignedEmployees && assignedEmployees.length > 0) {
+                            const flattened: any[] = assignedEmployees[0] && assignedEmployees[0].assignments
+                              ? assignedEmployees.flatMap((g: any) => g.assignments || [])
+                              : assignedEmployees;
+                            found = flattened.find((a: any) => String(a.employeeId) === reviewForm.employeeId && String(a.contractId) === reviewForm.contractId);
+                          }
+                          if (found) payload.assignmentId = found.id;
+
+                          const res = await reviewService.create(payload);
+                          if (res && (res.success === false)) {
+                            toast.error(res.message || "Lỗi khi thêm đánh giá");
+                          } else {
+                            toast.success("Đã thêm đánh giá");
+                            setShowAddReviewModal(false);
+                            // reload reviews
+                            try {
+                              setLoadingCustomerReviews(true);
+                              const r = await reviewService.getByCustomerId(Number(id));
+                              setCustomerReviews(r || []);
+                            } catch (err) {
+                              console.error(err);
+                            } finally {
+                              setLoadingCustomerReviews(false);
+                            }
+                          }
+                        } catch (err: any) {
+                          console.error(err);
+                          toast.error(err?.message || "Có lỗi");
+                        } finally {
+                          setSavingReview(false);
+                        }
+                      }}
+                      disabled={savingReview}
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                    >
+                      {savingReview ? "Đang thêm..." : "Thêm đánh giá"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          )}
         </>
       )}
 
@@ -2513,14 +2515,14 @@ export default function CustomerDetail() {
                       <option key={contract.id} value={contract.id}>
                         HĐ #{contract.id} -{" "}
                         {contract.services?.map((s: any) => s.title).join(", ")} {" "}
-                          ({formatDate(contract.startDate)} -{" "}
-                          {formatDate(contract.endDate)}) - Hợp đồng {contract.contractType === "ONE_TIME"
+                        ({formatDate(contract.startDate)} -{" "}
+                        {formatDate(contract.endDate)}) - Hợp đồng {contract.contractType === "ONE_TIME"
                           ? "Một lần"
                           : contract.contractType === "MONTHLY_FIXED"
-                          ? "Hàng tháng (cố định)"
-                          : contract.contractType === "MONTHLY_ACTUAL"
-                          ? "Hàng tháng (thực tế)"
-                          : "N/A"}
+                            ? "Hàng tháng (cố định)"
+                            : contract.contractType === "MONTHLY_ACTUAL"
+                              ? "Hàng tháng (thực tế)"
+                              : "N/A"}
                       </option>
                     ))}
                   </select>
@@ -2595,7 +2597,7 @@ export default function CustomerDetail() {
                             (c: any) =>
                               String(c.id) === String(assignmentForm.contractId)
                           );
-                          
+
                           // Helper to extract date string in YYYY-MM-DD format
                           const toDateStr = (dateInput: any) => {
                             if (!dateInput) return null;
@@ -2607,7 +2609,7 @@ export default function CustomerDetail() {
                             }
                             return String(dateInput).split("T")[0];
                           };
-                          
+
                           const contractStartStr = toDateStr(selectedContract?.startDate);
                           const contractEndStr = toDateStr(selectedContract?.endDate);
                           const rawWorkingDays: any[] =

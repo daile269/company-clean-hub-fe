@@ -53,7 +53,20 @@ const customerAssignmentService = {
         const response = await apiService.get<any>(queryString);
         return response.data;
     },
-
+    /**
+ * Lấy danh sách khách hàng của user hiện tại (có phân trang)
+ */
+    getMyAssignedCustomer2: async (params?: {
+        keyword?: string;
+    }): Promise<{ content: Customer[]; totalElements: number; totalPages: number; currentPage: number; pageSize: number; first: boolean; last: boolean }> => {
+        const { keyword = '' } = params || {};
+        let queryString = `/customer-assignments/my-customers?all=true`;
+        if (keyword) {
+            queryString += `&keyword=${encodeURIComponent(keyword)}`;
+        }
+        const response = await apiService.get<any>(queryString);
+        return response.data;
+    },
     /**
      * Lấy danh sách phân công của một manager
      */

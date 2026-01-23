@@ -92,14 +92,14 @@ export default function ClientLayout({
                       href="mailto: info@opticlean.com.vn"
                       className="hover:text-white mr-2"
                     >
-                       info@opticlean.com.vn
+                      info@opticlean.com.vn
                     </a>
                     hoặc
                     <a
                       href="mailto: info@opticlean.com.vn"
                       className="hover:text-white ml-2"
                     >
-                       info@opticlean.com.vn
+                      sp.opticlean@gmail.com
                     </a>
                   </p>
                   <p>

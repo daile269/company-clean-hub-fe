@@ -389,10 +389,10 @@ export default function Home() {
                   </a>
                   hoặc
                   <a
-                    href="mailto: info@opticlean.com.vn"
+                    href="mailto: sp.opticlean@gmail.com"
                     className="text-blue-600 hover:text-blue-800 ml-2"
                   >
-                   info@opticlean.com.vn
+                   sp.opticlean@gmail.com
                   </a>
                 </p>
                 <p className="text-gray-700">

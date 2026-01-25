@@ -241,7 +241,7 @@ export default function AssignmentDetail() {
             : undefined,
         additionalAllowance:
           editForm.additionalAllowance !== undefined &&
-          editForm.additionalAllowance !== null
+            editForm.additionalAllowance !== null
             ? Number(parseFormattedNumber(String(editForm.additionalAllowance)))
             : undefined,
         workingDaysPerWeek:
@@ -445,9 +445,8 @@ export default function AssignmentDetail() {
               onClick={handleTerminate}
               disabled={terminating}
               aria-busy={terminating}
-              className={`px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2 ${
-                terminating ? "opacity-60 cursor-not-allowed" : ""
-              }`}
+              className={`px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 inline-flex items-center gap-2 ${terminating ? "opacity-60 cursor-not-allowed" : ""
+                }`}
             >
               {terminating ? (
                 <>
@@ -500,9 +499,8 @@ export default function AssignmentDetail() {
               onClick={handleRollbackTerminate}
               disabled={rollingBack}
               aria-busy={rollingBack}
-              className={`px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 ${
-                rollingBack ? "opacity-60 cursor-not-allowed" : ""
-              }`}
+              className={`px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 ${rollingBack ? "opacity-60 cursor-not-allowed" : ""
+                }`}
             >
               {rollingBack ? (
                 <>
@@ -555,9 +553,8 @@ export default function AssignmentDetail() {
               onClick={handleDelete}
               disabled={deleting}
               aria-busy={deleting}
-              className={`px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2 ${
-                deleting ? "opacity-60 cursor-not-allowed" : ""
-              }`}
+              className={`px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-2 ${deleting ? "opacity-60 cursor-not-allowed" : ""
+                }`}
             >
               {deleting ? (
                 <>
@@ -737,7 +734,7 @@ export default function AssignmentDetail() {
                   </p>
                 )}
             </div>
-            {role !== "QLV" && (
+            {role !== "QLV" && role !== "CUSTOMER" && (
               <div className="pt-3 border-t">
                 <p className="text-xs text-gray-500 mb-1">
                   Lương tại thời điểm phân công
@@ -747,7 +744,7 @@ export default function AssignmentDetail() {
                 </p>
               </div>
             )}
-            {role !== "QLV" && (
+            {role !== "QLV" && role !== "CUSTOMER" && (
               <div className="pt-3 border-t">
                 <p className="text-xs text-gray-500 mb-1">Phụ cấp thêm</p>
                 <p className="text-2xl font-bold text-green-600">
@@ -777,50 +774,50 @@ export default function AssignmentDetail() {
 
               {((contractDetails && contractDetails.type) ||
                 (assignment as any)?.contractType) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Loại hợp đồng:{" "}
-                  {(() => {
-                    const type =
-                      (contractDetails && contractDetails.type) ??
-                      (assignment as any).contractType;
-                    switch (type) {
-                      case "ONE_TIME":
-                        return "Hợp đồng 1 lần (trọn gói)";
-                      case "MONTHLY_FIXED":
-                        return "Hợp đồng hàng tháng cố định";
-                      case "MONTHLY_ACTUAL":
-                        return "Hợp đồng hàng tháng theo ngày thực tế";
-                      default:
-                        return type || "N/A";
-                    }
-                  })()}
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Loại hợp đồng:{" "}
+                    {(() => {
+                      const type =
+                        (contractDetails && contractDetails.type) ??
+                        (assignment as any).contractType;
+                      switch (type) {
+                        case "ONE_TIME":
+                          return "Hợp đồng 1 lần (trọn gói)";
+                        case "MONTHLY_FIXED":
+                          return "Hợp đồng hàng tháng cố định";
+                        case "MONTHLY_ACTUAL":
+                          return "Hợp đồng hàng tháng theo ngày thực tế";
+                        default:
+                          return type || "N/A";
+                      }
+                    })()}
+                  </p>
+                )}
 
               {((contractDetails && contractDetails.workDays !== undefined) ||
                 (assignment as any)?.contractWorkDays) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Số ngày làm:{" "}
-                  {(contractDetails && contractDetails.workDays) ??
-                    (assignment as any).contractWorkDays}{" "}
-                  ngày
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Số ngày làm:{" "}
+                    {(contractDetails && contractDetails.workDays) ??
+                      (assignment as any).contractWorkDays}{" "}
+                    ngày
+                  </p>
+                )}
 
               {((contractDetails && contractDetails.finalPrice) ||
                 (assignment as any)?.contractFinalPrice ||
                 (assignment as any)?.contract?.finalPrice) && (
-                <p className="text-sm text-gray-700 mt-1">
-                  Giá hợp đồng:{" "}
-                  {formatCurrency(
-                    Number(
-                      ((contractDetails && contractDetails.finalPrice) ??
-                        (assignment as any).contractFinalPrice ??
-                        (assignment as any).contract?.finalPrice) as number
-                    )
-                  )}
-                </p>
-              )}
+                  <p className="text-sm text-gray-700 mt-1">
+                    Giá hợp đồng:{" "}
+                    {formatCurrency(
+                      Number(
+                        ((contractDetails && contractDetails.finalPrice) ??
+                          (assignment as any).contractFinalPrice ??
+                          (assignment as any).contract?.finalPrice) as number
+                      )
+                    )}
+                  </p>
+                )}
             </div>
           </div>
         </div>
@@ -1206,9 +1203,8 @@ export default function AssignmentDetail() {
               </button>
               <button
                 onClick={submitTerminate}
-                className={`px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 ${
-                  terminating ? "opacity-60 cursor-not-allowed" : ""
-                }`}
+                className={`px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 ${terminating ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
                 disabled={terminating}
               >
                 {terminating ? "Đang dừng..." : "Xác nhận dừng"}

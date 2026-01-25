@@ -112,9 +112,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Main Content */}
         <main
-          className={`flex-1 ${
-            sidebarOpen ? "ml-64" : "ml-0"
-          } transition-all duration-300 p-8`}
+          className={`flex-1 ${sidebarOpen ? "ml-64" : "ml-0"
+            } transition-all duration-300 p-8`}
         >
           {children}
         </main>

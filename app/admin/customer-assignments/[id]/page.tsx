@@ -238,11 +238,11 @@ export default function ManagerAssignmentDetailPage() {
     }
 
     return (
-        <div>
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
             <Toaster position="top-right" />
 
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6 md:mb-8">
                 <button
                     onClick={() => router.back()}
                     className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
@@ -263,7 +263,7 @@ export default function ManagerAssignmentDetailPage() {
                     Quay lại
                 </button>
 
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">
                             Phân công khách hàng
@@ -275,7 +275,7 @@ export default function ManagerAssignmentDetailPage() {
 
                     <button
                         onClick={handleOpenAddModal}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 w-full md:w-auto"
                     >
                         <svg
                             className="w-5 h-5"
@@ -296,8 +296,8 @@ export default function ManagerAssignmentDetailPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white rounded-lg shadow p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+                <div className="bg-white rounded-lg shadow p-4 md:p-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600">Tổng khách hàng</p>
@@ -323,7 +323,7 @@ export default function ManagerAssignmentDetailPage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="bg-white rounded-lg shadow p-4 md:p-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600">Đã chọn</p>
@@ -358,7 +358,7 @@ export default function ManagerAssignmentDetailPage() {
 
             {/* Customer Table */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="p-6 border-b">
+                <div className="p-4 md:p-6 border-b">
                     <h2 className="text-lg font-semibold text-gray-900">
                         Khách hàng được phân công
                     </h2>
@@ -369,7 +369,7 @@ export default function ManagerAssignmentDetailPage() {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left">
+                                    <th className="px-4 py-3 text-left">
                                         <input
                                             type="checkbox"
                                             checked={
@@ -388,17 +388,21 @@ export default function ManagerAssignmentDetailPage() {
                                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                         />
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Mã KH
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Tên khách hàng
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Điện thoại
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Địa chỉ
+                                    </th>
+                                    {/* Mobile Only Header */}
+                                    <th className="md:hidden px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Thông tin khách hàng
                                     </th>
                                 </tr>
                             </thead>
@@ -411,7 +415,7 @@ export default function ManagerAssignmentDetailPage() {
                                             : ""
                                             }`}
                                     >
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4 whitespace-nowrap align-top">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedToRemove.has(Number(customer.id))}
@@ -421,22 +425,51 @@ export default function ManagerAssignmentDetailPage() {
                                                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                             />
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top">
                                             {customer.code}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">
+                                        <td className="hidden md:table-cell px-4 py-4 text-sm align-top">
+                                            <div className="font-medium text-gray-900">
                                                 {customer.name}
                                             </div>
-                                            <div className="text-sm text-gray-500">
+                                            <div className="text-gray-500 mt-1">
                                                 {customer.company}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
                                             {customer.phone}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-500 align-top break-words max-w-xs">
                                             {customer.address}
+                                        </td>
+                                        {/* Mobile Only Cell */}
+                                        <td className="md:hidden px-4 py-4 text-sm align-top">
+                                            <div className="font-medium text-gray-900 break-words">
+                                                {customer.name}
+                                            </div>
+                                            <div className="text-gray-500 text-xs mt-0.5 break-words">
+                                                {customer.company}
+                                            </div>
+                                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                                <span className="bg-gray-100 px-2 py-1 rounded font-medium text-gray-600">
+                                                    {customer.code}
+                                                </span>
+                                                <span className="flex items-center text-gray-500">
+                                                    <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                    </svg>
+                                                    {customer.phone}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 text-gray-500 text-xs flex items-start gap-1">
+                                                <svg className="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <span className="break-words line-clamp-3">
+                                                    {customer.address}
+                                                </span>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -444,7 +477,7 @@ export default function ManagerAssignmentDetailPage() {
                         </table>
                     </div>
                 ) : (
-                    <div className="p-12 text-center">
+                    <div className="p-6 md:p-12 text-center">
                         <svg
                             className="mx-auto h-12 w-12 text-gray-400"
                             fill="none"
@@ -471,7 +504,7 @@ export default function ManagerAssignmentDetailPage() {
             {/* Add Customers Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                    <div className="bg-white rounded-lg p-4 md:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
                         <div className="flex justify-between items-start mb-6">
                             <h2 className="text-2xl font-bold text-gray-900">
                                 Thêm khách hàng
@@ -536,7 +569,7 @@ export default function ManagerAssignmentDetailPage() {
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50 sticky top-0">
                                                 <tr>
-                                                    <th className="px-6 py-3 text-left">
+                                                    <th className="px-4 py-3 text-left">
                                                         <input
                                                             type="checkbox"
                                                             checked={
@@ -560,14 +593,17 @@ export default function ManagerAssignmentDetailPage() {
                                                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                         />
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                                                         Mã KH
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                                         Tên khách hàng
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                                                         Điện thoại
+                                                    </th>
+                                                    <th className="md:hidden px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                        Thông tin
                                                     </th>
                                                 </tr>
                                             </thead>
@@ -583,7 +619,7 @@ export default function ManagerAssignmentDetailPage() {
                                                             handleToggleAddCustomer(Number(customer.id))
                                                         }
                                                     >
-                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                        <td className="px-4 py-4 whitespace-nowrap">
                                                             <input
                                                                 type="checkbox"
                                                                 checked={selectedToAdd.has(Number(customer.id))}
@@ -594,26 +630,46 @@ export default function ManagerAssignmentDetailPage() {
                                                                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                             />
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top">
                                                             {customer.code}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="text-sm font-medium text-gray-900">
+                                                        <td className="hidden md:table-cell px-4 py-4 text-sm align-top">
+                                                            <div className="font-medium text-gray-900">
                                                                 {customer.name}
                                                             </div>
-                                                            <div className="text-sm text-gray-500">
+                                                            <div className="text-gray-500 mt-1">
                                                                 {customer.company}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        <td className="hidden md:table-cell px-4 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
                                                             {customer.phone}
+                                                        </td>
+                                                        {/* Mobile Only Cell */}
+                                                        <td className="md:hidden px-4 py-4 text-sm align-top">
+                                                            <div className="font-medium text-gray-900 break-words">
+                                                                {customer.name}
+                                                            </div>
+                                                            <div className="text-gray-500 text-xs mt-0.5 break-words">
+                                                                {customer.company}
+                                                            </div>
+                                                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                                                <span className="bg-gray-100 px-2 py-1 rounded font-medium text-gray-600">
+                                                                    {customer.code}
+                                                                </span>
+                                                                <span className="flex items-center text-gray-500">
+                                                                    <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                                    </svg>
+                                                                    {customer.phone}
+                                                                </span>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     ) : (
-                                        <div className="p-12 text-center">
+                                        <div className="p-6 md:p-12 text-center">
                                             <p className="text-gray-500">
                                                 Không có khách hàng nào để thêm
                                             </p>

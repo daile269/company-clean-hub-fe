@@ -137,13 +137,13 @@ export default function PayrollPage() {
   return (
     <div className="relative">
       <Toaster position="top-right" />
-      <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
-        <div className="flex gap-2">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
+        <div className="flex gap-2 w-full sm:w-auto">
           {canCreate && (
             <button
               onClick={() => setShowCalculateModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+              className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <svg
                 className="w-5 h-5"
@@ -178,16 +178,16 @@ export default function PayrollPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng bảng lương</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-xs sm:text-sm text-gray-600">Tổng bảng lương</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">
                 {totalElements}
               </p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
               <svg
                 className="w-6 h-6 text-blue-600"
                 fill="none"
@@ -205,15 +205,15 @@ export default function PayrollPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Đã thanh toán</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-xs sm:text-sm text-gray-600">Đã thanh toán</p>
+              <p className="text-lg sm:text-2xl font-bold text-green-600">
                 {paidPayrolls}
               </p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
+            <div className="bg-green-100 p-2 sm:p-3 rounded-full">
               <svg
                 className="w-6 h-6 text-green-600"
                 fill="none"
@@ -234,12 +234,12 @@ export default function PayrollPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Chưa thanh toán</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-xs sm:text-sm text-gray-600">Chưa thanh toán</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-600">
                 {unpaidPayrolls}
               </p>
             </div>
-            <div className="bg-red-100 p-3 rounded-full">
+            <div className="bg-red-100 p-2 sm:p-3 rounded-full">
               <svg
                 className="w-6 h-6 text-red-600"
                 fill="none"
@@ -260,12 +260,12 @@ export default function PayrollPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tổng chi lương</p>
-              <p className="text-xl font-bold text-purple-600">
+              <p className="text-xs sm:text-sm text-gray-600">Tổng chi lương</p>
+              <p className="text-base sm:text-xl font-bold text-purple-600">
                 {formatCurrency(totalPayroll)}
               </p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-full">
+            <div className="bg-purple-100 p-2 sm:p-3 rounded-full">
               <svg
                 className="w-6 h-6 text-purple-600"
                 fill="none"
@@ -294,9 +294,9 @@ export default function PayrollPage() {
       {!loading && (
         <>
           {/* Filters */}
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="col-span-2 lg:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tìm kiếm
                 </label>
@@ -342,9 +342,9 @@ export default function PayrollPage() {
               </div>
 
               {canExport && (
-                <div className="flex items-end">
+                <div className="flex items-end col-span-2 lg:col-span-1">
                   <button
-                    className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+                    className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm sm:text-base"
                     onClick={() => setShowExportModal(true)}
                   >
                     Xuất Excel
@@ -354,9 +354,10 @@ export default function PayrollPage() {
             </div>
           </div>
 
-          {/* Table */}
+          {/* Table for Desktop, Cards for Mobile */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Table layout for larger screens */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -377,8 +378,8 @@ export default function PayrollPage() {
                       <tr
                         key={payroll.id}
                         className={`cursor-pointer transition-all ${isNavigating
-                            ? 'bg-blue-50 opacity-60'
-                            : 'hover:bg-gray-50'
+                          ? "bg-blue-50 opacity-60"
+                          : "hover:bg-gray-50"
                           }`}
                         onClick={() => {
                           setNavigatingToId(payroll.id);
@@ -428,109 +429,160 @@ export default function PayrollPage() {
               </table>
             </div>
 
-            {payrolls.length === 0 && (
-              <div className="text-center py-12">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  Không tìm thấy bảng lương
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
-                </p>
-              </div>
-            )}
+            {/* Card layout for mobile screens */}
+            <div className="sm:hidden divide-y divide-gray-200">
+              {payrolls.map((payroll) => {
+                const isNavigating = navigatingToId === payroll.id;
+                return (
+                  <div
+                    key={payroll.id}
+                    className={`p-4 active:bg-gray-100 transition-all ${isNavigating ? "bg-blue-50 opacity-60" : ""}`}
+                    onClick={() => {
+                      setNavigatingToId(payroll.id);
+                      setTimeout(() => {
+                        router.push(`/admin/payroll/${payroll.id}`);
+                      }, 100);
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        {isNavigating && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>}
+                        <span className="text-xs font-bold text-gray-500 uppercase px-1.5 py-0.5 bg-gray-100 rounded">
+                          {payroll.employeeCode}
+                        </span>
+                        <span className="text-sm font-bold text-gray-900">{payroll.employeeName}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${getStatusColor(payroll.status)}`}>
+                        {getStatusLabel(payroll.status)}
+                      </span>
+                    </div>
 
-            {/* Pagination */}
-            {totalPages > 0 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
-                <div className="flex-1 flex justify-between sm:!hidden">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                    disabled={currentPage === 0}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Trước
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                    disabled={currentPage >= totalPages - 1}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Sau
-                  </button>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Kỳ lương</p>
+                        <p className="text-xs text-gray-700 font-semibold">T{payroll.month}/{payroll.year}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Tổng phải trả</p>
+                        <p className="text-sm text-blue-600 font-bold">{formatCurrency(payroll.remainingAmount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Lương công</p>
+                        <p className="text-xs text-purple-600 font-semibold">{formatCurrency(payroll.baseSalary || 0)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Ngày tạo</p>
+                        <p className="text-[10px] text-gray-600">{new Date(payroll.createdAt).toLocaleDateString('vi-VN')}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {payrolls.length === 0 && (
+            <div className="text-center py-12">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                Không tìm thấy bảng lương
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+              </p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 0 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+              <div className="flex-1 flex justify-between sm:!hidden">
+                <button
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Trước
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Sau
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Hiển thị <span className="font-medium">{currentPage * pageSize + 1}</span> đến{" "}
+                    <span className="font-medium">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> trong tổng số{" "}
+                    <span className="font-medium">{totalElements}</span> bản ghi
+                  </p>
                 </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Hiển thị <span className="font-medium">{currentPage * pageSize + 1}</span> đến{" "}
-                      <span className="font-medium">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> trong tổng số{" "}
-                      <span className="font-medium">{totalElements}</span> bản ghi
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                      <button
-                        onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                        disabled={currentPage === 0}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <span className="sr-only">Trước</span>
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i;
-                        } else if (currentPage < 3) {
-                          pageNum = i;
-                        } else if (currentPage > totalPages - 4) {
-                          pageNum = totalPages - 5 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
-                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                              }`}
-                          >
-                            {pageNum + 1}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                        disabled={currentPage >= totalPages - 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <span className="sr-only">Sau</span>
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </nav>
-                  </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                      disabled={currentPage === 0}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <span className="sr-only">Trước</span>
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i;
+                      } else if (currentPage < 3) {
+                        pageNum = i;
+                      } else if (currentPage > totalPages - 4) {
+                        pageNum = totalPages - 5 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                            }`}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                      disabled={currentPage >= totalPages - 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      <span className="sr-only">Sau</span>
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>

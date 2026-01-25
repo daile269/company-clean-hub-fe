@@ -201,18 +201,18 @@ export default function CustomerAssignmentsPage() {
     }
 
     return (
-        <div>
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
             <Toaster position="top-right" />
 
-            <div className="mb-8 flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-900">
+            <div className="mb-6 md:mb-8 flex justify-between items-center">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                     Phân công khách hàng
                 </h1>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white rounded-lg shadow p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6">
+                <div className="bg-white rounded-lg shadow p-4 md:p-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600">Tổng số quản lý</p>
@@ -238,7 +238,7 @@ export default function CustomerAssignmentsPage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="bg-white rounded-lg shadow p-4 md:p-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600">Tổng phân công</p>
@@ -266,7 +266,7 @@ export default function CustomerAssignmentsPage() {
             </div>
 
             {/* Search */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
                 <input
                     type="text"
                     placeholder="Tìm kiếm quản lý hoặc khách hàng..."
@@ -278,7 +278,7 @@ export default function CustomerAssignmentsPage() {
 
             {/* Manager List - Two columns for QLT1, Single column for QLT2 */}
             {currentUser?.roleName === "QLT1" ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* QLT2 Column */}
                     <div>
                         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -373,12 +373,12 @@ function ManagerCard({ manager, router }: { manager: ManagerWithAssignments; rou
     return (
         <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
             <div
-                className="p-6 cursor-pointer"
+                className="p-4 md:p-6 cursor-pointer"
                 onClick={() =>
                     router.push(`/admin/customer-assignments/${manager.managerId}`)
                 }
             >
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-4">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900">
                             {manager.managerName}
@@ -387,7 +387,7 @@ function ManagerCard({ manager, router }: { manager: ManagerWithAssignments; rou
                             @{manager.managerUsername}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
                         <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
                             {manager.assignments.length} khách hàng
                         </span>
@@ -445,7 +445,7 @@ function ManagerCard({ manager, router }: { manager: ManagerWithAssignments; rou
 // Empty State Component
 function EmptyState({ message }: { message: string }) {
     return (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-lg shadow p-6 md:p-12 text-center">
             <svg
                 className="mx-auto h-12 w-12 text-gray-400"
                 fill="none"

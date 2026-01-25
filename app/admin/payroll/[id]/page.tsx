@@ -262,14 +262,14 @@ export default function PayrollDetailPage() {
     <div className="relative">
       <Toaster position="top-right" />
       {loading && <FullPageLoading />}
-      <div className="mb-8 flex justify-between items-center">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <button
             onClick={() => router.push("/admin/payroll")}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-2 sm:mb-4 text-sm"
           >
             <svg
-              className="w-5 h-5 mr-2"
+              className="w-4 h-4 mr-1 sm:w-5 sm:h-5 sm:mr-2"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -283,15 +283,15 @@ export default function PayrollDetailPage() {
             </svg>
             Quay lại
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
             Chi tiết bảng lương
           </h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 w-full sm:w-auto">
           {payroll.status !== 'PAID' && canMarkPaid && (
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+              className="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-xs sm:text-base font-medium"
             >
               <svg
                 className="w-5 h-5"
@@ -312,7 +312,7 @@ export default function PayrollDetailPage() {
           {canEdit && (
             <button
               onClick={() => setShowUpdateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              className="flex-1 sm:flex-none px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-xs sm:text-base font-medium"
             >
               <svg
                 className="w-5 h-5"
@@ -333,49 +333,49 @@ export default function PayrollDetailPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Employee Info */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">
             Thông tin nhân viên
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-500">
-                Mã nhân viên
+              <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                Mã NV
               </label>
-              <p className="mt-1 text-sm text-gray-900  ">
+              <p className="mt-0.5 text-sm sm:text-base text-gray-900 font-medium">
                 {payroll.employeeCode}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">
-                Tên nhân viên
+              <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                Tên NV
               </label>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-0.5 text-sm sm:text-base text-gray-900 font-medium">
                 {payroll.employeeName}
               </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">
-                Trạng thái thanh toán
+              <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                Trạng thái TT
               </label>
-              <div className="mt-1">
-                <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-lg ${getStatusColor(payroll.status)}`}>
+              <div className="mt-0.5">
+                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded-lg ${getStatusColor(payroll.status)}`}>
                   {getStatusLabel(payroll.status)}
                 </span>
                 {payroll.paymentDate && (
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-[10px] text-gray-500 mt-1">
                     Ngày TT: {formatDate(payroll.paymentDate)}
                   </p>
                 )}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-500">
+              <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
                 Kỳ lương
               </label>
-              <p className="mt-1 text-sm text-gray-900">
+              <p className="mt-0.5 text-sm sm:text-base text-gray-900 font-medium whitespace-nowrap">
                 Tháng {payroll.month}/{payroll.year}
               </p>
             </div>
@@ -387,26 +387,26 @@ export default function PayrollDetailPage() {
           {/* Left Column: Metrics & Adjustments (Smaller ratio) */}
           <div className="lg:col-span-4 space-y-6">
             {/* Card 1: Khách hàng & Công */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-base font-semibold mb-3 text-gray-900">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+              <h3 className="text-sm sm:text-base font-semibold mb-2 sm:mb-3 text-gray-900">
                 Khách hàng & Công
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="text-xs font-medium text-gray-500">
-                    Số khách hàng
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
+                  <label className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">
+                    Khách hàng
                   </label>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">
+                  <p className="mt-0.5 text-sm sm:text-lg font-semibold text-gray-900">
                     {attendances.length > 0
                       ? new Set(attendances.map(att => att.customerId)).size
                       : 0} khách
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <label className="text-xs font-medium text-gray-500">
-                    Tổng ngày công
+                <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
+                  <label className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">
+                    Ngày công
                   </label>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">
+                  <p className="mt-0.5 text-sm sm:text-lg font-semibold text-gray-900">
                     {payroll.totalDays} ngày
                   </p>
                 </div>
@@ -415,80 +415,79 @@ export default function PayrollDetailPage() {
 
             {/* Card 2: Các khoản điều chỉnh */}
             <div className="bg-white rounded-lg shadow p-6">
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-100 flex gap-2 items-center">
+              <div className="bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-100 flex justify-between items-center">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                  <label className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">
                     Lương ngày công:
                   </label>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-[10px] sm:text-xs text-gray-500">
                     (Lương cơ bản × Ngày công)
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-purple-600">
+                  <p className="text-lg sm:text-xl font-bold text-purple-600">
                     {formatCurrency(payroll.baseSalary || 0)}
                   </p>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold m-4 text-gray-900">
+              <h3 className="text-base sm:text-lg font-semibold m-3 sm:m-4 text-gray-900">
                 Các khoản điều chỉnh
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-green-50 rounded-lg p-4">
-                  <label className="text-sm font-medium text-gray-500">
-                    Tổng thưởng
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+                  <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                    Thưởng (+)
                   </label>
-                  <p className="mt-1 text-lg font-semibold text-green-600">
-                    +{formatCurrency(payroll.bonusTotal)}
+                  <p className="mt-0.5 text-sm sm:text-lg font-semibold text-green-600">
+                    {formatCurrency(payroll.bonusTotal)}
                   </p>
                 </div>
-                <div className="bg-red-50 rounded-lg p-4">
-                  <label className="text-sm font-medium text-gray-500">
-                    Tổng phạt
+                <div className="bg-red-50 rounded-lg p-3 sm:p-4">
+                  <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                    Phạt (-)
                   </label>
-                  <p className="mt-1 text-lg font-semibold text-red-600">
-                    -{formatCurrency(payroll.penaltyTotal)}
+                  <p className="mt-0.5 text-sm sm:text-lg font-semibold text-red-600">
+                    {formatCurrency(payroll.penaltyTotal)}
                   </p>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <label className="text-sm font-medium text-gray-500">
-                    Phụ cấp
+                <div className="bg-purple-50 rounded-lg p-3 sm:p-4">
+                  <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                    Phụ cấp (+)
                   </label>
-                  <p className="mt-1 text-lg font-semibold text-purple-600">
-                    +{formatCurrency(payroll.allowanceTotal)}
+                  <p className="mt-0.5 text-sm sm:text-lg font-semibold text-purple-600">
+                    {formatCurrency(payroll.allowanceTotal)}
                   </p>
                 </div>
-                <div className="bg-orange-50 rounded-lg p-4">
-                  <label className="text-sm font-medium text-gray-500">
-                    Bảo hiểm
+                <div className="bg-orange-50 rounded-lg p-3 sm:p-4">
+                  <label className="text-[10px] sm:text-sm font-medium text-gray-500 uppercase">
+                    Bảo hiểm (-)
                   </label>
-                  <p className="mt-1 text-lg font-semibold text-orange-600">
-                    -{formatCurrency(payroll.insuranceTotal)}
+                  <p className="mt-0.5 text-sm sm:text-lg font-semibold text-orange-600">
+                    {formatCurrency(payroll.insuranceTotal)}
                   </p>
                 </div>
-
               </div>
             </div>
 
             {/* Card 3: Loại phân công */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900">
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+              <h3 className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">
                 Loại phân công
               </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {assignments && assignments.length > 0 ? (
                   [...new Map(assignments.map(a => [a.assignmentType, a])).values()].map(
                     (assignment) => (
                       <span
                         key={assignment.id}
-                        className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${getAssignmentTypeColor(assignment.assignmentType)}`}
+                        className={`px-2 sm:px-3 py-0.5 sm:py-1 inline-flex text-[10px] sm:text-xs font-semibold rounded-full ${getAssignmentTypeColor(assignment.assignmentType)}`}
                       >
                         {getAssignmentTypeLabel(assignment.assignmentType)}
                       </span>
                     )
                   )
                 ) : (
-                  <span className="text-sm text-gray-500">Không có phân công</span>
+                  <span className="text-xs sm:text-sm text-gray-500">Không có phân công</span>
                 )}
               </div>
             </div>
@@ -497,12 +496,12 @@ export default function PayrollDetailPage() {
           {/* Right Column: Main Summary & Payment (Larger ratio) */}
           <div className="lg:col-span-8">
             {/* Payroll Summary & Payment Info */}
-            <div className="bg-white rounded-lg shadow p-6 h-full">
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6 h-full">
               {/* Tab Headers */}
-              <div className="flex border-b border-gray-200 mb-6">
+              <div className="flex border-b border-gray-200 mb-4 sm:mb-6">
                 <button
                   onClick={() => setActiveTab('salary')}
-                  className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'salary'
+                  className={`px-4 sm:px-6 py-2 sm:py-3 font-semibold transition-colors text-sm sm:text-base ${activeTab === 'salary'
                     ? 'border-b-2 border-blue-600 text-blue-600'
                     : 'text-gray-500 hover:text-gray-700'
                     }`}
@@ -512,7 +511,7 @@ export default function PayrollDetailPage() {
                 {paymentHistory.length > 0 && (
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'history'
+                    className={`px-4 sm:px-6 py-2 sm:py-3 font-semibold transition-colors text-sm sm:text-base ${activeTab === 'history'
                       ? 'border-b-2 border-blue-600 text-blue-600'
                       : 'text-gray-500 hover:text-gray-700'
                       }`}
@@ -527,65 +526,63 @@ export default function PayrollDetailPage() {
                 <>
 
                   {/* Primary Info: Note */}
-                  <div className="bg-blue-50 rounded-lg p-6 mb-6">
-                    <label className="text-base font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="bg-blue-50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                    <label className="text-sm sm:text-base font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Ghi chú / Nguồn tiền
                     </label>
-                    <div className="mt-2 text-gray-800 bg-white/60 p-4 rounded-lg border border-blue-100 min-h-[80px] whitespace-pre-line text-sm leading-relaxed shadow-sm">
+                    <div className="mt-2 text-gray-800 bg-white/60 p-3 sm:p-4 rounded-lg border border-blue-100 min-h-[60px] sm:min-h-[80px] whitespace-pre-line text-xs sm:text-sm leading-relaxed shadow-sm">
                       {payroll.note || "Không có ghi chú chi tiết."}
                     </div>
                   </div>
 
                   {/* Financial Information Grid - Ordered as requested */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-
-
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
                     {/* 2. Total Salary (Tổng lương tháng) */}
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">
+                    <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-100 col-span-1">
+                      <label className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">
                         Tổng lương tháng
                       </label>
-                      <p className="mt-2 text-xl font-bold text-blue-600">
+                      <p className="mt-1 sm:mt-2 text-sm sm:text-xl font-bold text-blue-600">
                         {formatCurrency(payroll.finalSalary)}
                       </p>
                     </div>
 
                     {/* 3. Paid Amount (Đã thanh toán) */}
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                      <label className="text-xs font-semibold text-gray-500 uppercase">
+                    <div className="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-100 col-span-1">
+                      <label className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">
                         Đã thanh toán
                       </label>
-                      <p className="mt-2 text-xl font-bold text-green-600">
+                      <p className="mt-1 sm:mt-2 text-sm sm:text-xl font-bold text-green-600">
                         {formatCurrency(payroll.paidAmount)}
                       </p>
                     </div>
                   </div>
 
                   {/* 4. Remaining Amount - MOST IMPORTANT */}
-                  <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6 border-2 border-red-200 shadow-lg">
-                    <label className="text-sm font-semibold text-gray-600 uppercase flex items-center gap-2">
-                      Số tiền còn lại phải trả <small className="text-gray-500">(tổng lương tháng - đã thanh toán)</small>
+                  <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-4 sm:p-6 border-2 border-red-200 shadow-md sm:shadow-lg mb-4 sm:mb-6">
+                    <label className="text-[10px] sm:text-sm font-semibold text-gray-600 uppercase flex items-center flex-wrap gap-1 sm:gap-2">
+                      Số tiền còn lại phải trả <small className="text-[10px] text-gray-500 sm:inline hidden">(tổng lương - đã trả)</small>
                     </label>
-                    <p className="mt-3 text-3xl font-bold text-red-600 tracking-tight">
+                    <p className="mt-2 sm:mt-3 text-xl sm:text-3xl font-bold text-red-600 tracking-tight">
                       {formatCurrency(payroll.remainingAmount)}
                     </p>
                   </div>
 
                   {/* 5. Advance Note - Below Remaining Amount - EDITABLE */}
-                  <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="bg-yellow-50 rounded-lg p-3 sm:p-4 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <label className="text-xs font-semibold text-gray-600 uppercase">
+                      <label className="text-[10px] sm:text-xs font-semibold text-gray-600 uppercase">
                         Xin ứng lương (Ghi chú)
                       </label>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <input
                         type="text"
                         value={advanceNote.toLocaleString('vi-VN')}
@@ -593,7 +590,7 @@ export default function PayrollDetailPage() {
                           const value = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '');
                           setAdvanceNote(value ? Number(value) : 0);
                         }}
-                        className="flex-1 px-4 py-2 text-lg font-semibold border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
+                        className="flex-1 px-3 py-2 text-sm sm:text-lg font-semibold border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
                         disabled={!canEdit || isEditingAdvance}
                         placeholder="0"
                       />
@@ -601,18 +598,18 @@ export default function PayrollDetailPage() {
                         <button
                           onClick={handleSaveAdvanceNote}
                           disabled={isEditingAdvance || advanceNote === (payroll?.advanceTotal || 0)}
-                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-base font-medium"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          {isEditingAdvance ? "Đang lưu..." : "Lưu"}
+                          <span>{isEditingAdvance ? "Lưu" : "Lưu"}</span>
                         </button>
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-500 mt-3">
-                      ⓘ Đây chỉ là ghi chú về số tiền xin ứng, không ảnh hưởng đến tính lương
+                    <p className="text-[9px] sm:text-xs text-gray-500 mt-2 sm:mt-3">
+                      ⓘ Ghi chú tiền ứng, không ảnh hưởng tính lương
                     </p>
                   </div>
                 </>
@@ -630,13 +627,13 @@ export default function PayrollDetailPage() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Đợt
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ngày thanh toán
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Ngày TT
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Số tiền
                             </th>
                           </tr>
@@ -644,15 +641,15 @@ export default function PayrollDetailPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {paymentHistory.map((payment) => (
                             <tr key={payment.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-sm font-semibold bg-blue-100 text-blue-800">
                                   Đợt {payment.installmentNumber}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                                 {formatDate(payment.paymentDate)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-green-600">
                                 {formatCurrency(payment.amount)}
                               </td>
                             </tr>
@@ -677,73 +674,56 @@ export default function PayrollDetailPage() {
           {/* Salary Calculation Formulas */}
 
         </div>
-        <div className="bg-white rounded-lg shadow p-6 w-full">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">
-            Công thức tính lương theo loại phân công
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 w-full">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">
+            Công thức tính lương
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Formula 1: FIXED_BY_CONTRACT */}
-            <div className="border-l-4 border-blue-500 pl-4 py-2">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Phân công cố định (Hợp đồng)
+            <div className="border-l-4 border-blue-500 pl-3 sm:pl-4 py-1 sm:py-2">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-2">
+                Phân công cố định (HĐ)
               </h4>
-              <div className="text-xs text-gray-700 space-y-1 bg-blue-50 p-3 rounded">
+              <div className="text-[10px] sm:text-xs text-gray-700 space-y-1 bg-blue-50 p-2 sm:p-3 rounded">
                 <p><span className="font-semibold">Lương ngày = </span></p>
-                <p className="ml-2">(Lương + Thưởng + Phụ cấp) ÷ Số ngày DK</p>
-                <p className="mt-2"><span className="font-semibold">Lương thực = </span></p>
-                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
-                <div className="mt-2 pt-2 border-t border-blue-200">
-                  <p className="text-gray-600">Ví dụ: (30tr + 0 + 0) ÷ 26 = ~1.15tr/ngày</p>
-                </div>
+                <p className="ml-1 sm:ml-2">(L + T + P) ÷ Số ngày DK</p>
+                <p className="mt-1 sm:mt-2"><span className="font-semibold">Lương thực = </span></p>
+                <p className="ml-1 sm:ml-2">L.ngày × Ngày thực tế</p>
               </div>
             </div>
 
             {/* Formula 2: FIXED_BY_DAY */}
-            <div className="border-l-4 border-green-500 pl-4 py-2">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Phân công cố định (Theo ngày)
+            <div className="border-l-4 border-green-500 pl-3 sm:pl-4 py-1 sm:py-2">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-2">
+                Theo ngày & Tăng ca
               </h4>
-              <div className="text-xs text-gray-700 space-y-1 bg-green-50 p-3 rounded">
+              <div className="text-[10px] sm:text-xs text-gray-700 space-y-1 bg-green-50 p-2 sm:p-3 rounded">
                 <p><span className="font-semibold">Lương thực = </span></p>
-                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
-                <div className="mt-2 pt-2 border-t border-green-200">
-                  <p className="text-gray-600">Ví dụ: 500k/ngày × 20 ngày = 10tr</p>
+                <p className="ml-1 sm:ml-2">Lương ngày × Ngày thực tế</p>
+                <div className="mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-green-200">
+                  <p className="text-gray-600">VD: 500k/ngày × 20n = 10tr</p>
                 </div>
               </div>
             </div>
 
-            {/* Formula 3: TEMPORARY */}
-            <div className="border-l-4 border-orange-500 pl-4 py-2">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Phân công tạm thời - Tăng ca
+            {/* Final Calculation Formula */}
+            <div className="col-span-1 sm:col-span-2 lg:col-span-1 border-l-4 border-purple-500 pl-3 sm:pl-4 py-1 sm:py-2">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 sm:mb-2 text-purple-600">
+                Lương thực nhận cuối cùng
               </h4>
-              <div className="text-xs text-gray-700 space-y-1 bg-orange-50 p-3 rounded">
-                <p><span className="font-semibold">Lương thực = </span></p>
-                <p className="ml-2">Lương ngày × Số ngày thực tế</p>
-                <div className="mt-2 pt-2 border-t border-orange-200">
-                  <p className="text-gray-600">Ví dụ: 500k/ngày × 20 ngày = 10tr</p>
-                </div>
+              <div className="bg-purple-50 p-2 sm:p-3 rounded-lg text-[10px] sm:text-xs">
+                <p className="text-gray-700 leading-relaxed">
+                  <span className="font-bold">Nhận =</span>
+                  <span> Tổng</span>
+                  <span className="text-green-600"> + T</span>
+                  <span className="text-purple-600"> + P</span>
+                  <span className="text-red-600"> - P</span>
+                  <span className="text-orange-600"> - BH</span>
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-orange-600 mt-1 mt-2">
+                  ⓘ Ứng lương là ghi chú, không trừ vào lương
+                </p>
               </div>
-            </div>
-          </div>
-
-          {/* Final Calculation Formula */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">
-              Lương thực nhận cuối cùng
-            </h4>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                <span className="text-blue-600 font-semibold">Lương thực nhận =</span>
-                <span className="text-black"> Tổng lương</span>
-                <span className="text-green-600"> + Thưởng</span>
-                <span className="text-purple-600"> + Phụ cấp</span>
-                <span className="text-red-600"> - Phạt</span>
-                <span className="text-yellow-600"> - Bảo hiểm</span>
-              </p>
-              <p className="text-xs text-orange-600 mt-2">
-                ⓘ Lưu ý: Xin ứng lương chỉ là ghi chú, không trừ vào công thức tính lương
-              </p>
             </div>
           </div>
         </div>
@@ -792,9 +772,9 @@ export default function PayrollDetailPage() {
         )}
 
         {/* Attendance Calendar for this payroll's employee/month */}
-        <div className="mt-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Chấm công (Tháng {payroll.month}/{payroll.year})</h3>
+        <div className="mt-4 sm:mt-6">
+          <div className="mb-3 sm:mb-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Chấm công (T{payroll.month}/{payroll.year})</h3>
           </div>
           <AttendanceCalendar
             attendances={attendances}

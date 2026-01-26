@@ -171,7 +171,7 @@ export default function AssignmentsPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -335,7 +335,7 @@ export default function AssignmentsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mã phân công
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -350,16 +350,16 @@ export default function AssignmentsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Số ngày
                     </th>
-                     {role !== 'QLV' && (  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     {role !== 'QLV' && (  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Lương
                     </th> )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 w-36 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Loại phân công
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ngày cập nhật
                     </th>
                   </tr>
@@ -373,19 +373,19 @@ export default function AssignmentsPage() {
                         router.push(`/admin/assignments/${assignment.id}`)
                       }
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {assignment.id || `ID: ${assignment.customerId}`}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                              {assignment.employeeName?.charAt(0) || "N"}
-                            </div>
-                          </div>
-                          <div className="ml-4">
+                              <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
+                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                                  {assignment.employeeName?.charAt(0) || "N"}
+                                </div>
+                              </div>
+                              <div className="ml-0 sm:ml-4">
                             <div className="text-sm font-medium text-gray-900">
                               {assignment.employeeName ||
                                 `ID: ${assignment.employeeId}`}
@@ -405,13 +405,13 @@ export default function AssignmentsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {assignment.workDays} ngày
                       </td>
-                      {role !== 'QLV' && (   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {role !== 'QLV' && (   <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                        {formatCurrency(assignment.salaryAtTime)}
                       </td> )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(assignment.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 max-w-[10rem] break-words text-sm text-gray-500">
                         {(() => {
                           switch (assignment.assignmentType) {
                             case "FIXED_BY_CONTRACT":
@@ -429,7 +429,7 @@ export default function AssignmentsPage() {
                           }
                         })()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {assignment.updatedAt
                           ? formatDate(assignment.updatedAt)
                           : "N/A"}

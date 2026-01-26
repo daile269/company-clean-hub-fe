@@ -140,7 +140,7 @@ export default function InvoicesPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Mã khách hàng</label>
             <input
@@ -164,7 +164,7 @@ export default function InvoicesPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Năm</label>
             <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+              {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -192,7 +192,7 @@ export default function InvoicesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tạo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày cập nhật</th>
+                <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày cập nhật</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -234,7 +234,7 @@ export default function InvoicesPage() {
                       })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(inv.createdAt)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(inv.updatedAt)}</td>
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(inv.updatedAt)}</td>
                   </tr>
                 ))
               )}

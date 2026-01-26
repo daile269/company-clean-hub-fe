@@ -6,7 +6,19 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AdminSidebar from "@/components/AdminSidebar";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth > 640; // open on wider screens, collapsed on small/mobile
+  });
+
+  useEffect(() => {
+    function handleResize() {
+      setSidebarOpen(window.innerWidth > 640);
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();

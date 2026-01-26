@@ -354,10 +354,10 @@ export default function EmployeesPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       CCCD
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ngày cập nhật
                     </th>
                   </tr>
@@ -397,26 +397,22 @@ export default function EmployeesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {employee.idCard}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${employee.status === "ACTIVE"
                             ? "bg-green-100 text-green-800"
                             : "bg-red-100 text-red-800"
                             }`}
                         >
-                          {employee.status === "ACTIVE"
-                            ? "Hoạt động"
-                            : "Không hoạt động"}
+                          {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {
-                          employee.updatedAt
-                            ? (employee.updatedAt instanceof Date
-                              ? employee.updatedAt.toLocaleDateString('vi-VN')
-                              : employee.updatedAt)
-                            : "N/A"
-                        }
+                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {employee.updatedAt
+                          ? (employee.updatedAt instanceof Date
+                            ? employee.updatedAt.toLocaleDateString('vi-VN')
+                            : employee.updatedAt)
+                          : "N/A"}
                       </td>
                     </tr>
                   ))}

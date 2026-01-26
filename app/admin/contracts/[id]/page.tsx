@@ -1123,16 +1123,16 @@ export default function ContractDetailPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       STT
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-48 sm:w-auto px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tên dịch vụ
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-40 sm:w-auto px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Loại dịch vụ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ngày bắt đầu
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell sm:w-auto px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mô tả
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1163,27 +1163,31 @@ export default function ContractDetailPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {index + 1}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-blue-900">
-                          {service.title}
-                        </span>
+                      <td className="px-6 py-4 w-48 sm:w-auto max-w-[12rem]">
+                        <div className="whitespace-normal break-words">
+                          <span className="text-sm font-semibold text-blue-900">
+                            {service.title}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-700">
-                          {(service as any).serviceType === "ONE_TIME"
-                            ? "Một lần mỗi tháng"
-                            : (service as any).serviceType === "RECURRING"
-                              ? "Định kỳ hàng tháng"
-                              : (service as any).serviceType}
-                        </span>
+                      <td className="px-6 py-4 w-40 sm:w-auto max-w-[10rem]">
+                        <div className="whitespace-normal break-words">
+                          <span className="text-sm font-medium text-gray-700">
+                            {(service as any).serviceType === "ONE_TIME"
+                              ? "Một lần mỗi tháng"
+                              : (service as any).serviceType === "RECURRING"
+                                ? "Định kỳ hàng tháng"
+                                : (service as any).serviceType}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-600 line-clamp-2">
                           {formatDate(service.effectiveFrom) || "—"}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-600 line-clamp-2">
+                      <td className="hidden sm:table-cell px-6 py-4 sm:w-auto max-w-[16rem]">
+                        <p className="text-sm text-gray-600 whitespace-normal break-words line-clamp-2">
                           {service.description || "—"}
                         </p>
                       </td>
@@ -1460,7 +1464,7 @@ export default function ContractDetailPage() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       #
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-32 sm:w-auto px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nhân viên
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -2215,7 +2219,7 @@ export default function ContractDetailPage() {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     #
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-32 sm:w-auto px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nhân viên
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -2248,8 +2252,8 @@ export default function ContractDetailPage() {
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {idx + 1}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {r.employeeName ?? "-"}
+                    <td className="w-32 sm:w-auto max-w-[8rem] px-4 py-3 text-sm text-gray-900">
+                      <div className="whitespace-normal break-words">{r.employeeName ?? "-"}</div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {r.employeeCode ?? "-"}

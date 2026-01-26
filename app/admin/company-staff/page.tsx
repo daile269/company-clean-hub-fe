@@ -229,6 +229,7 @@ export default function CompanyStaffPage() {
   return (
     <div>
       <Toaster position="top-right" />
+      <div className="max-w-7xl mx-auto px-4">
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên văn phòng</h1>
           <div className="flex gap-2">
@@ -314,7 +315,7 @@ export default function CompanyStaffPage() {
 
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tìm kiếm
@@ -357,25 +358,22 @@ export default function CompanyStaffPage() {
           {/* Table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="w-full table-fixed divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-20 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mã NV
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-40 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Họ và tên
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Số điện thoại
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Lương cơ bản
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phụ cấp
-                    </th>
-                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
                   </tr>
@@ -389,31 +387,31 @@ export default function CompanyStaffPage() {
                         router.push(`/admin/company-staff/${employee.id}`)
                       }
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-3 py-3 w-20 max-w-[6rem] text-sm font-medium text-gray-900 break-words">
                         {employee.employeeCode}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold">
-                                {employee.name.charAt(0)}
-                              </div>
-                            </div>
-                            <div className="ml-0 sm:ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {employee.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {employee.email}
-                              </div>
-                              {/* status removed */}
+                      <td className="px-3 py-3 w-40 max-w-[10rem] min-w-0">
+                        <div className="flex items-center">
+                          <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold">
+                              {employee.name.charAt(0)}
                             </div>
                           </div>
-                        </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="ml-0 sm:ml-4 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 whitespace-normal break-words">
+                              {employee.name}
+                            </div>
+                            <div className="text-sm text-gray-500 truncate">
+                              {employee.email}
+                            </div>
+                            {/* status removed */}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="hidden sm:table-cell px-3 py-3 w-24 max-w-[8rem] text-sm text-gray-500 break-words">
                         {employee.phone}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-3 py-3 w-24 max-w-[8rem] text-sm text-gray-900 break-words">
                         {!canManageCost ? (
                           <div className="group relative flex items-center justify-center h-6 overflow-hidden cursor-help">
                             {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
@@ -435,29 +433,8 @@ export default function CompanyStaffPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {!canManageCost ? (
-                          <div className="group relative flex items-center justify-center h-6  cursor-help">
-                            {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
-                            <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
-                              <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
-                              <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
-                                ***
-                              </span>
-                            </div>
-
-                            {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
-                            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
-                              Bạn không có quyền xem
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm font-medium text-gray-700">
-                            {employee.allowance ? formatCurrency(employee.allowance) : '—'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                      
+                      <td className="px-3 py-3 hidden sm:table-cell">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${employee.status === "ACTIVE"
                             ? "bg-green-100 text-green-800"
@@ -919,6 +896,7 @@ export default function CompanyStaffPage() {
         </>
       )}
 
+      </div>
       <EmployeeExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}

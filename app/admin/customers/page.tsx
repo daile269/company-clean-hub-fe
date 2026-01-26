@@ -337,7 +337,7 @@ export default function CustomersPage() {
 
           {/* Search */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tìm kiếm
@@ -385,7 +385,7 @@ export default function CustomersPage() {
                     <th className="w-16 sm:w-28 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mã KH
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-62 sm:w-auto px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tên khách hàng
                     </th>
                     <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -414,8 +414,8 @@ export default function CustomersPage() {
                       <td className="w-16 sm:w-auto px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 truncate">
                         {customer.code}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                      <td className="w-62 sm:w-auto px-4 py-4 max-w-[12rem] sm:max-w-full whitespace-normal break-words">
+                        <div className="text-sm font-medium text-gray-900 break-words">
                           {customer.name}
                         </div>
                         <div className="text-sm text-gray-500">

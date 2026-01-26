@@ -62,7 +62,7 @@ body {
 /* Aggressive compact mode for very small screens (scoped to admin) */
 @media (max-width: 480px) {
   /* apply only inside admin pages */
-  .admin-root { font-size: 9px !important; }
+  .admin-root { font-size: 12px !important; }
 
   .admin-root .p-6 { padding: 3px !important; }
   .admin-root .p-8 { padding: 5px !important; }

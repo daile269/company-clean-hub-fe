@@ -338,10 +338,10 @@ export default function AssignmentsPage() {
                     <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Mã phân công
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-48 sm:w-auto px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nhân viên
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-48 sm:w-auto px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Khách hàng
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -378,7 +378,7 @@ export default function AssignmentsPage() {
                           {assignment.id || `ID: ${assignment.customerId}`}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="w-48 sm:w-auto px-4 py-4 max-w-[12rem] sm:max-w-full whitespace-normal break-words break-all">
                         <div className="flex items-center">
                               <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
                                 <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
@@ -386,15 +386,15 @@ export default function AssignmentsPage() {
                                 </div>
                               </div>
                               <div className="ml-0 sm:ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 break-words break-all">
                               {assignment.employeeName ||
                                 `ID: ${assignment.employeeId}`}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                      <td className="w-48 sm:w-auto px-4 py-4 max-w-[12rem] sm:max-w-full whitespace-normal break-words break-all">
+                        <div className="text-sm text-gray-900 break-words break-all">
                           {assignment.customerName ||
                             `ID: ${assignment.customerId}`}
                         </div>

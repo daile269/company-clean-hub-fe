@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import payrollService, { Payroll, PayrollStatus } from "@/services/payrollService";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import payrollService, { Payroll, PayrollStatus, PayrollOverview } from "@/services/payrollService";
 import PayrollCalculateModal from "@/components/PayrollCalculateModal";
 import PayrollExportModal from "@/components/PayrollExportModal";
 import { usePermission } from '@/hooks/usePermission';
@@ -9,20 +9,49 @@ import toast, { Toaster } from "react-hot-toast";
 
 export default function PayrollPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [navigatingToId, setNavigatingToId] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterMonth, setFilterMonth] = useState<string>((new Date().getMonth() + 1).toString());
-  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
+
+  // Khởi tạo state từ query trên URL (giúp quay lại vẫn giữ filter + page)
+  const initialSearch = searchParams.get("keyword") ?? "";
+  const initialMonth =
+    searchParams.get("month") ?? (new Date().getMonth() + 1).toString();
+  const initialYear =
+    searchParams.get("year") ?? new Date().getFullYear().toString();
+  const initialPage = Number(searchParams.get("page") ?? "0");
+  const initialSortBy =
+    (searchParams.get("sortBy") as
+      | "employeeName"
+      | "employeeCode"
+      | "createdAt"
+      | null) ?? "createdAt";
+  const initialSortDirection =
+    (searchParams.get("sortDirection") as "asc" | "desc" | null) ?? "desc";
+
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [filterMonth, setFilterMonth] =
+    useState<string>(initialMonth || "all");
+  const [filterYear, setFilterYear] = useState<string>(initialYear || "all");
   const [showCalculateModal, setShowCalculateModal] = useState(false);
+  const [overview, setOverview] = useState<PayrollOverview | null>(null);
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
   const pageSize = 10;
+
+  // Sort state
+  const [sortField, setSortField] = useState<
+    "employeeName" | "employeeCode" | "createdAt"
+  >(initialSortBy);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(
+    initialSortDirection
+  );
 
   // Available years from database
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -35,13 +64,26 @@ export default function PayrollPage() {
   const loadPayrolls = async () => {
     try {
       setLoading(true);
-      const response = await payrollService.getPayrolls({
-        keyword: searchTerm,
-        month: filterMonth !== "all" ? Number(filterMonth) : undefined,
-        year: filterYear !== "all" ? Number(filterYear) : undefined,
-        page: currentPage,
-        pageSize,
-      });
+      const monthFilter = filterMonth !== "all" ? Number(filterMonth) : undefined;
+      const yearFilter = filterYear !== "all" ? Number(filterYear) : undefined;
+
+      const [response, overviewData] = await Promise.all([
+        payrollService.getPayrolls({
+          keyword: searchTerm,
+          month: monthFilter,
+          year: yearFilter,
+          sortBy: sortField,
+          sortDirection,
+          page: currentPage,
+          pageSize,
+        }),
+        payrollService.getPayrollOverview({
+          keyword: searchTerm,
+          month: monthFilter,
+          year: yearFilter,
+        }),
+      ]);
+
       console.log("API Response:", response);
       if (response && response.content) {
         setPayrolls(response.content);
@@ -52,6 +94,8 @@ export default function PayrollPage() {
         setTotalPages(0);
         setTotalElements(0);
       }
+
+      setOverview(overviewData);
     } catch (error) {
       console.error("Failed to load payrolls:", error);
       toast.error("Không thể tải danh sách bảng lương");
@@ -78,10 +122,17 @@ export default function PayrollPage() {
   // Load data on mount and when filters change
   useEffect(() => {
     loadPayrolls();
-  }, [currentPage, filterMonth, filterYear]);
+  }, [currentPage, filterMonth, filterYear, sortField, sortDirection]);
 
   // Debounce search
+  const searchEffectFirstRunRef = useRef(true);
   useEffect(() => {
+    // Bỏ qua lần chạy đầu tiên (khi khởi tạo từ URL) để không reset page về 0
+    if (searchEffectFirstRunRef.current) {
+      searchEffectFirstRunRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       if (currentPage === 0) {
         loadPayrolls();
@@ -93,6 +144,20 @@ export default function PayrollPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Đồng bộ state (filter + sort + page) -> URL query
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("keyword", searchTerm);
+    if (filterMonth) params.set("month", filterMonth);
+    if (filterYear) params.set("year", filterYear);
+    params.set("page", currentPage.toString());
+    if (sortField) params.set("sortBy", sortField);
+    if (sortDirection) params.set("sortDirection", sortDirection);
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+  }, [searchTerm, filterMonth, filterYear, currentPage, sortField, sortDirection, pathname, router]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -100,9 +165,20 @@ export default function PayrollPage() {
     }).format(amount);
   };
 
-  const totalPayroll = payrolls.reduce((sum, p) => sum + p.remainingAmount, 0);
-  const paidPayrolls = payrolls.filter((p) => p.status === 'PAID').length;
-  const unpaidPayrolls = payrolls.filter((p) => p.status === 'UNPAID' || p.status === 'PARTIAL_PAID').length;
+  const totalPayroll = overview ? overview.totalFinalSalary : payrolls.reduce((sum, p) => sum + p.remainingAmount, 0);
+  const paidPayrolls = overview ? overview.paidPayrolls : payrolls.filter((p) => p.status === 'PAID').length;
+  const unpaidPayrolls = overview
+    ? overview.unpaidPayrolls + overview.partialPaidPayrolls
+    : payrolls.filter((p) => p.status === 'UNPAID' || p.status === 'PARTIAL_PAID').length;
+
+  const toggleSort = (field: 'employeeName' | 'employeeCode') => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const getStatusLabel = (status: PayrollStatus): string => {
     switch (status) {
@@ -139,7 +215,35 @@ export default function PayrollPage() {
       <Toaster position="top-right" />
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => toggleSort('employeeCode')}
+              className={`px-3 py-2 rounded-lg border text-xs sm:text-sm flex items-center gap-1 ${sortField === 'employeeCode'
+                  ? 'bg-blue-50 border-blue-500 text-blue-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span>Sắp xếp mã NV</span>
+              {sortField === 'employeeCode' && (
+                <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleSort('employeeName')}
+              className={`px-3 py-2 rounded-lg border text-xs sm:text-sm flex items-center gap-1 ${sortField === 'employeeName'
+                  ? 'bg-blue-50 border-blue-500 text-blue-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              <span>Sắp xếp tên</span>
+              {sortField === 'employeeName' && (
+                <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+              )}
+            </button>
+          </div>
           {canCreate && (
             <button
               onClick={() => setShowCalculateModal(true)}

@@ -265,7 +265,7 @@ export default function PayrollDetailPage() {
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <button
-            onClick={() => router.push("/admin/payroll")}
+            onClick={() => router.back()}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-2 sm:mb-4 text-sm"
           >
             <svg

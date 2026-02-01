@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
@@ -77,7 +77,52 @@ export default function CompanyStaffPage() {
 
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, searchKeyword]);
+  }, [currentPage, pageSize, searchKeyword]);
+
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const initializedRef = useRef(false);
+
+  // initialize page and pageSize from URL (only once)
+  useEffect(() => {
+    if (initializedRef.current) return;
+    try {
+      const p = parseInt(searchParams.get("page") || "1", 10);
+      const zeroBased = isNaN(p) ? 0 : Math.max(0, p - 1);
+      setCurrentPage(zeroBased);
+      const ps = parseInt(searchParams.get("pageSize") || "10", 10);
+      setPageSize(isNaN(ps) ? 10 : ps);
+    } catch (e) {
+      // ignore
+    }
+    initializedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // persist page and pageSize to URL (replace to avoid stacking history)
+  useEffect(() => {
+    try {
+      const currentPageParam = searchParams.get("page");
+      const currentPageSizeParam = searchParams.get("pageSize");
+      // compare with 1-based page in URL
+      if (currentPageParam === String(currentPage + 1) && currentPageSizeParam === String(pageSize)) {
+        return;
+      }
+      const params = new URLSearchParams(searchParams?.toString() || "");
+      // persist 1-based page to URL for readability
+      params.set("page", String(currentPage + 1));
+      params.set("pageSize", String(pageSize));
+      const newUrl = `${pathname}?${params.toString()}`;
+      if (typeof window !== "undefined" && window.history && window.history.replaceState) {
+        window.history.replaceState(null, "", newUrl);
+      } else {
+        router.replace(newUrl);
+      }
+    } catch (e) {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, router, pathname, searchParams]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -88,13 +133,16 @@ export default function CompanyStaffPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const loadEmployees = async () => {
+  const loadEmployees = async (overrides?: { page?: number; pageSize?: number }) => {
+    const p = overrides?.page ?? currentPage;
+    const ps = overrides?.pageSize ?? pageSize;
     try {
       setLoading(true);
+      console.debug("Loading employees with", { keyword: searchKeyword, page: p, pageSize: ps });
       const response = await employeeService.getAll({
         keyword: searchKeyword,
-        page: currentPage,
-        pageSize: pageSize,
+        page: p,
+        pageSize: ps,
         employmentType: 'COMPANY_STAFF',
       });
       setEmployees(response.content);
@@ -383,9 +431,18 @@ export default function CompanyStaffPage() {
                     <tr
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() =>
-                        router.push(`/admin/company-staff/${employee.id}`)
-                      }
+                      onClick={() => {
+                        try {
+                          const params = new URLSearchParams();
+                          // send 1-based page in URL so it's human-friendly
+                          params.set("page", String(currentPage + 1));
+                          params.set("pageSize", String(pageSize));
+                          if (searchKeyword) params.set("keyword", searchKeyword);
+                          router.push(`/admin/company-staff/${employee.id}?${params.toString()}`);
+                        } catch (e) {
+                          router.push(`/admin/company-staff/${employee.id}`);
+                        }
+                      }}
                     >
                       <td className="px-3 py-3 w-20 max-w-[6rem] text-sm font-medium text-gray-900 break-words">
                         {employee.employeeCode}
@@ -496,20 +553,42 @@ export default function CompanyStaffPage() {
                   </button>
                 </div>
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Hiển thị{" "}
-                      <span className="font-medium">
-                        {currentPage * pageSize + 1}
-                      </span>{" "}
-                      đến{" "}
-                      <span className="font-medium">
-                        {Math.min((currentPage + 1) * pageSize, totalElements)}
-                      </span>{" "}
-                      trong tổng số{" "}
-                      <span className="font-medium">{totalElements}</span> nhân
-                      viên
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Hiển thị{" "}
+                        <span className="font-medium">
+                          {currentPage * pageSize + 1}
+                        </span>{" "}
+                        đến{" "}
+                        <span className="font-medium">
+                          {Math.min((currentPage + 1) * pageSize, totalElements)}
+                        </span>{" "}
+                        trong tổng số{" "}
+                        <span className="font-medium">{totalElements}</span> nhân
+                        viên
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-600">Hàng / trang</label>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          const ps = Number(e.target.value) || 10;
+                          setPageSize(ps);
+                          setCurrentPage(0);
+                          // immediately fetch with new pageSize and page 0 to avoid stale request
+                          loadEmployees({ page: 0, pageSize: ps });
+                        }}
+                        className="px-2 py-1 border border-gray-300 rounded-md bg-white text-sm"
+                      >
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <nav

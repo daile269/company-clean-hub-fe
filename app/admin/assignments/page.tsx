@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import { usePermission } from "@/hooks/usePermission";
@@ -18,32 +18,97 @@ export default function AssignmentsPage() {
   const [totalElements, setTotalElements] = useState(0);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const initializedRef = useRef(false);
+  const skipNextLoadRef = useRef(false);
+  const lastFetchRef = useRef<string | null>(null);
   const role = authService.getUserRole();
   // Permission checks
   const canView = usePermission('ASSIGNMENT_VIEW');
 
   // Load assignments from API with pagination
   useEffect(() => {
+    if (!initializedRef.current) return;
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false;
+      return;
+    }
     loadAssignments();
-  }, [currentPage, searchKeyword]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, searchKeyword]);
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchKeyword(searchTerm);
-      setCurrentPage(0);
+      setCurrentPage(0); // Reset to first page when search changes
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // initialize page and pageSize from URL (1-based page in URL)
+  useEffect(() => {
+    if (initializedRef.current) return;
+    try {
+      const p = parseInt(searchParams.get("page") || "1", 10);
+      const zeroBased = isNaN(p) ? 0 : Math.max(0, p - 1);
+      setCurrentPage(zeroBased);
+      const ps = parseInt(searchParams.get("pageSize") || "10", 10);
+      setPageSize(isNaN(ps) ? 10 : ps);
+      // do not initialise keyword from URL for assignments
+    } catch (e) {
+      // ignore
+    }
+    initializedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // persist page and pageSize to URL (1-based page)
+  useEffect(() => {
+    try {
+      const currentPageParam = searchParams.get("page");
+      const currentPageSizeParam = searchParams.get("pageSize");
+      if (currentPageParam === String(currentPage + 1) && currentPageSizeParam === String(pageSize)) {
+        return;
+      }
+      const params = new URLSearchParams(searchParams?.toString() || "");
+      params.set("page", String(currentPage + 1));
+      params.set("pageSize", String(pageSize));
+      // do not persist searchKeyword to URL
+      const newUrl = `${pathname}?${params.toString()}`;
+      if (typeof window !== "undefined" && window.history && window.history.replaceState) {
+        window.history.replaceState(null, "", newUrl);
+      } else {
+        router.replace(newUrl);
+      }
+    } catch (e) {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, router, pathname, searchParams]);
+
+  
+
   const loadAssignments = async () => {
+    const p = currentPage;
+    const ps = pageSize;
+    const kw = searchKeyword || "";
+    const key = `${p}|${ps}|${kw}`;
+    if (lastFetchRef.current === key) {
+      // duplicate request — skip
+      return;
+    }
+    lastFetchRef.current = key;
+
     try {
       setLoading(true);
+      console.debug("Loading assignments with", { keyword: kw, page: p, pageSize: ps });
       const response = await assignmentService.getAll({
-        keyword: searchKeyword,
-        page: currentPage,
-        pageSize: pageSize,
+        keyword: kw,
+        page: p,
+        pageSize: ps,
       });
       setAssignments(response.content);
       setTotalPages(response.totalPages);
@@ -370,7 +435,11 @@ export default function AssignmentsPage() {
                       key={assignment.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() =>
-                        router.push(`/admin/assignments/${assignment.id}`)
+                        router.push(
+                          `/admin/assignments/${assignment.id}?page=${currentPage + 1}&pageSize=${pageSize}${searchKeyword ? `&keyword=${encodeURIComponent(
+                            searchKeyword
+                          )}` : ""}`
+                        )
                       }
                     >
                       <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">

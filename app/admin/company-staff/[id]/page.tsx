@@ -490,7 +490,17 @@ export default function CompanyStaffDetailPage() {
             </button>
 
             <button
-              onClick={() => router.push("/admin/company-staff")}
+              onClick={() => {
+                try {
+                  if (typeof window !== "undefined" && window.location.search) {
+                    router.push(`/admin/company-staff${window.location.search}`);
+                  } else {
+                    router.back();
+                  }
+                } catch (e) {
+                  router.push("/admin/company-staff");
+                }
+              }}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
             >
               <svg

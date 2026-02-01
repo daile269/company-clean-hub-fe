@@ -1028,7 +1028,17 @@ export default function CustomerDetail() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-full sm:w-auto">
             <button
-              onClick={() => router.back()}
+              onClick={() => {
+                try {
+                  if (typeof window !== "undefined" && window.location.search) {
+                    router.push("/admin/customers" + window.location.search);
+                  } else {
+                    router.back();
+                  }
+                } catch (e) {
+                  router.push("/admin/customers");
+                }
+              }}
               className="w-full sm:w-auto px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2 justify-center sm:justify-start"
             >
             <svg

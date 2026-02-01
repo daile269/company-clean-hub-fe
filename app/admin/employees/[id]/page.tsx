@@ -698,7 +698,17 @@ export default function EmployeeDetail() {
         {employee && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => router.back()}
+              onClick={() => {
+                try {
+                  if (typeof window !== "undefined" && window.location.search) {
+                    router.push(`/admin/employees${window.location.search}`);
+                  } else {
+                    router.back();
+                  }
+                } catch (e) {
+                  router.back();
+                }
+              }}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
             >
               <svg

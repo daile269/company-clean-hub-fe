@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
 import customerAssignmentService from "@/services/customerAssignmentService";
@@ -11,6 +11,10 @@ import { usePermission } from "@/hooks/usePermission";
 
 export default function CustomersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const initializedRef = useRef(false);
+  const skipNextLoadRef = useRef(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -49,12 +53,61 @@ export default function CustomersPage() {
     loadCurrentUser();
   }, []);
 
-  // Load customers from API with pagination
+  // initialize page and pageSize from URL (1-based page in URL)
   useEffect(() => {
-    if (currentUser) {
-      loadCustomers();
+    if (initializedRef.current) return;
+    try {
+      const p = parseInt(searchParams.get("page") || "1", 10);
+      const zeroBased = isNaN(p) ? 0 : Math.max(0, p - 1);
+      setCurrentPage(zeroBased);
+      const ps = parseInt(searchParams.get("pageSize") || "10", 10);
+      setPageSize(isNaN(ps) ? 10 : ps);
+      const kw = searchParams.get("keyword");
+      if (kw) {
+        setSearchTerm(kw);
+        setSearchKeyword(kw);
+      }
+    } catch (e) {
+      // ignore
     }
+    initializedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Load customers when page, keyword or currentUser changes.
+  useEffect(() => {
+    if (!currentUser) return;
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false;
+      return;
+    }
+    loadCustomers();
   }, [currentPage, searchKeyword, currentUser]);
+
+  // persist page and pageSize to URL (1-based page)
+  useEffect(() => {
+    try {
+      const currentPageParam = searchParams.get("page");
+      const currentPageSizeParam = searchParams.get("pageSize");
+      if (currentPageParam === String(currentPage + 1) && currentPageSizeParam === String(pageSize)) {
+        return;
+      }
+      const params = new URLSearchParams(searchParams?.toString() || "");
+      params.set("page", String(currentPage + 1));
+      params.set("pageSize", String(pageSize));
+      if (searchKeyword) params.set("keyword", searchKeyword);
+      else params.delete("keyword");
+      const newUrl = `${pathname}?${params.toString()}`;
+      if (typeof window !== "undefined" && window.history && window.history.replaceState) {
+        window.history.replaceState(null, "", newUrl);
+      } else {
+        router.replace(newUrl);
+      }
+    } catch (e) {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, router, pathname, searchParams]);
 
   // Debounce search input
   useEffect(() => {
@@ -76,29 +129,28 @@ export default function CustomersPage() {
     }
   };
 
-  const loadCustomers = async () => {
+  const loadCustomers = async (overrides?: { page?: number; pageSize?: number; keyword?: string }) => {
+    const p = overrides?.page ?? currentPage;
+    const ps = overrides?.pageSize ?? pageSize;
+    const kw = overrides?.keyword ?? searchKeyword;
     try {
       setLoading(true);
 
-      // If user is QLT1, get all customers
-      // Otherwise, get only assigned customers
       if (currentUser.roleName === "QLT1" || currentUser.roleName === "ACCOUNTANT") {
         const response = await customerService.getAll({
-          keyword: searchKeyword,
-          page: currentPage,
-          pageSize: pageSize,
+          keyword: kw,
+          page: p,
+          pageSize: ps,
         });
         setCustomers(response.content);
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
       } else {
-        // For QLT2 and QLV, get only assigned customers with backend pagination
         const response = await customerAssignmentService.getMyAssignedCustomers({
-          keyword: searchKeyword,
-          page: currentPage,
-          pageSize: pageSize,
+          keyword: kw,
+          page: p,
+          pageSize: ps,
         });
-
         setCustomers(response.content);
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
@@ -408,7 +460,9 @@ export default function CustomersPage() {
                       key={customer.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() =>
-                        router.push(`/admin/customers/${customer.id}`)
+                        router.push(
+                          `/admin/customers/${customer.id}?page=${currentPage + 1}&pageSize=${pageSize}${searchKeyword ? `&keyword=${encodeURIComponent(searchKeyword)}` : ""}`
+                        )
                       }
                     >
                       <td className="w-16 sm:w-auto px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 truncate">
@@ -501,6 +555,25 @@ export default function CustomersPage() {
                     <span className="font-medium">{totalElements}</span> khách
                     hàng
                   </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-700">Số hàng:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      const newSize = Number(e.target.value);
+                      skipNextLoadRef.current = true;
+                      setPageSize(newSize);
+                      setCurrentPage(0);
+                      loadCustomers({ page: 0, pageSize: newSize });
+                    }}
+                    className="px-2 py-1 border rounded"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
                 </div>
                 <div>
                   <nav

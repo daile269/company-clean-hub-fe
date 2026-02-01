@@ -399,7 +399,17 @@ export default function AssignmentDetail() {
         <h1 className="text-2xl font-bold">Chi tiết phân công</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              try {
+                if (typeof window !== "undefined" && window.location.search) {
+                  router.push(`/admin/assignments${window.location.search}`);
+                } else {
+                  router.back();
+                }
+              } catch (e) {
+                router.push("/admin/assignments");
+              }
+            }}
             className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
           >
             <svg

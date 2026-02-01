@@ -47,6 +47,8 @@ export interface PayrollFilterParams {
   month?: number;
   year?: number;
   isPaid?: boolean;
+  sortBy?: 'employeeName' | 'employeeCode' | 'createdAt';
+  sortDirection?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
 }
@@ -100,6 +102,16 @@ export interface PayrollResponse {
   last: boolean;
 }
 
+export interface PayrollOverview {
+  totalPayrolls: number;
+  paidPayrolls: number;
+  unpaidPayrolls: number;
+  partialPaidPayrolls: number;
+  totalFinalSalary: number;
+  totalPaidAmount: number;
+  totalRemainingAmount: number;
+}
+
 export interface PaymentHistory {
   id: number;
   payrollId: number;
@@ -118,6 +130,8 @@ const payrollService = {
         month,
         year,
         isPaid,
+        sortBy,
+        sortDirection,
         page = 0,
         pageSize = 10,
       } = params;
@@ -127,6 +141,8 @@ const payrollService = {
       if (month !== undefined) queryParams.append("month", month.toString());
       if (year !== undefined) queryParams.append("year", year.toString());
       if (isPaid !== undefined) queryParams.append("isPaid", isPaid.toString());
+      if (sortBy) queryParams.append("sortBy", sortBy);
+      if (sortDirection) queryParams.append("sortDirection", sortDirection);
       queryParams.append("page", page.toString());
       queryParams.append("pageSize", pageSize.toString());
 
@@ -147,6 +163,35 @@ const payrollService = {
       };
     } catch (error) {
       console.error('Error fetching payrolls:', error);
+      throw error;
+    }
+  },
+
+  // Lấy tổng quan bảng lương cho trang quản lý
+  getPayrollOverview: async (params: Omit<PayrollFilterParams, 'page' | 'pageSize' | 'sortBy' | 'sortDirection'> = {}): Promise<PayrollOverview> => {
+    try {
+      const {
+        keyword = "",
+        month,
+        year,
+        isPaid,
+      } = params;
+
+      const queryParams = new URLSearchParams();
+      if (keyword) queryParams.append("keyword", keyword);
+      if (month !== undefined) queryParams.append("month", month.toString());
+      if (year !== undefined) queryParams.append("year", year.toString());
+      if (isPaid !== undefined) queryParams.append("isPaid", isPaid.toString());
+
+      const response = await apiService.get<any>(`/payrolls/overview?${queryParams.toString()}`);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch payroll overview');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching payroll overview:', error);
       throw error;
     }
   },

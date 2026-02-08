@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
@@ -52,48 +52,7 @@ export default function EmployeesPage() {
     loadEmployees();
   }, [currentPage, pageSize, searchKeyword, filterType]);
 
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const initializedRef = useRef(false);
-
-  // initialize page and pageSize from URL (1-based page in URL)
-  useEffect(() => {
-    if (initializedRef.current) return;
-    try {
-      const p = parseInt(searchParams.get("page") || "1", 10);
-      const zeroBased = isNaN(p) ? 0 : Math.max(0, p - 1);
-      setCurrentPage(zeroBased);
-      const ps = parseInt(searchParams.get("pageSize") || "10", 10);
-      setPageSize(isNaN(ps) ? 10 : ps);
-    } catch (e) {
-      // ignore
-    }
-    initializedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  // persist page and pageSize to URL (1-based page)
-  useEffect(() => {
-    try {
-      const currentPageParam = searchParams.get("page");
-      const currentPageSizeParam = searchParams.get("pageSize");
-      if (currentPageParam === String(currentPage + 1) && currentPageSizeParam === String(pageSize)) {
-        return;
-      }
-      const params = new URLSearchParams(searchParams?.toString() || "");
-      params.set("page", String(currentPage + 1));
-      params.set("pageSize", String(pageSize));
-      const newUrl = `${pathname}?${params.toString()}`;
-      if (typeof window !== "undefined" && window.history && window.history.replaceState) {
-        window.history.replaceState(null, "", newUrl);
-      } else {
-        router.replace(newUrl);
-      }
-    } catch (e) {
-      // ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, router, pathname, searchParams]);
 
   // Debounce search input
   useEffect(() => {
@@ -413,17 +372,7 @@ export default function EmployeesPage() {
                     <tr
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => {
-                        try {
-                          const params = new URLSearchParams();
-                          params.set("page", String(currentPage + 1));
-                          params.set("pageSize", String(pageSize));
-                          if (searchKeyword) params.set("keyword", searchKeyword);
-                          router.push(`/admin/employees/${employee.id}?${params.toString()}`);
-                        } catch (e) {
-                          router.push(`/admin/employees/${employee.id}`);
-                        }
-                      }}
+                      onClick={() => router.push(`/admin/employees/${employee.id}`)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {employee.employeeCode}

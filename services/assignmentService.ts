@@ -564,6 +564,8 @@ class AssignmentService {
     customerId: string,
     params?: {
       contractId?: number;
+      month?: number;
+      year?: number;
       page?: number;
       pageSize?: number;
     }
@@ -573,6 +575,12 @@ class AssignmentService {
 
       if (params?.contractId) {
         queryParams.append("contractId", params.contractId.toString());
+      }
+      if (params?.month !== undefined) {
+        queryParams.append("month", params.month.toString());
+      }
+      if (params?.year !== undefined) {
+        queryParams.append("year", params.year.toString());
       }
       if (params?.page !== undefined) {
         queryParams.append("page", params.page.toString());

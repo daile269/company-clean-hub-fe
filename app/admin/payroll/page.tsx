@@ -43,7 +43,7 @@ export default function PayrollPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState<number>(15);
 
   // Sort state
   const [sortField, setSortField] = useState<
@@ -122,7 +122,7 @@ export default function PayrollPage() {
   // Load data on mount and when filters change
   useEffect(() => {
     loadPayrolls();
-  }, [currentPage, filterMonth, filterYear, sortField, sortDirection]);
+  }, [currentPage, filterMonth, filterYear, sortField, sortDirection, pageSize]);
 
   // Debounce search
   const searchEffectFirstRunRef = useRef(true);
@@ -399,7 +399,7 @@ export default function PayrollPage() {
         <>
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
               <div className="col-span-2 lg:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tìm kiếm
@@ -442,6 +442,25 @@ export default function PayrollPage() {
                   {availableYears.map((year) => (
                     <option key={year} value={year}>{year}</option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hàng / trang</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const ps = Number(e.target.value) || 15;
+                    setPageSize(ps);
+                    setCurrentPage(0);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
 

@@ -190,6 +190,12 @@ export default function CustomerDetail() {
   const [rollingBack, setRollingBack] = useState(false);
   const [historyContractFilter, setHistoryContractFilter] =
     useState<string>("");
+  const [historyFilterMonth, setHistoryFilterMonth] = useState<number | "">(
+    new Date().getMonth() + 1
+  );
+  const [historyFilterYear, setHistoryFilterYear] = useState<number | "">(
+    new Date().getFullYear()
+  );
   const [historyPage, setHistoryPage] = useState<number>(0);
   const [historyPageSize, setHistoryPageSize] = useState<number>(10);
   const [historyTotalPages, setHistoryTotalPages] = useState<number>(0);
@@ -279,7 +285,7 @@ export default function CustomerDetail() {
       loadAssignmentHistories();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, historyContractFilter, historyPage, historyPageSize]);
+  }, [id, historyContractFilter, historyFilterMonth, historyFilterYear, historyPage, historyPageSize]);
 
   // Filter contracts by selected month/year (client-side)
   const displayedContracts = (contracts || []).filter((c: any) => {
@@ -464,6 +470,8 @@ export default function CustomerDetail() {
         contractId: historyContractFilter
           ? Number(historyContractFilter)
           : undefined,
+        month: historyFilterMonth ? Number(historyFilterMonth) : undefined,
+        year: historyFilterYear ? Number(historyFilterYear) : undefined,
         page: historyPage,
         pageSize: historyPageSize,
       });
@@ -1030,11 +1038,7 @@ export default function CustomerDetail() {
             <button
               onClick={() => {
                 try {
-                  if (typeof window !== "undefined" && window.location.search) {
-                    router.push("/admin/customers" + window.location.search);
-                  } else {
-                    router.back();
-                  }
+                  router.back();
                 } catch (e) {
                   router.push("/admin/customers");
                 }
@@ -2149,6 +2153,36 @@ export default function CustomerDetail() {
                   HĐ #{contract.id} -{" "}
                   {contract.description ||
                     contract.services?.map((s: any) => s.title).join(", ")}
+                </option>
+              ))}
+            </select>
+            <select
+              value={historyFilterMonth}
+              onChange={(e) => {
+                setHistoryFilterMonth(e.target.value === "" ? "" : Number(e.target.value));
+                setHistoryPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tháng (Tất cả)</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m}
+                </option>
+              ))}
+            </select>
+            <select
+              value={historyFilterYear}
+              onChange={(e) => {
+                setHistoryFilterYear(e.target.value === "" ? "" : Number(e.target.value));
+                setHistoryPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Năm (Tất cả)</option>
+              {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 3 + i).map((y) => (
+                <option key={y} value={y}>
+                  {y}
                 </option>
               ))}
             </select>

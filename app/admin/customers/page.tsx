@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
 import customerAssignmentService from "@/services/customerAssignmentService";
@@ -11,10 +11,6 @@ import { usePermission } from "@/hooks/usePermission";
 
 export default function CustomersPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const initializedRef = useRef(false);
-  const skipNextLoadRef = useRef(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -53,61 +49,15 @@ export default function CustomersPage() {
     loadCurrentUser();
   }, []);
 
-  // initialize page and pageSize from URL (1-based page in URL)
-  useEffect(() => {
-    if (initializedRef.current) return;
-    try {
-      const p = parseInt(searchParams.get("page") || "1", 10);
-      const zeroBased = isNaN(p) ? 0 : Math.max(0, p - 1);
-      setCurrentPage(zeroBased);
-      const ps = parseInt(searchParams.get("pageSize") || "10", 10);
-      setPageSize(isNaN(ps) ? 10 : ps);
-      const kw = searchParams.get("keyword");
-      if (kw) {
-        setSearchTerm(kw);
-        setSearchKeyword(kw);
-      }
-    } catch (e) {
-      // ignore
-    }
-    initializedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  // (No URL-based initialization — state starts with defaults)
 
   // Load customers when page, keyword or currentUser changes.
   useEffect(() => {
     if (!currentUser) return;
-    if (skipNextLoadRef.current) {
-      skipNextLoadRef.current = false;
-      return;
-    }
     loadCustomers();
   }, [currentPage, searchKeyword, currentUser]);
 
-  // persist page and pageSize to URL (1-based page)
-  useEffect(() => {
-    try {
-      const currentPageParam = searchParams.get("page");
-      const currentPageSizeParam = searchParams.get("pageSize");
-      if (currentPageParam === String(currentPage + 1) && currentPageSizeParam === String(pageSize)) {
-        return;
-      }
-      const params = new URLSearchParams(searchParams?.toString() || "");
-      params.set("page", String(currentPage + 1));
-      params.set("pageSize", String(pageSize));
-      if (searchKeyword) params.set("keyword", searchKeyword);
-      else params.delete("keyword");
-      const newUrl = `${pathname}?${params.toString()}`;
-      if (typeof window !== "undefined" && window.history && window.history.replaceState) {
-        window.history.replaceState(null, "", newUrl);
-      } else {
-        router.replace(newUrl);
-      }
-    } catch (e) {
-      // ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, router, pathname, searchParams]);
+  // (No URL persistence of page/pageSize/keyword)
 
   // Debounce search input
   useEffect(() => {
@@ -459,11 +409,7 @@ export default function CustomersPage() {
                     <tr
                       key={customer.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() =>
-                        router.push(
-                          `/admin/customers/${customer.id}?page=${currentPage + 1}&pageSize=${pageSize}${searchKeyword ? `&keyword=${encodeURIComponent(searchKeyword)}` : ""}`
-                        )
-                      }
+                      onClick={() => router.push(`/admin/customers/${customer.id}`)}
                     >
                       <td className="w-16 sm:w-auto px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 truncate">
                         {customer.code}
@@ -562,7 +508,6 @@ export default function CustomersPage() {
                     value={pageSize}
                     onChange={(e) => {
                       const newSize = Number(e.target.value);
-                      skipNextLoadRef.current = true;
                       setPageSize(newSize);
                       setCurrentPage(0);
                       loadCustomers({ page: 0, pageSize: newSize });

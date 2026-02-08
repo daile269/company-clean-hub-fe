@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
@@ -79,50 +79,7 @@ export default function CompanyStaffPage() {
     loadEmployees();
   }, [currentPage, pageSize, searchKeyword]);
 
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const initializedRef = useRef(false);
-
-  // initialize page and pageSize from URL (only once)
-  useEffect(() => {
-    if (initializedRef.current) return;
-    try {
-      const p = parseInt(searchParams.get("page") || "1", 10);
-      const zeroBased = isNaN(p) ? 0 : Math.max(0, p - 1);
-      setCurrentPage(zeroBased);
-      const ps = parseInt(searchParams.get("pageSize") || "10", 10);
-      setPageSize(isNaN(ps) ? 10 : ps);
-    } catch (e) {
-      // ignore
-    }
-    initializedRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  // persist page and pageSize to URL (replace to avoid stacking history)
-  useEffect(() => {
-    try {
-      const currentPageParam = searchParams.get("page");
-      const currentPageSizeParam = searchParams.get("pageSize");
-      // compare with 1-based page in URL
-      if (currentPageParam === String(currentPage + 1) && currentPageSizeParam === String(pageSize)) {
-        return;
-      }
-      const params = new URLSearchParams(searchParams?.toString() || "");
-      // persist 1-based page to URL for readability
-      params.set("page", String(currentPage + 1));
-      params.set("pageSize", String(pageSize));
-      const newUrl = `${pathname}?${params.toString()}`;
-      if (typeof window !== "undefined" && window.history && window.history.replaceState) {
-        window.history.replaceState(null, "", newUrl);
-      } else {
-        router.replace(newUrl);
-      }
-    } catch (e) {
-      // ignore
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, pageSize, router, pathname, searchParams]);
+  // (No URL-based initialization or persistence)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -431,18 +388,7 @@ export default function CompanyStaffPage() {
                     <tr
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => {
-                        try {
-                          const params = new URLSearchParams();
-                          // send 1-based page in URL so it's human-friendly
-                          params.set("page", String(currentPage + 1));
-                          params.set("pageSize", String(pageSize));
-                          if (searchKeyword) params.set("keyword", searchKeyword);
-                          router.push(`/admin/company-staff/${employee.id}?${params.toString()}`);
-                        } catch (e) {
-                          router.push(`/admin/company-staff/${employee.id}`);
-                        }
-                      }}
+                        onClick={() => router.push(`/admin/company-staff/${employee.id}`)}
                     >
                       <td className="px-3 py-3 w-20 max-w-[6rem] text-sm font-medium text-gray-900 break-words">
                         {employee.employeeCode}

@@ -401,11 +401,7 @@ export default function AssignmentDetail() {
           <button
             onClick={() => {
               try {
-                if (typeof window !== "undefined" && window.location.search) {
-                  router.push(`/admin/assignments${window.location.search}`);
-                } else {
-                  router.back();
-                }
+                router.back();
               } catch (e) {
                 router.push("/admin/assignments");
               }

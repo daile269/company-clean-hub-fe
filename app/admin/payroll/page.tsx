@@ -14,6 +14,120 @@ export default function PayrollPage() {
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [navigatingToId, setNavigatingToId] = useState<number | null>(null);
+  const [scrollToId, setScrollToId] = useState<number | null>(null);
+
+  // Refs for scrolling to specific payroll rows
+  const payrollRefs = useRef<{ [key: number]: HTMLTableRowElement | HTMLDivElement | null }>({});
+  const hasScrolled = useRef(false);
+
+  // Read scrollToId from URL on mount
+  useEffect(() => {
+    const scrollToIdParam = searchParams.get('scrollToId');
+    if (scrollToIdParam && !hasScrolled.current) {
+      const id = Number(scrollToIdParam);
+      console.log("Setting scrollToId from URL:", id);
+      setScrollToId(id);
+    } else if (!scrollToIdParam) {
+      // Reset scroll flag when no scrollToId in URL
+      hasScrolled.current = false;
+    }
+  }, [searchParams]);
+
+  // Perform scroll after data is loaded and refs are set
+  useEffect(() => {
+    if (scrollToId !== null && !loading && payrolls.length > 0 && !hasScrolled.current) {
+      console.log("=== SCROLL DEBUG ===");
+      console.log("Attempting to scroll to ID:", scrollToId);
+      console.log("Available payrolls:", payrolls.map(p => p.id));
+      console.log("Payrolls count:", payrolls.length);
+
+      // Check if the target payroll is in the current page
+      const targetPayroll = payrolls.find(p => p.id === scrollToId);
+
+      if (!targetPayroll) {
+        console.warn("⚠️ Target payroll NOT in current page. ID:", scrollToId);
+        // The item might be on a different page - reset and clear
+        hasScrolled.current = true;
+        setScrollToId(null);
+
+        // Remove scrollToId from URL
+        const params = new URLSearchParams(window.location.search);
+        params.delete('scrollToId');
+        const queryString = params.toString();
+        router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+        return;
+      }
+
+      console.log("✓ Target payroll found in data:", targetPayroll.employeeName);
+
+      // Define scroll function
+      const performScroll = (attempt = 1) => {
+        console.log(`Scroll attempt #${attempt}`);
+        const element = payrollRefs.current[scrollToId];
+        console.log("Element in refs:", !!element);
+        console.log("All ref keys:", Object.keys(payrollRefs.current).map(Number));
+
+        if (element) {
+          console.log("✓ Element found! Scrolling...");
+          hasScrolled.current = true;
+
+          // Scroll into view
+          element.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest"
+          });
+
+          // Highlight the row
+          element.style.backgroundColor = "#dbeafe";
+          element.style.transition = "background-color 0.3s";
+          element.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.3)";
+
+          setTimeout(() => {
+            element.style.backgroundColor = "";
+            element.style.boxShadow = "";
+          }, 2500);
+
+          console.log("✓ Scroll completed!");
+
+          // Clean up URL after a delay
+          setTimeout(() => {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('scrollToId');
+            const queryString = params.toString();
+            router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+            setScrollToId(null);
+          }, 1000);
+
+          return true;
+        } else {
+          console.warn(`✗ Element not found in refs (attempt ${attempt})`);
+          return false;
+        }
+      };
+
+      // Try scrolling with multiple attempts
+      const maxAttempts = 3;
+      let currentAttempt = 0;
+
+      const tryScroll = () => {
+        currentAttempt++;
+        const success = performScroll(currentAttempt);
+
+        if (!success && currentAttempt < maxAttempts) {
+          console.log(`Retrying in ${200 * currentAttempt}ms...`);
+          setTimeout(tryScroll, 200 * currentAttempt);
+        } else if (!success) {
+          console.error("Failed to scroll after", maxAttempts, "attempts");
+          hasScrolled.current = true;
+          setScrollToId(null);
+        }
+      };
+
+      // Start first attempt after a small delay
+      setTimeout(tryScroll, 100);
+    }
+  }, [scrollToId, loading, payrolls, pathname, router]);
 
   // Khởi tạo state từ query trên URL (giúp quay lại vẫn giữ filter + page)
   const initialSearch = searchParams.get("keyword") ?? "";
@@ -155,7 +269,7 @@ export default function PayrollPage() {
     if (sortDirection) params.set("sortDirection", sortDirection);
 
     const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
   }, [searchTerm, filterMonth, filterYear, currentPage, sortField, sortDirection, pathname, router]);
 
   const formatCurrency = (amount: number) => {
@@ -221,8 +335,8 @@ export default function PayrollPage() {
               type="button"
               onClick={() => toggleSort('employeeCode')}
               className={`px-3 py-2 rounded-lg border text-xs sm:text-sm flex items-center gap-1 ${sortField === 'employeeCode'
-                  ? 'bg-blue-50 border-blue-500 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
             >
               <span>Sắp xếp mã NV</span>
@@ -234,8 +348,8 @@ export default function PayrollPage() {
               type="button"
               onClick={() => toggleSort('employeeName')}
               className={`px-3 py-2 rounded-lg border text-xs sm:text-sm flex items-center gap-1 ${sortField === 'employeeName'
-                  ? 'bg-blue-50 border-blue-500 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
             >
               <span>Sắp xếp tên</span>
@@ -500,15 +614,20 @@ export default function PayrollPage() {
                     return (
                       <tr
                         key={payroll.id}
+                        ref={(el) => { payrollRefs.current[payroll.id] = el; }}
                         className={`cursor-pointer transition-all ${isNavigating
                           ? "bg-blue-50 opacity-60"
                           : "hover:bg-gray-50"
                           }`}
                         onClick={() => {
                           setNavigatingToId(payroll.id);
-                          // Small delay to show the loading state before navigation
+                          // Build returnUrl with scrollToId
+                          const currentParams = new URLSearchParams(window.location.search);
+                          currentParams.set('scrollToId', payroll.id.toString());
+                          const returnUrl = `${pathname}?${currentParams.toString()}`;
+                          console.log("Navigating with returnUrl:", returnUrl);
                           setTimeout(() => {
-                            router.push(`/admin/payroll/${payroll.id}`);
+                            router.push(`/admin/payroll/${payroll.id}?returnUrl=${encodeURIComponent(returnUrl)}`);
                           }, 100);
                         }}
                       >
@@ -559,11 +678,16 @@ export default function PayrollPage() {
                 return (
                   <div
                     key={payroll.id}
+                    ref={(el) => { payrollRefs.current[payroll.id] = el; }}
                     className={`p-4 active:bg-gray-100 transition-all ${isNavigating ? "bg-blue-50 opacity-60" : ""}`}
                     onClick={() => {
                       setNavigatingToId(payroll.id);
+                      // Build returnUrl with scrollToId
+                      const currentParams = new URLSearchParams(window.location.search);
+                      currentParams.set('scrollToId', payroll.id.toString());
+                      const returnUrl = `${pathname}?${currentParams.toString()}`;
                       setTimeout(() => {
-                        router.push(`/admin/payroll/${payroll.id}`);
+                        router.push(`/admin/payroll/${payroll.id}?returnUrl=${encodeURIComponent(returnUrl)}`);
                       }, 100);
                     }}
                   >

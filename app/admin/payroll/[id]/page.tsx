@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import payrollService, { Payroll, PayrollStatus, PaymentHistory } from "@/services/payrollService";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import { assignmentService, Assignment } from "@/services/assignmentService";
@@ -14,7 +14,12 @@ import { usePermission } from "@/hooks/usePermission";
 export default function PayrollDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const returnUrl = searchParams.get("returnUrl");
+
+  // Debug log
+  console.log("Detail page - returnUrl:", returnUrl);
 
   // Permission checks
   const canView = usePermission("PAYROLL_VIEW");
@@ -265,7 +270,16 @@ export default function PayrollDetailPage() {
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              console.log("Back button clicked - returnUrl:", returnUrl);
+              if (returnUrl) {
+                console.log("Navigating to returnUrl:", returnUrl);
+                router.push(returnUrl);
+              } else {
+                console.log("No returnUrl, using router.back()");
+                router.back();
+              }
+            }}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-2 sm:mb-4 text-sm"
           >
             <svg

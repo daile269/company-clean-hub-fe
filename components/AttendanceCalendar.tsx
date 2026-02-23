@@ -133,10 +133,27 @@ export default function AttendanceCalendar({
     const [assignmentsLoading, setAssignmentsLoading] = useState(false);
     const [assignmentAllowanceInputs, setAssignmentAllowanceInputs] = useState<Record<number, number>>({});
     const [savingAssignmentMap, setSavingAssignmentMap] = useState<Record<number, boolean>>({});
+    // Track selected day for mobile tap interaction
+    const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+    // Detect if device supports touch
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
 
     // Parse payroll calculated date to get the date for comparison
     const payrollDate = payrollCalculatedDate ? new Date(payrollCalculatedDate) : null;
     const payrollDateOnly = payrollDate ? new Date(payrollDate.getFullYear(), payrollDate.getMonth(), payrollDate.getDate()) : null;
+
+    // Detect touch device on mount
+    useEffect(() => {
+        const isTouchDeviceCheck = () => {
+            return (
+                (typeof window !== 'undefined' &&
+                    ('ontouchstart' in window ||
+                        (navigator && 'maxTouchPoints' in navigator && navigator.maxTouchPoints > 0))) ||
+                false
+            );
+        };
+        setIsTouchDevice(isTouchDeviceCheck());
+    }, []);
 
     // Phân loại attendance theo assignment (mỗi assignment 1 lịch)
     const assignmentGroups = useMemo(
@@ -419,10 +436,21 @@ export default function AttendanceCalendar({
                                         {calendarDays.map((day, index) => {
                                             const dayAttendances = day ? getAttendancesForDate(assignmentAttendances, day) : [];
                                             const attendanceStatus = day ? getAttendanceStatus(dayAttendances, day, month, year) : 'norecord';
+                                            const dayKey = `${assignmentId}-${day}`;
+                                            const isSelected = selectedDayKey === dayKey;
 
                                             return (
-                                                <div key={index} className={`border-r border-b border-gray-200 p-1 min-w-16 min-h-16 flex flex-col items-center justify-center 
-                                                        ${day ? "bg-white " : "bg-gray-50"} relative group cursor-pointer`}>
+                                                <div 
+                                                    key={index} 
+                                                    className={`border-r border-b border-gray-200 p-1 min-w-16 min-h-16 flex flex-col items-center justify-center 
+                                                        ${day ? "bg-white " : "bg-gray-50"} relative group cursor-pointer`}
+                                                    onClick={() => {
+                                                        // Toggle selected day on tap for mobile/touch devices
+                                                        if (isTouchDevice) {
+                                                            setSelectedDayKey(isSelected ? null : dayKey);
+                                                        }
+                                                    }}
+                                                >
                                                     {day && (
                                                         <div className="w-full h-20 flex flex-col">
                                                             {/* Ngày */}
@@ -444,15 +472,20 @@ export default function AttendanceCalendar({
                                                                     // Đã làm → icon check xanh
                                                                     <>
                                                                         <div className="text-green-600 text-xl text-center">
-                                                                            <span className="group-hover:hidden inline-block">
+                                                                            <span className={`${isTouchDevice ? (isSelected ? 'hidden' : 'inline-block') : 'group-hover:hidden inline-block'}`}>
                                                                                 <FontAwesomeIcon icon={SolidIcons.faClipboardCheck} />
                                                                             </span>
                                                                             <button
-                                                                                onClick={() => {
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
                                                                                     onEditAttendance?.(dayAttendances[0]);
                                                                                     setEditingAttendance(null);
+                                                                                    // Clear selected day after clicking edit
+                                                                                    if (isTouchDevice) {
+                                                                                        setSelectedDayKey(null);
+                                                                                    }
                                                                                 }}
-                                                                                className="group-hover:block hidden mt-1 bg-blue-500 text-white px-1 py-0.5 rounded text-xs hover:bg-blue-600 w-full"
+                                                                                className={`${isTouchDevice ? (isSelected ? 'block' : 'hidden') : 'group-hover:block hidden'} mt-1 bg-blue-500 text-white px-1 py-0.5 rounded text-xs hover:bg-blue-600 w-full`}
                                                                             >
                                                                                 Sửa
                                                                             </button>
@@ -463,7 +496,7 @@ export default function AttendanceCalendar({
                                                                                 {att.supportCost && att.supportCost > 0 ? (
                                                                                     <div className="flex items-center gap-1 text-xs">
                                                                                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.supportCost.dot}`}></div>
-                                                                                        <span className="group-hover:block hidden text-blue-600 font-semibold truncate">
+                                                                                        <span className={`${isTouchDevice ? (isSelected ? 'block' : 'hidden') : 'group-hover:block hidden'} text-blue-600 font-semibold truncate`}>
                                                                                             {new Intl.NumberFormat("vi-VN", {
                                                                                                 style: "currency",
                                                                                                 currency: "VND",
@@ -475,7 +508,7 @@ export default function AttendanceCalendar({
                                                                                 {att.bonus && att.bonus > 0 ? (
                                                                                     <div className="flex items-center gap-1 text-xs">
                                                                                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.bonus.dot}`}></div>
-                                                                                        <span className="group-hover:block hidden text-green-600 font-semibold truncate">
+                                                                                        <span className={`${isTouchDevice ? (isSelected ? 'block' : 'hidden') : 'group-hover:block hidden'} text-green-600 font-semibold truncate`}>
                                                                                             {new Intl.NumberFormat("vi-VN", {
                                                                                                 style: "currency",
                                                                                                 currency: "VND",
@@ -487,7 +520,7 @@ export default function AttendanceCalendar({
                                                                                 {att.penalty && att.penalty > 0 ? (
                                                                                     <div className="flex items-center gap-1 text-xs">
                                                                                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.penalty.dot}`}></div>
-                                                                                        <span className="group-hover:block hidden text-red-600 font-semibold truncate">
+                                                                                        <span className={`${isTouchDevice ? (isSelected ? 'block' : 'hidden') : 'group-hover:block hidden'} text-red-600 font-semibold truncate`}>
                                                                                             {new Intl.NumberFormat("vi-VN", {
                                                                                                 style: "currency",
                                                                                                 currency: "VND",
@@ -499,7 +532,7 @@ export default function AttendanceCalendar({
                                                                                 {att.overtimeAmount && att.overtimeAmount > 0 ? (
                                                                                     <div className="flex items-center gap-1 text-xs">
                                                                                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${INDICATOR_TYPES.overtimeAmount.dot}`}></div>
-                                                                                        <span className="group-hover:block hidden text-purple-600 font-semibold truncate">
+                                                                                        <span className={`${isTouchDevice ? (isSelected ? 'block' : 'hidden') : 'group-hover:block hidden'} text-purple-600 font-semibold truncate`}>
                                                                                             {new Intl.NumberFormat("vi-VN", {
                                                                                                 style: "currency",
                                                                                                 currency: "VND",

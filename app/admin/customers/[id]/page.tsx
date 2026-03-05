@@ -71,6 +71,19 @@ export default function CustomerDetail() {
   const [searchEmployee, setSearchEmployee] = useState("");
   const [assignedEmployees, setAssignedEmployees] = useState<any[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [assignedEmployeesKeyword, setAssignedEmployeesKeyword] = useState("");
+  const [assignedEmployeesMonth, setAssignedEmployeesMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [assignedEmployeesYear, setAssignedEmployeesYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [assignedEmployeesPage, setAssignedEmployeesPage] = useState({
+    currentPage: 0,
+    pageSize: 10,
+    totalPages: 0,
+    totalElements: 0,
+  });
   const [loadingAllAssignments, setLoadingAllAssignments] = useState(false);
   const [allAssignedEmployees, setAllAssignedEmployees] = useState<any[]>([]);
   const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>(
@@ -412,13 +425,93 @@ export default function CustomerDetail() {
     }
   };
 
-  const loadAssignedEmployees = async () => {
+  const loadAssignedEmployees = async (
+    page: number = 0,
+    pageSize: number = 10,
+    keyword: string | null = null,
+    month: number | null = null,
+    year: number | null = null
+  ) => {
     try {
       setLoadingAssignments(true);
-      const data = await assignmentService.getAllByCustomerId(id!, {});
-      setAssignedEmployees(data);
+      const q = keyword !== null ? keyword : assignedEmployeesKeyword;
+      const m = month !== null ? month : assignedEmployeesMonth;
+      const y = year !== null ? year : assignedEmployeesYear;
+      
+      // Backend phân trang theo contracts, cần lấy nhiều contracts để đủ assignments
+      // Tạm thời lấy pageSize lớn hơn để đảm bảo có đủ assignments
+      const data = await assignmentService.getAllByCustomerId(id!, {
+        keyword: q || undefined,
+        month: m,
+        year: y,
+        page: 0, // Lấy từ page 0
+        pageSize: 100, // Lấy nhiều contracts
+      });
+      
+      console.log('🔍 loadAssignedEmployees response:', {
+        requestedPage: page,
+        requestedPageSize: pageSize,
+        backendTotalContracts: data.totalElements,
+        backendTotalPages: data.totalPages,
+        contracts: data.content
+      });
+      
+      // Flatten all assignments from all contracts
+      const allAssignments = data.content.flatMap((contract: any) => 
+        (contract.assignments || []).map((assignment: any) => ({
+          ...assignment,
+          contractId: contract.contractId,
+          contractDescription: contract.contractDescription,
+          contractStartDate: contract.contractStartDate,
+          contractType: contract.contractType,
+        }))
+      );
+      
+      console.log('📊 Total assignments after flatten:', allAssignments.length);
+      
+      // Apply client-side pagination on flattened assignments
+      const totalAssignments = allAssignments.length;
+      const totalPages = Math.ceil(totalAssignments / pageSize);
+      const startIdx = page * pageSize;
+      const endIdx = startIdx + pageSize;
+      const paginatedAssignments = allAssignments.slice(startIdx, endIdx);
+      
+      // Group back by contract for display
+      const groupedByContract = paginatedAssignments.reduce((acc: any[], assignment: any) => {
+        let contractGroup = acc.find((g) => g.contractId === assignment.contractId);
+        if (!contractGroup) {
+          contractGroup = {
+            contractId: assignment.contractId,
+            contractDescription: assignment.contractDescription,
+            contractStartDate: assignment.contractStartDate,
+            contractType: assignment.contractType,
+            assignments: [],
+          };
+          acc.push(contractGroup);
+        }
+        contractGroup.assignments.push(assignment);
+        return acc;
+      }, []);
+      
+      console.log('✅ Paginated result:', {
+        page,
+        pageSize,
+        totalAssignments,
+        totalPages,
+        displayedAssignments: paginatedAssignments.length,
+        groupedContracts: groupedByContract.length
+      });
+      
+      setAssignedEmployees(groupedByContract);
+      setAssignedEmployeesPage({
+        currentPage: page,
+        pageSize: pageSize,
+        totalPages: totalPages,
+        totalElements: totalAssignments,
+      });
     } catch (error) {
       console.error("Error loading assigned employees:", error);
+      setAssignedEmployees([]);
     } finally {
       setLoadingAssignments(false);
     }
@@ -454,7 +547,7 @@ export default function CustomerDetail() {
           : undefined,
       });
       console.log("All assigned employees (grouped):", data);
-      setAllAssignedEmployees(data);
+      setAllAssignedEmployees(data.content);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
     } finally {
@@ -747,8 +840,8 @@ export default function CustomerDetail() {
 
   const handleOpenReassignmentModal = async () => {
     setShowReassignmentModal(true);
-    // Load assigned employees for "replaced" column
-    await loadAssignedEmployees();
+    // Load assigned employees for "replaced" column with pagination
+    await loadAssignedEmployees(0, assignedEmployeesPage.pageSize);
     // Load paginated system employees for "replacement" column
     await loadEmployeesPage(0);
   };
@@ -3458,6 +3551,56 @@ export default function CustomerDetail() {
                     </span>
                   )}
                 </h3>
+                <div className="mb-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={assignedEmployeesMonth}
+                      onChange={(e) => {
+                        const m = Number(e.target.value);
+                        setAssignedEmployeesMonth(m);
+                        loadAssignedEmployees(0, assignedEmployeesPage.pageSize, null, m, null);
+                      }}
+                      className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <option key={m} value={m}>
+                          Tháng {m}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={assignedEmployeesYear}
+                      onChange={(e) => {
+                        const y = Number(e.target.value);
+                        setAssignedEmployeesYear(y);
+                        loadAssignedEmployees(0, assignedEmployeesPage.pageSize, null, null, y);
+                      }}
+                      className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      {Array.from(
+                        { length: 15 },
+                        (_, i) => new Date().getFullYear() - 2 + i
+                      ).map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm nhân viên..."
+                    value={assignedEmployeesKeyword}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAssignedEmployeesKeyword(v);
+                      // Load with current search value
+                      loadAssignedEmployees(0, assignedEmployeesPage.pageSize, v);
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
                 {loadingAssignments ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -3564,6 +3707,48 @@ export default function CustomerDetail() {
                         </div>
                       )
                     )}
+                  </div>
+                )}
+                
+                {/* Pagination controls */}
+                {assignedEmployeesPage.totalPages > 0 && !loadingAssignments && (
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      Trang {assignedEmployeesPage.currentPage + 1} /{" "}
+                      {Math.max(1, assignedEmployeesPage.totalPages)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          loadAssignedEmployees(
+                            Math.max(0, assignedEmployeesPage.currentPage - 1),
+                            assignedEmployeesPage.pageSize
+                          )
+                        }
+                        disabled={assignedEmployeesPage.currentPage <= 0}
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        onClick={() =>
+                          loadAssignedEmployees(
+                            Math.min(
+                              assignedEmployeesPage.totalPages - 1,
+                              assignedEmployeesPage.currentPage + 1
+                            ),
+                            assignedEmployeesPage.pageSize
+                          )
+                        }
+                        disabled={
+                          assignedEmployeesPage.currentPage >=
+                          assignedEmployeesPage.totalPages - 1
+                        }
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

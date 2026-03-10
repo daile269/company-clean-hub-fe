@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AdminSidebar from "@/components/AdminSidebar";
+import NotificationBell from "@/components/NotificationBell";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -88,6 +89,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
             <div className="flex items-center gap-4">
+              <NotificationBell />
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-700">
                   {user?.username}

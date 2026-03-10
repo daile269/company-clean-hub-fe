@@ -39,6 +39,9 @@ export interface ApiContract {
   finalPrice: number;
   contractType: string;
   workingDaysPerWeek: string[];
+  numberOfEmployees?: number;    // Số lượng nhân viên
+  workStartTime?: string;        // Giờ bắt đầu ca làm (HH:mm:ss)
+  workEndTime?: string;          // Giờ kết thúc ca làm (HH:mm:ss)
   paymentStatus: string;
   description?: string;
   createdAt: string;
@@ -66,6 +69,9 @@ export const getAll = async (params: ContractPaginationParams): Promise<Contract
       endDate: new Date(apiContract.endDate),
       finalPrice: apiContract.finalPrice,
       paymentStatus: apiContract.paymentStatus,
+      numberOfEmployees: apiContract.numberOfEmployees,
+      workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
+      workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
@@ -105,6 +111,9 @@ export const getByCustomerId = async (customerId: string): Promise<Contract[]> =
       paymentStatus: apiContract.paymentStatus,
       contractType: apiContract.contractType,
       workingDaysPerWeek: apiContract.workingDaysPerWeek,
+      numberOfEmployees: apiContract.numberOfEmployees,
+      workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
+      workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
@@ -140,6 +149,9 @@ export const getById = async (id: string): Promise<Contract> => {
       paymentStatus: apiContract.paymentStatus,
       contractType: apiContract.contractType,
       workingDaysPerWeek: apiContract.workingDaysPerWeek,
+      numberOfEmployees: apiContract.numberOfEmployees,
+      workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
+      workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
@@ -204,6 +216,9 @@ export const create = async (contractData: any): Promise<Contract> => {
       endDate: contractData.endDate,
       workingDaysPerWeek: contractData.workingDaysPerWeek || [],
       contractType: contractData.contractType || 'ONE_TIME',
+      numberOfEmployees: contractData.numberOfEmployees || null,
+      workStartTime: contractData.workStartTime || null,
+      workEndTime: contractData.workEndTime || null,
       finalPrice: contractData.finalPrice,
       paymentStatus: contractData.paymentStatus || 'PENDING',
       description: contractData.description || '',
@@ -227,6 +242,9 @@ export const create = async (contractData: any): Promise<Contract> => {
       finalPrice: apiContract.finalPrice,
       contractType: apiContract.contractType,
       workingDaysPerWeek: apiContract.workingDaysPerWeek,
+      numberOfEmployees: apiContract.numberOfEmployees,
+      workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
+      workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
@@ -281,6 +299,15 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
     if (contractData.workingDaysPerWeek !== undefined) {
       payload.workingDaysPerWeek = contractData.workingDaysPerWeek;
     }
+    if (contractData.numberOfEmployees !== undefined) {
+      payload.numberOfEmployees = contractData.numberOfEmployees;
+    }
+    if (contractData.workStartTime !== undefined) {
+      payload.workStartTime = contractData.workStartTime || null;
+    }
+    if (contractData.workEndTime !== undefined) {
+      payload.workEndTime = contractData.workEndTime || null;
+    }
     const response = await apiService.put<any>(`/contracts/${id}`, payload);
 
     if (!response.success || !response.data) {
@@ -300,6 +327,9 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
       paymentStatus: apiContract.paymentStatus,
       contractType: apiContract.contractType,
       workingDaysPerWeek: apiContract.workingDaysPerWeek,
+      numberOfEmployees: apiContract.numberOfEmployees,
+      workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
+      workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),

@@ -348,6 +348,20 @@ export default function InvoiceDetailPage() {
                     {formatCurrency(invoice.vatAmount)}
                   </div>
                 </div>
+                {invoice.penalty && invoice.penalty > 0 && (
+                  <>
+                    <div className="flex justify-between mt-2 pt-2 border-t">
+                      <div className="text-xs text-gray-500">Khấu trừ chi phí</div>
+                      <div className="font-medium text-red-600">- {formatCurrency(invoice.penalty)}</div>
+                    </div>
+                    {invoice.penaltyReason && (
+                      <div className="flex justify-between">
+                        <div className="text-xs text-gray-500">Lý do khấu trừ</div>
+                        <div className="text-right max-w-xs break-words text-xs">{invoice.penaltyReason}</div>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="flex justify-between mt-2">
                   <div className="text-sm text-gray-500">Tổng cộng</div>
                   <div className="text-lg font-bold text-green-600">

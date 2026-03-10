@@ -6,6 +6,8 @@ export interface InvoiceCreateRequest {
   invoiceYear: number;
   actualWorkingDays?: number;
   notes?: string;
+  penalty?: number;
+  penaltyReason?: string;
 }
 
 export interface InvoiceUpdateRequest {
@@ -25,6 +27,8 @@ export interface Invoice {
   status: string;
   actualWorkingDays?: number;
   notes?: string;
+  penalty?: number;
+  penaltyReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +95,8 @@ const invoiceService = {
         totalAmount: Number(d.totalAmount ?? d.total ?? 0),
         invoiceType: d.invoiceType,
         notes: d.notes,
+        penalty: d.penalty ? Number(d.penalty) : null,
+        penaltyReason: d.penaltyReason,
         status: d.status,
         createdAt: d.createdAt ? new Date(d.createdAt) : null,
         paidAt: d.paidAt ? new Date(d.paidAt) : null,
@@ -145,6 +151,8 @@ const invoiceService = {
         status: apiInvoice.status,
         actualWorkingDays: apiInvoice.actualWorkingDays,
         notes: apiInvoice.notes,
+        penalty: apiInvoice.penalty,
+        penaltyReason: apiInvoice.penaltyReason,
         createdAt: new Date(apiInvoice.createdAt),
         updatedAt: new Date(apiInvoice.updatedAt),
       }));
@@ -175,6 +183,8 @@ const invoiceService = {
         status: apiInvoice.status,
         actualWorkingDays: apiInvoice.actualWorkingDays,
         notes: apiInvoice.notes,
+        penalty: apiInvoice.penalty,
+        penaltyReason: apiInvoice.penaltyReason,
         createdAt: new Date(apiInvoice.createdAt),
         updatedAt: new Date(apiInvoice.updatedAt),
       }));
@@ -205,6 +215,8 @@ const invoiceService = {
         status: apiInvoice.status,
         actualWorkingDays: apiInvoice.actualWorkingDays,
         notes: apiInvoice.notes,
+        penalty: apiInvoice.penalty,
+        penaltyReason: apiInvoice.penaltyReason,
         createdAt: new Date(apiInvoice.createdAt),
         updatedAt: new Date(apiInvoice.updatedAt),
       }));
@@ -235,6 +247,8 @@ const invoiceService = {
         status: apiInvoice.status,
         actualWorkingDays: apiInvoice.actualWorkingDays,
         notes: apiInvoice.notes,
+        penalty: apiInvoice.penalty,
+        penaltyReason: apiInvoice.penaltyReason,
         createdAt: new Date(apiInvoice.createdAt),
         updatedAt: new Date(apiInvoice.updatedAt),
       }));
@@ -266,6 +280,8 @@ const invoiceService = {
         status: apiInvoice.status,
         actualWorkingDays: apiInvoice.actualWorkingDays,
         notes: apiInvoice.notes,
+        penalty: apiInvoice.penalty,
+        penaltyReason: apiInvoice.penaltyReason,
         createdAt: new Date(apiInvoice.createdAt),
         updatedAt: new Date(apiInvoice.updatedAt),
       };

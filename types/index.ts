@@ -89,6 +89,9 @@ export interface Contract {
   plannedDays?: number;         // Số ngày làm theo hợp đồng (tổng ngày/tháng hoặc kế hoạch)
   workingDaysPerWeek?: string[]; // Ngày làm việc trong tuần: ["MONDAY", "TUESDAY", ...]
   contractType?: string;         // Loại hợp đồng: ONE_TIME, MONTHLY_FIXED, MONTHLY_ACTUAL
+  numberOfEmployees?: number;    // Số lượng nhân viên (>= 1)
+  workStartTime?: string;        // Giờ bắt đầu ca làm (HH:mm)
+  workEndTime?: string;          // Giờ kết thúc ca làm (HH:mm)
   finalPrice: number;            // Giá cuối cùng (tổng giá các service)
   paymentStatus: string;         // Trạng thái thanh toán
   description?: string;

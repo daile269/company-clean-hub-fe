@@ -56,6 +56,8 @@ export default function ContractDetailPage() {
     invoiceMonth: new Date().getMonth() + 1,
     invoiceYear: new Date().getFullYear(),
     notes: "",
+    penalty: "" as any,
+    penaltyReason: "",
   });
   const [statusUpdateForm, setStatusUpdateForm] = useState({
     status: "PAID" as string,
@@ -433,6 +435,9 @@ export default function ContractDetailPage() {
         finalPrice: finalPrice,
         paymentStatus: editForm.paymentStatus,
         description: editForm.description,
+        numberOfEmployees: editForm.numberOfEmployees ?? contract.numberOfEmployees ?? undefined,
+        workStartTime: editForm.workStartTime ?? contract.workStartTime ?? undefined,
+        workEndTime: editForm.workEndTime ?? contract.workEndTime ?? undefined,
       };
       await contractService.update(contract.id, updateData);
       toast.success("Đã cập nhật hợp đồng thành công");
@@ -568,6 +573,8 @@ export default function ContractDetailPage() {
       invoiceMonth: new Date().getMonth() + 1,
       invoiceYear: new Date().getFullYear(),
       notes: "",
+      penalty: "" as any,
+      penaltyReason: "",
     });
     setShowInvoiceModal(true);
   };
@@ -608,11 +615,20 @@ export default function ContractDetailPage() {
 
     try {
       setSavingInvoice(true);
+      
+      // Parse penalty if provided
+      const penaltyValue = invoiceForm.penalty?.trim();
+      const penaltyNumber = penaltyValue 
+        ? Number(parseFormattedNumber(penaltyValue)) 
+        : undefined;
+
       const invoiceData: InvoiceCreateRequest = {
         contractId: Number(contract.id),
         invoiceMonth: invoiceForm.invoiceMonth,
         invoiceYear: invoiceForm.invoiceYear,
         notes: invoiceForm.notes,
+        penalty: penaltyNumber,
+        penaltyReason: invoiceForm.penaltyReason?.trim() || undefined,
       };
 
       // Note: `actualWorkingDays` is handled server-side now; do not include from UI.
@@ -1043,6 +1059,26 @@ export default function ContractDetailPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Số nhân viên & giờ làm */}
+              {(contract.numberOfEmployees != null || contract.workStartTime || contract.workEndTime) && (
+                <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-2">
+                  {contract.numberOfEmployees != null && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Số lượng nhân viên</p>
+                      <p className="text-sm font-semibold text-blue-700">{contract.numberOfEmployees} nhân viên</p>
+                    </div>
+                  )}
+                  {(contract.workStartTime || contract.workEndTime) && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Giờ làm việc</p>
+                      <p className="text-sm font-semibold text-blue-700">
+                        {contract.workStartTime || "--:--"} – {contract.workEndTime || "--:--"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {contract.description && (
                 <div className="pt-3 border-t">
@@ -2484,6 +2520,55 @@ export default function ContractDetailPage() {
                   />
                 </div>
 
+                {/* === Số NV & giờ làm === */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số lượng nhân viên
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editForm.numberOfEmployees ?? contract.numberOfEmployees ?? 1}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, numberOfEmployees: Math.max(1, Number(e.target.value)) })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Phải lớn hơn 0</p>
+                </div>
+
+                <div>
+                  {/* placeholder col aligned */}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giờ bắt đầu ca làm
+                  </label>
+                  <input
+                    type="time"
+                    value={editForm.workStartTime ?? contract.workStartTime ?? ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, workStartTime: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giờ kết thúc ca làm
+                  </label>
+                  <input
+                    type="time"
+                    value={editForm.workEndTime ?? contract.workEndTime ?? ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, workEndTime: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Mô tả
@@ -2856,6 +2941,40 @@ export default function ContractDetailPage() {
                     rows={3}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập ghi chú cho hóa đơn..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phí phạt (VND)
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceForm.penalty || ""}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setInvoiceForm({
+                        ...invoiceForm,
+                        penalty: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập phí phạt (nếu có)..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lý do phạt
+                  </label>
+                  <textarea
+                    value={invoiceForm.penaltyReason || ""}
+                    onChange={(e) =>
+                      setInvoiceForm({ ...invoiceForm, penaltyReason: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập lý do phạt (nếu có)..."
                   />
                 </div>
               </div>

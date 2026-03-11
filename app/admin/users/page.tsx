@@ -1,24 +1,32 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import userService, { ApiUser } from "@/services/userService";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function UsersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const initialSearch = searchParams.get("keyword") ?? "";
+  const initialPage = Number(searchParams.get("page") ?? "0");
+  const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
+  const initialFilterRole = searchParams.get("filterRole") ?? "all";
+
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
   // Search state
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [filterRole, setFilterRole] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchKeyword, setSearchKeyword] = useState(initialSearch);
+  const [filterRole, setFilterRole] = useState<string>(initialFilterRole);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({
@@ -30,8 +38,28 @@ export default function UsersPage() {
     roleId: 2, // EMPLOYEE
   });
 
-  // Debounced search
+  // Sync State to URL
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchKeyword) params.set("keyword", searchKeyword);
+    if (filterRole !== "all") params.set("filterRole", filterRole);
+    params.set("page", currentPage.toString());
+    params.set("pageSize", pageSize.toString());
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  }, [searchKeyword, filterRole, currentPage, pageSize, pathname, router]);
+
+  // Debounced search
+  const searchEffectFirstRunRef = useRef(true);
+  useEffect(() => {
+    if (searchEffectFirstRunRef.current) {
+      searchEffectFirstRunRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setSearchKeyword(searchTerm);
       setCurrentPage(0);
@@ -495,7 +523,7 @@ export default function UsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(
-                          user.roleName
+                          user.roleName,
                         )}`}
                       >
                         {getRoleName(user.roleName)}
@@ -503,10 +531,11 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === "ACTIVE"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                          }`}
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
                       >
                         {user.status === "ACTIVE" ? "Hoạt động" : "Ngừng"}
                       </span>
@@ -562,10 +591,11 @@ export default function UsersPage() {
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 rounded-lg text-sm font-medium ${currentPage === pageNum
-                          ? "bg-blue-600 text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                          }`}
+                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                          currentPage === pageNum
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
                       >
                         {pageNum + 1}
                       </button>

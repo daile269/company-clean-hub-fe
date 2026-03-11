@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
 import customerAssignmentService from "@/services/customerAssignmentService";
@@ -11,18 +11,25 @@ import { usePermission } from "@/hooks/usePermission";
 
 export default function CustomersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Permission checks
-  const canView = usePermission('CUSTOMER_VIEW');
-  const canCreate = usePermission('CUSTOMER_CREATE');
+  const canView = usePermission("CUSTOMER_VIEW");
+  const canCreate = usePermission("CUSTOMER_CREATE");
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState(""); // Keyword được gửi đến API
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  // Khởi tạo state từ query trên URL (giúp quay lại vẫn giữ filter + page)
+  const initialSearch = searchParams.get("keyword") ?? "";
+  const initialPage = Number(searchParams.get("page") ?? "0");
+  const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
+
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchKeyword, setSearchKeyword] = useState(initialSearch); // Keyword được gửi đến API
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -51,16 +58,36 @@ export default function CustomersPage() {
 
   // (No URL-based initialization — state starts with defaults)
 
-  // Load customers when page, keyword or currentUser changes.
+  // Load customers when page, keyword, pageSize or currentUser changes.
   useEffect(() => {
     if (!currentUser) return;
     loadCustomers();
-  }, [currentPage, searchKeyword, currentUser]);
+  }, [currentPage, searchKeyword, pageSize, currentUser]);
 
   // (No URL persistence of page/pageSize/keyword)
 
-  // Debounce search input
+  // Mảng dependencies để sync URL
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchKeyword) params.set("keyword", searchKeyword);
+    params.set("page", currentPage.toString());
+    params.set("pageSize", pageSize.toString());
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  }, [searchKeyword, currentPage, pageSize, pathname, router]);
+
+  // Debounce search input
+  const searchEffectFirstRunRef = useRef(true);
+  useEffect(() => {
+    // Bỏ qua lần chạy đầu tiên (khi khởi tạo từ URL) để không reset page về 0
+    if (searchEffectFirstRunRef.current) {
+      searchEffectFirstRunRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setSearchKeyword(searchTerm);
       setCurrentPage(0); // Reset to first page when search changes
@@ -79,14 +106,21 @@ export default function CustomersPage() {
     }
   };
 
-  const loadCustomers = async (overrides?: { page?: number; pageSize?: number; keyword?: string }) => {
+  const loadCustomers = async (overrides?: {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+  }) => {
     const p = overrides?.page ?? currentPage;
     const ps = overrides?.pageSize ?? pageSize;
     const kw = overrides?.keyword ?? searchKeyword;
     try {
       setLoading(true);
 
-      if (currentUser.roleName === "QLT1" || currentUser.roleName === "ACCOUNTANT") {
+      if (
+        currentUser.roleName === "QLT1" ||
+        currentUser.roleName === "ACCOUNTANT"
+      ) {
         const response = await customerService.getAll({
           keyword: kw,
           page: p,
@@ -96,11 +130,13 @@ export default function CustomersPage() {
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
       } else {
-        const response = await customerAssignmentService.getMyAssignedCustomers({
-          keyword: kw,
-          page: p,
-          pageSize: ps,
-        });
+        const response = await customerAssignmentService.getMyAssignedCustomers(
+          {
+            keyword: kw,
+            page: p,
+            pageSize: ps,
+          },
+        );
         setCustomers(response.content);
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
@@ -409,7 +445,9 @@ export default function CustomersPage() {
                     <tr
                       key={customer.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                      onClick={() =>
+                        router.push(`/admin/customers/${customer.id}`)
+                      }
                     >
                       <td className="w-16 sm:w-auto px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 truncate">
                         {customer.code}
@@ -561,10 +599,11 @@ export default function CustomersPage() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
-                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                            }`}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNum
+                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                          }`}
                         >
                           {pageNum + 1}
                         </button>
@@ -573,7 +612,7 @@ export default function CustomersPage() {
                     <button
                       onClick={() =>
                         setCurrentPage(
-                          Math.min(totalPages - 1, currentPage + 1)
+                          Math.min(totalPages - 1, currentPage + 1),
                         )
                       }
                       disabled={currentPage >= totalPages - 1}
@@ -639,7 +678,9 @@ export default function CustomersPage() {
                         setAddForm({ ...addForm, code: e.target.value })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      placeholder={generatingCode ? "Đang tạo mã..." : "VD: CUST001"}
+                      placeholder={
+                        generatingCode ? "Đang tạo mã..." : "VD: CUST001"
+                      }
                       readOnly={generatingCode}
                     />
                   </div>

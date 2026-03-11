@@ -1,28 +1,35 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import { usePermission } from "@/hooks/usePermission";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 import { authService } from "@/services/authService";
 export default function AssignmentsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const initialSearch = searchParams.get("keyword") ?? "";
+  const initialPage = Number(searchParams.get("page") ?? "0");
+  const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
+
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchKeyword, setSearchKeyword] = useState(initialSearch);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  const router = useRouter();
   const initializedRef = useRef(false);
   const lastFetchRef = useRef<string | null>(null);
   const role = authService.getUserRole();
   // Permission checks
-  const canView = usePermission('ASSIGNMENT_VIEW');
+  const canView = usePermission("ASSIGNMENT_VIEW");
 
   // Load assignments from API with pagination
   useEffect(() => {
@@ -30,8 +37,27 @@ export default function AssignmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize, searchKeyword]);
 
-  // Debounce search input
+  // Sync State to URL
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchKeyword) params.set("keyword", searchKeyword);
+    params.set("page", currentPage.toString());
+    params.set("pageSize", pageSize.toString());
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  }, [searchKeyword, currentPage, pageSize, pathname, router]);
+
+  // Debounce search input
+  const searchEffectFirstRunRef = useRef(true);
+  useEffect(() => {
+    if (searchEffectFirstRunRef.current) {
+      searchEffectFirstRunRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setSearchKeyword(searchTerm);
       setCurrentPage(0); // Reset to first page when search changes
@@ -44,8 +70,6 @@ export default function AssignmentsPage() {
   useEffect(() => {
     initializedRef.current = true;
   }, []);
-
-  
 
   const loadAssignments = async () => {
     const p = currentPage;
@@ -60,7 +84,11 @@ export default function AssignmentsPage() {
 
     try {
       setLoading(true);
-      console.debug("Loading assignments with", { keyword: kw, page: p, pageSize: ps });
+      console.debug("Loading assignments with", {
+        keyword: kw,
+        page: p,
+        pageSize: ps,
+      });
       const response = await assignmentService.getAll({
         keyword: kw,
         page: p,
@@ -133,7 +161,9 @@ export default function AssignmentsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-lg text-gray-600">Bạn không có quyền xem phân công</p>
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem phân công
+          </p>
         </div>
       </div>
     );
@@ -250,7 +280,10 @@ export default function AssignmentsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Đang thực hiện</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {assignments.filter((a) => a.status === "IN_PROGRESS").length}
+                    {
+                      assignments.filter((a) => a.status === "IN_PROGRESS")
+                        .length
+                    }
                   </p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-full">
@@ -302,7 +335,10 @@ export default function AssignmentsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Kết thúc sớm</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    {assignments.filter((a) => a.status === "TERMINATED").length}
+                    {
+                      assignments.filter((a) => a.status === "TERMINATED")
+                        .length
+                    }
                   </p>
                 </div>
                 <div className="bg-orange-100 p-3 rounded-full">
@@ -371,9 +407,11 @@ export default function AssignmentsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Số ngày
                     </th>
-                     {role !== 'QLV' && (  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Lương
-                    </th> )}
+                    {role !== "QLV" && (
+                      <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Lương
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Trạng thái
                     </th>
@@ -390,7 +428,9 @@ export default function AssignmentsPage() {
                     <tr
                       key={assignment.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => router.push(`/admin/assignments/${assignment.id}`)}
+                      onClick={() =>
+                        router.push(`/admin/assignments/${assignment.id}`)
+                      }
                     >
                       <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -399,12 +439,12 @@ export default function AssignmentsPage() {
                       </td>
                       <td className="w-48 sm:w-auto px-4 py-4 max-w-[12rem] sm:max-w-full whitespace-normal break-words break-all">
                         <div className="flex items-center">
-                              <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
-                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                                  {assignment.employeeName?.charAt(0) || "N"}
-                                </div>
-                              </div>
-                              <div className="ml-0 sm:ml-4">
+                          <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                              {assignment.employeeName?.charAt(0) || "N"}
+                            </div>
+                          </div>
+                          <div className="ml-0 sm:ml-4">
                             <div className="text-sm font-medium text-gray-900 break-words break-all">
                               {assignment.employeeName ||
                                 `ID: ${assignment.employeeId}`}
@@ -424,9 +464,11 @@ export default function AssignmentsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {assignment.workDays} ngày
                       </td>
-                      {role !== 'QLV' && (   <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                       {formatCurrency(assignment.salaryAtTime)}
-                      </td> )}
+                      {role !== "QLV" && (
+                        <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {formatCurrency(assignment.salaryAtTime)}
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(assignment.status)}
                       </td>
@@ -572,12 +614,12 @@ export default function AssignmentsPage() {
                               {pageNum + 1}
                             </button>
                           );
-                        }
+                        },
                       )}
                       <button
                         onClick={() =>
                           setCurrentPage(
-                            Math.min(totalPages - 1, currentPage + 1)
+                            Math.min(totalPages - 1, currentPage + 1),
                           )
                         }
                         disabled={currentPage >= totalPages - 1}

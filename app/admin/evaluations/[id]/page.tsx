@@ -5,11 +5,14 @@ import attendanceService, { Attendance } from "@/services/attendanceService";
 import evaluationService, { Evaluation } from "@/services/evaluationService";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
+import { authService } from "@/services/authService";
 
 export default function EvaluationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const attendanceId = params.id as string;
+  const user = authService.getCurrentUser();
+  const role = user?.roleName;
 
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -17,9 +20,10 @@ export default function EvaluationDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notes, setNotes] = useState("");
 
-  const hasUpdatePermission = usePermission('EVALUATION_UPDATE');
+  const isAllowed = role === 'QLT1' || role === 'QLT2' || role === 'ADMIN';
 
   useEffect(() => {
+    if (!isAllowed) return;
     const loadData = async () => {
       try {
         setLoading(true);
@@ -40,7 +44,7 @@ export default function EvaluationDetailPage() {
       }
     };
     if (attendanceId) loadData();
-  }, [attendanceId]);
+  }, [attendanceId, isAllowed]);
 
   const handleApprove = async () => {
     try {
@@ -63,7 +67,7 @@ export default function EvaluationDetailPage() {
     }
   };
 
-  if (!hasUpdatePermission) return <div className="p-6">Không có quyền truy cập</div>;
+  if (!isAllowed) return <div className="p-6">Không có quyền truy cập</div>;
   if (loading) return <div className="p-6 text-center">Đang tải...</div>;
   if (!attendance) return <div className="p-6 text-center text-red-500">Không tìm thấy dữ liệu điểm danh</div>;
 

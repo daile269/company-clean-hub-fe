@@ -5,15 +5,18 @@ import attendanceService, { Attendance } from "@/services/attendanceService";
 import evaluationService from "@/services/evaluationService";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
+import { authService } from "@/services/authService";
 
 export default function EvaluationsPage() {
   const router = useRouter();
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = authService.getCurrentUser();
+  const role = user?.roleName;
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -23,8 +26,8 @@ export default function EvaluationsPage() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  // Permission check
-  const hasViewPermission = usePermission('EVALUATION_VIEW');
+  // Permission check - Allow QLT1, QLT2, and ADMIN
+  const isAllowed = role === 'QLT1' || role === 'QLT2' || role === 'ADMIN';
 
   // Debounced search
   useEffect(() => {
@@ -37,6 +40,7 @@ export default function EvaluationsPage() {
 
   // Load attendances
   useEffect(() => {
+    if (!isAllowed) return;
     const loadData = async () => {
       try {
         setLoading(true);
@@ -58,7 +62,7 @@ export default function EvaluationsPage() {
       }
     };
     loadData();
-  }, [searchKeyword, selectedMonth, selectedYear, currentPage, pageSize]);
+  }, [searchKeyword, selectedMonth, selectedYear, currentPage, pageSize, isAllowed]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
@@ -80,7 +84,7 @@ export default function EvaluationsPage() {
     }
   };
 
-  if (!hasViewPermission) {
+  if (!isAllowed) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-lg text-gray-600">Bạn không có quyền truy cập trang này</p>

@@ -486,6 +486,21 @@ class AssignmentService {
     }
   }
 
+  async getTodayAssignmentsForCapture(employeeId: number): Promise<Assignment[]> {
+    try {
+      const response = await apiService.get<Assignment[]>(
+        `/assignments/employee/${employeeId}/today-capture`
+      );
+      if (response.success && response.data) {
+        return Array.isArray(response.data) ? response.data : [];
+      }
+      return [];
+    } catch (error) {
+      console.error(`Error fetching today assignments for capture:`, error);
+      return [];
+    }
+  }
+
   async update(
     id: number,
     data: Partial<AssignmentCreateRequest>

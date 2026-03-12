@@ -18,6 +18,7 @@ export interface Attendance {
   overtimeAmount: number;
   approvedBy: number | null;
   approvedByName: string | null;
+  evaluationStatus: 'PENDING' | 'APPROVED' | null;
   description: string | null;
   createdAt: string;
   updatedAt: string;
@@ -277,6 +278,43 @@ export const deleteAttendance = async (id: string): Promise<void> => {
   }
 };
 
+// Cập nhật attendance với ảnh chụp và GPS
+export const capture = async (payload: {
+  attendanceId: number;
+  imageData: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+}): Promise<Attendance> => {
+  try {
+    const response = await apiService.put<any>('/attendances/capture', payload);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to capture attendance');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error capturing attendance:', error);
+    throw error;
+  }
+};
+
+// Lấy chấm công của ngày hôm nay cho 1 assignment
+export const getTodayAttendanceByAssignment = async (assignmentId: number): Promise<Attendance | null> => {
+  try {
+    const response = await apiService.get<Attendance[]>(`/assignments/${assignmentId}/attendances?page=0&pageSize=10`);
+    if (response.success && response.data && Array.isArray(response.data.content)) {
+      const today = new Date().toISOString().split('T')[0];
+      return response.data.content.find((a: Attendance) => a.date === today) || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching today attendance:', error);
+    return null;
+  }
+};
+
 const attendanceService = {
   getAll,
   getById,
@@ -288,6 +326,8 @@ const attendanceService = {
   getDeleted,
   deleteByDate,
   restoreByDate,
+  capture,
+  getTodayAttendanceByAssignment,
 };
 
 export default attendanceService;

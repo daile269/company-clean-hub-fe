@@ -13,6 +13,7 @@ export interface LoginResponse {
   username: string;
   email: string;
   phone: string;
+  fullName: string;
   roleName: string;
   roleId: number;
   userType: string;
@@ -23,6 +24,7 @@ export interface AuthUser {
   username: string;
   email: string;
   phone: string;
+  fullName: string;
   roleName: string;
   roleId: number;
   userType: string;

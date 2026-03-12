@@ -1,11 +1,16 @@
-import { FaceMesh, Results } from '@mediapipe/face_mesh';
+/* global FaceMesh */
+
+export interface Results {
+  multiFaceLandmarks: any[][];
+  image: HTMLCanvasElement | HTMLVideoElement;
+}
 
 export interface FaceMeshCallbacks {
   onResults?: (results: Results) => void;
 }
 
 export class FaceMeshService {
-  private model: FaceMesh | null = null;
+  private model: any = null;
   private onResults: (results: Results) => void;
 
   constructor(options: FaceMeshCallbacks = {}) {
@@ -15,8 +20,14 @@ export class FaceMeshService {
   async init() {
     if (typeof window === 'undefined') return;
 
-    this.model = new FaceMesh({
-      locateFile: (file) =>
+    // Check if FaceMesh is available on window (loaded from CDN)
+    const WinFaceMesh = (window as any).FaceMesh;
+    if (!WinFaceMesh) {
+      throw new Error('FaceMesh library not found. Ensure script is loaded in layout.');
+    }
+
+    this.model = new WinFaceMesh({
+      locateFile: (file: string) =>
         `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`,
     });
 
@@ -29,9 +40,8 @@ export class FaceMeshService {
 
     this.model.onResults(this.onResults);
 
-    // Some versions use initialize()
-    if (typeof (this.model as any).initialize === 'function') {
-      await (this.model as any).initialize();
+    if (typeof this.model.initialize === 'function') {
+      await this.model.initialize();
     }
   }
 
@@ -42,7 +52,7 @@ export class FaceMeshService {
   }
 
   close() {
-    if (this.model) {
+    if (this.model && typeof this.model.close === 'function') {
       this.model.close();
       this.model = null;
     }

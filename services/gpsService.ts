@@ -120,7 +120,7 @@ export class GpsService {
       
       if (data.status === 'OK' && data.results && data.results[0]) {
         this.addressPrimary = data.results[0].formatted_address.replace(', Việt Nam', '').trim();
-        this.onUpdate({ primaryAddress: this.addressPrimary });
+        this.onUpdate({ primaryAddress: this.addressPrimary || undefined });
       } else {
         throw new Error(`Google Maps Error: ${data.status}`);
       }
@@ -153,7 +153,7 @@ export class GpsService {
         if (!ward) ward = data.locality || "";
         const finalParts = [ward, district, city].filter(p => p.trim() !== "" && p !== "Việt Nam");
         this.addressPrimary = Array.from(new Set(finalParts)).join(', ');
-        this.onUpdate({ primaryAddress: this.addressPrimary });
+        this.onUpdate({ primaryAddress: this.addressPrimary || undefined });
       }
     } catch (e) {
       console.warn('[BigDataCloud Error]', e);
@@ -171,7 +171,7 @@ export class GpsService {
       
       if (data && data.display_name) {
         this.addressNominatim = data.display_name.replace(', Việt Nam', '').trim();
-        this.onUpdate({ nominatimAddress: this.addressNominatim });
+        this.onUpdate({ nominatimAddress: this.addressNominatim || undefined });
       }
     } catch (e) {
       console.warn('[Nominatim Geocode Error]', e);

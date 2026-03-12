@@ -349,6 +349,8 @@ export default function AutoCapturePage() {
     if (loading || !videoRef.current || !overlayCanvasRef.current) return;
 
     const initServices = async () => {
+      if (!videoRef.current || !overlayCanvasRef.current) return;
+
       // 1. GPS
       gpsServiceRef.current = new GpsService({
         onUpdate: (data) => {

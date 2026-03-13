@@ -214,7 +214,7 @@ export default function CustomerDetail() {
     new Date().getFullYear(),
   );
   const [historyPage, setHistoryPage] = useState<number>(0);
-  const [historyPageSize, setHistoryPageSize] = useState<number>(10);
+  const [historyPageSize, setHistoryPageSize] = useState<number>(15);
   const [historyTotalPages, setHistoryTotalPages] = useState<number>(0);
 
   // Filter states for Card 1
@@ -237,9 +237,9 @@ export default function CustomerDetail() {
   const [sortBy, setSortBy] = useState<string>("startDate_desc");
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(15);
+  const [totalPages, setTotalPages] = useState<number>(0);
 
   // Load contracts for customer
   const loadContracts = async () => {
@@ -298,6 +298,8 @@ export default function CustomerDetail() {
     filterAssignmentType,
     filterStatus,
     assignmentContractFilter,
+    currentPage,
+    pageSize,
   ]);
 
   // Load history when customer is loaded
@@ -580,11 +582,68 @@ export default function CustomerDetail() {
         contractId: assignmentContractFilter
           ? Number(assignmentContractFilter)
           : undefined,
+        page: 0,
+        pageSize: 1000, // Fetch up to 1000 contracts to flat map and paginate client-side
       });
       console.log("All assigned employees (grouped):", data);
-      setAllAssignedEmployees(data.content);
+
+      // Flatten all assignments from all contracts
+      const allAssignments = (data.content || []).flatMap((contract: any) =>
+        (contract.assignments || []).map((assignment: any) => ({
+          ...assignment,
+          contractId: contract.contractId,
+          contractDescription: contract.contractDescription,
+          contractStartDate: contract.contractStartDate,
+          contractType: contract.contractType,
+        })),
+      );
+
+      // Apply client-side pagination on flattened assignments
+      const totalAssignments = allAssignments.length;
+      const calculatedTotalPages = Math.ceil(totalAssignments / pageSize);
+
+      // Ensure currentPage is valid
+      const validPage =
+        calculatedTotalPages > 0
+          ? Math.min(currentPage, calculatedTotalPages - 1)
+          : 0;
+
+      if (currentPage !== validPage) {
+        setCurrentPage(validPage);
+      }
+
+      const startIdx = validPage * pageSize;
+      const endIdx = startIdx + pageSize;
+      const paginatedAssignments = allAssignments.slice(startIdx, endIdx);
+
+      // Group back by contract for display
+      const groupedByContract = paginatedAssignments.reduce(
+        (acc: any[], assignment: any) => {
+          let contractGroup = acc.find(
+            (g) => g.contractId === assignment.contractId,
+          );
+          if (!contractGroup) {
+            contractGroup = {
+              contractId: assignment.contractId,
+              contractDescription: assignment.contractDescription,
+              contractStartDate: assignment.contractStartDate,
+              contractType: assignment.contractType,
+              assignments: [],
+            };
+            acc.push(contractGroup);
+          }
+          contractGroup.assignments.push(assignment);
+          return acc;
+        },
+        [],
+      );
+
+      setAllAssignedEmployees(groupedByContract);
+      setTotalPages(calculatedTotalPages);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
+      setAllAssignedEmployees([]);
+      setTotalPages(0);
     } finally {
       setLoadingAllAssignments(false);
     }
@@ -2002,7 +2061,10 @@ export default function CustomerDetail() {
             {/* Contract filter */}
             <select
               value={assignmentContractFilter}
-              onChange={(e) => setAssignmentContractFilter(e.target.value)}
+              onChange={(e) => {
+                setAssignmentContractFilter(e.target.value);
+                setCurrentPage(0);
+              }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tất cả hợp đồng</option>
@@ -2018,7 +2080,10 @@ export default function CustomerDetail() {
             {/* Month and Year filters */}
             <select
               value={filterMonth}
-              onChange={(e) => setFilterMonth(Number(e.target.value))}
+              onChange={(e) => {
+                setFilterMonth(Number(e.target.value));
+                setCurrentPage(0);
+              }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value={1}>Tháng 1</option>
@@ -2037,7 +2102,10 @@ export default function CustomerDetail() {
 
             <select
               value={filterYear}
-              onChange={(e) => setFilterYear(Number(e.target.value))}
+              onChange={(e) => {
+                setFilterYear(Number(e.target.value));
+                setCurrentPage(0);
+              }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {Array.from(
@@ -2048,6 +2116,22 @@ export default function CustomerDetail() {
                   Năm {year}
                 </option>
               ))}
+            </select>
+
+            {/* Page Size Filter */}
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5 nhân viên</option>
+              <option value={10}>10 nhân viên</option>
+              <option value={15}>15 nhân viên</option>
+              <option value={20}>20 nhân viên</option>
+              <option value={50}>50 nhân viên</option>
             </select>
 
             {/* Filters */}
@@ -2339,6 +2423,39 @@ export default function CustomerDetail() {
                 </div>
               ),
             )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-end mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(0, prev - 1))
+                    }
+                    disabled={currentPage === 0}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Trước
+                  </button>
+
+                  <span className="text-sm text-gray-600">
+                    Trang {currentPage + 1} / {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(totalPages - 1, prev + 1),
+                      )
+                    }
+                    disabled={currentPage >= totalPages - 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2403,6 +2520,20 @@ export default function CustomerDetail() {
                   {y}
                 </option>
               ))}
+            </select>
+            <select
+              value={historyPageSize}
+              onChange={(e) => {
+                setHistoryPageSize(Number(e.target.value));
+                setHistoryPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5 kết quả</option>
+              <option value={10}>10 kết quả</option>
+              <option value={15}>15 kết quả</option>
+              <option value={20}>20 kết quả</option>
+              <option value={50}>50 kết quả</option>
             </select>
             <button
               onClick={() => loadAssignmentHistories()}
@@ -2634,26 +2765,9 @@ export default function CustomerDetail() {
               </div>
             ))}
 
-            {/* Pagination */}
+            {/* Pagination Controls */}
             {historyTotalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Hiển thị</span>
-                  <select
-                    value={historyPageSize}
-                    onChange={(e) => {
-                      setHistoryPageSize(Number(e.target.value));
-                      setHistoryPage(0);
-                    }}
-                    className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                  </select>
-                  <span className="text-sm text-gray-600">kết quả</span>
-                </div>
-
+              <div className="flex items-center justify-end mt-4 pt-4 border-t">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() =>

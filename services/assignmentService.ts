@@ -198,6 +198,7 @@ class AssignmentService {
   async getAllByCustomerId(
     customerId: string,
     params?: {
+      keyword?: string;
       contractType?: string;
       status?: string;
       month?: number;
@@ -206,10 +207,19 @@ class AssignmentService {
       pageSize?: number;
       contractId?: number;
     }
-  ): Promise<Assignment[]> {
+  ): Promise<{
+    content: Assignment[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  }> {
     try {
       const queryParams = new URLSearchParams();
 
+      if (params?.keyword) {
+        queryParams.append("keyword", params.keyword);
+      }
       if (params?.contractId) {
         queryParams.append("contractId", params.contractId.toString());
       }
@@ -234,14 +244,32 @@ class AssignmentService {
       // console.log('Assignments by customer (by-contract) response:', response);
 
       if (response.success && response.data) {
-        // Return grouped data instead of flattening
-        return Array.isArray(response.data.content) ? response.data.content : [];
+        // Return full pagination response with grouped data
+        return {
+          content: Array.isArray(response.data.content) ? response.data.content : [],
+          totalElements: response.data.totalElements || 0,
+          totalPages: response.data.totalPages || 0,
+          currentPage: response.data.number ?? response.data.currentPage ?? 0,
+          pageSize: response.data.size ?? response.data.pageSize ?? 10,
+        };
       }
 
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: 10,
+      };
     } catch (error) {
       console.error("Error fetching assignments:", error);
-      return [];
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        currentPage: 0,
+        pageSize: 10,
+      };
     }
   }
 

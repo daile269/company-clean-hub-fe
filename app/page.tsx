@@ -303,10 +303,8 @@ export default function Home() {
               <div className="max-w-7xl mx-auto">
                 <div className="px-4 sm:px-6 lg:px-8">
                   {/* Lazy load client component on client side only */}
-                  {/* eslint-disable-next-line @next/next/no-jsx-in-html-comments */}
                   <div>
                     {/* Importing component directly */}
-                    {/* @ts-ignore */}
                     <NewsSlider />
                   </div>
                 </div>

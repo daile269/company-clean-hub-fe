@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
 import { Employee, EmployeeType } from "@/types";
@@ -9,18 +9,28 @@ import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
 
 export default function EmployeesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Khởi tạo state từ query trên URL (giúp quay lại vẫn giữ filter + page)
+  const initialSearch = searchParams.get("keyword") ?? "";
+  const initialPage = Number(searchParams.get("page") ?? "0");
+  const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
+  const initialFilterType = searchParams.get("filterType") ?? "all";
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Permission checks
-  const canView = usePermission('EMPLOYEE_VIEW');
-  const canCreate = usePermission('EMPLOYEE_CREATE');
+  const canView = usePermission("EMPLOYEE_VIEW");
+  const canCreate = usePermission("EMPLOYEE_CREATE");
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState(""); // Keyword được gửi đến API
-  const [filterType, setFilterType] = useState<string>("all");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchKeyword, setSearchKeyword] = useState(initialSearch); // Keyword được gửi đến API
+  const [filterType, setFilterType] = useState<string>(initialFilterType);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -39,14 +49,11 @@ export default function EmployeesPage() {
     monthlyAdvanceLimit: 0,
   });
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
+    null,
   );
   const [addLoading, setAddLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
-
-  const router = useRouter();
-
   // Load employees from API with pagination
   useEffect(() => {
     loadEmployees();
@@ -54,8 +61,29 @@ export default function EmployeesPage() {
 
   const initializedRef = useRef(false);
 
-  // Debounce search input
+  // Mảng dependencies để sync URL
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchKeyword) params.set("keyword", searchKeyword);
+    params.set("page", currentPage.toString());
+    params.set("pageSize", pageSize.toString());
+    if (filterType && filterType !== "all")
+      params.set("filterType", filterType);
+
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+      scroll: false,
+    });
+  }, [searchKeyword, currentPage, pageSize, filterType, pathname, router]);
+
+  // Debounce search input
+  const searchEffectFirstRunRef = useRef(true);
+  useEffect(() => {
+    if (searchEffectFirstRunRef.current) {
+      searchEffectFirstRunRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setSearchKeyword(searchTerm);
       setCurrentPage(0); // Reset to first page when search changes
@@ -64,17 +92,24 @@ export default function EmployeesPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const loadEmployees = async (overrides?: { page?: number; pageSize?: number }) => {
+  const loadEmployees = async (overrides?: {
+    page?: number;
+    pageSize?: number;
+  }) => {
     const p = overrides?.page ?? currentPage;
     const ps = overrides?.pageSize ?? pageSize;
     try {
       setLoading(true);
-      console.debug("Loading employees with", { keyword: searchKeyword, page: p, pageSize: ps });
+      console.debug("Loading employees with", {
+        keyword: searchKeyword,
+        page: p,
+        pageSize: ps,
+      });
       const response = await employeeService.getAll({
         keyword: searchKeyword,
         page: p,
         pageSize: ps,
-        employmentType: 'CONTRACT_STAFF',
+        employmentType: "CONTRACT_STAFF",
       });
       setEmployees(response.content);
       setTotalPages(response.totalPages);
@@ -219,8 +254,9 @@ export default function EmployeesPage() {
     <div>
       <Toaster position="top-right" />
       <div className="mb-8 flex justify-between items-center">
-
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý nhân viên làm việc theo hợp đồng của khách hàng</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Quản lý nhân viên làm việc theo hợp đồng của khách hàng
+        </h1>
         {canCreate && (
           <button
             onClick={handleOpenAddModal}
@@ -372,7 +408,9 @@ export default function EmployeesPage() {
                     <tr
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => router.push(`/admin/employees/${employee.id}`)}
+                      onClick={() =>
+                        router.push(`/admin/employees/${employee.id}`)
+                      }
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {employee.employeeCode}
@@ -402,19 +440,22 @@ export default function EmployeesPage() {
                       </td>
                       <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${employee.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                            }`}
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            employee.status === "ACTIVE"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                         >
-                          {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                          {employee.status === "ACTIVE"
+                            ? "Hoạt động"
+                            : "Không hoạt động"}
                         </span>
                       </td>
                       <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {employee.updatedAt
-                          ? (employee.updatedAt instanceof Date
-                            ? employee.updatedAt.toLocaleDateString('vi-VN')
-                            : employee.updatedAt)
+                          ? employee.updatedAt instanceof Date
+                            ? employee.updatedAt.toLocaleDateString("vi-VN")
+                            : employee.updatedAt
                           : "N/A"}
                       </td>
                     </tr>
@@ -478,16 +519,21 @@ export default function EmployeesPage() {
                         </span>{" "}
                         đến{" "}
                         <span className="font-medium">
-                          {Math.min((currentPage + 1) * pageSize, totalElements)}
+                          {Math.min(
+                            (currentPage + 1) * pageSize,
+                            totalElements,
+                          )}
                         </span>{" "}
                         trong tổng số{" "}
-                        <span className="font-medium">{totalElements}</span> nhân
-                        viên
+                        <span className="font-medium">{totalElements}</span>{" "}
+                        nhân viên
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Hàng / trang</label>
+                      <label className="text-sm text-gray-600">
+                        Hàng / trang
+                      </label>
                       <select
                         value={pageSize}
                         onChange={(e) => {
@@ -548,20 +594,21 @@ export default function EmployeesPage() {
                             <button
                               key={pageNum}
                               onClick={() => setCurrentPage(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
-                                ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                                }`}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                currentPage === pageNum
+                                  ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                                  : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                              }`}
                             >
                               {pageNum + 1}
                             </button>
                           );
-                        }
+                        },
                       )}
                       <button
                         onClick={() =>
                           setCurrentPage(
-                            Math.min(totalPages - 1, currentPage + 1)
+                            Math.min(totalPages - 1, currentPage + 1),
                           )
                         }
                         disabled={currentPage >= totalPages - 1}
@@ -631,7 +678,9 @@ export default function EmployeesPage() {
                         setAddForm({ ...addForm, employeeCode: e.target.value })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      placeholder={generatingCode ? "Đang tạo mã..." : "VD: NV001"}
+                      placeholder={
+                        generatingCode ? "Đang tạo mã..." : "VD: NV001"
+                      }
                       readOnly={generatingCode}
                     />
                   </div>
@@ -729,7 +778,9 @@ export default function EmployeesPage() {
                     </label>
                     <BankSelect
                       value={addForm.bankName || ""}
-                      onChange={(v: string) => setAddForm({ ...addForm, bankName: v })}
+                      onChange={(v: string) =>
+                        setAddForm({ ...addForm, bankName: v })
+                      }
                     />
                   </div>
 
@@ -741,7 +792,10 @@ export default function EmployeesPage() {
                       type="number"
                       value={addForm.monthlyAdvanceLimit || 0}
                       onChange={(e) =>
-                        setAddForm({ ...addForm, monthlyAdvanceLimit: Number(e.target.value) })
+                        setAddForm({
+                          ...addForm,
+                          monthlyAdvanceLimit: Number(e.target.value),
+                        })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="VD: 5000000"

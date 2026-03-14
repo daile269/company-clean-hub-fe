@@ -10,34 +10,23 @@ export default function ContractsPage() {
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  
+
   // Search state
   const [searchTerm, setSearchTerm] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
-  
+
   // Permission checks
-  const canView = usePermission('CONTRACT_VIEW');
-  const canCreate = usePermission('CONTRACT_CREATE');
-  
-  // If user doesn't have VIEW permission, show message
-  if (!canView) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg text-gray-600">Bạn không có quyền xem hợp đồng</p>
-        </div>
-      </div>
-    );
-  }
-  
+  const canView = usePermission("CONTRACT_VIEW");
+  const canCreate = usePermission("CONTRACT_CREATE");
+
   const [addForm, setAddForm] = useState({
     customerId: "",
     serviceIds: [] as number[],
@@ -52,6 +41,9 @@ export default function ContractsPage() {
     paymentStatus: "PENDING",
     description: "",
     requiresImageVerification: false,
+    numberOfEmployees: 0,
+    workStartTime: "",
+    workEndTime: "",
   });
 
   // Debounced search
@@ -74,7 +66,7 @@ export default function ContractsPage() {
           page: currentPage,
           pageSize: pageSize,
         });
-        
+
         setContracts(response.content);
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
@@ -114,7 +106,12 @@ export default function ContractsPage() {
   const handleAddContract = async () => {
     try {
       // Validate required fields
-      if (!addForm.customerId || !addForm.startDate || !addForm.endDate || addForm.basePrice <= 0) {
+      if (
+        !addForm.customerId ||
+        !addForm.startDate ||
+        !addForm.endDate ||
+        addForm.basePrice <= 0
+      ) {
         toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
@@ -133,12 +130,15 @@ export default function ContractsPage() {
         paymentStatus: addForm.paymentStatus,
         description: addForm.description,
         requiresImageVerification: addForm.requiresImageVerification,
+        numberOfEmployees: addForm.numberOfEmployees || null,
+        workStartTime: addForm.workStartTime || null,
+        workEndTime: addForm.workEndTime || null,
       };
 
       await contractService.create(createData);
       toast.success("Đã thêm hợp đồng mới thành công");
       setShowAddModal(false);
-      
+
       // Reset form
       setAddForm({
         customerId: "",
@@ -154,8 +154,11 @@ export default function ContractsPage() {
         paymentStatus: "PENDING",
         description: "",
         requiresImageVerification: false,
+        numberOfEmployees: 0,
+        workStartTime: "",
+        workEndTime: "",
       });
-      
+
       // Reload contracts list
       const response = await contractService.getAll({
         keyword: searchKeyword,
@@ -180,7 +183,7 @@ export default function ContractsPage() {
     if (now > endDate) return { status: "Hết hạn", color: "red" };
 
     const daysLeft = Math.ceil(
-      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
     if (daysLeft <= 30) return { status: "Sắp hết hạn", color: "yellow" };
 
@@ -189,16 +192,29 @@ export default function ContractsPage() {
 
   const totalContractValue = contracts.reduce(
     (sum, contract) => sum + (contract.finalPrice || 0),
-    0
+    0,
   );
 
   const activeContracts = contracts.filter(
-    (c) => getContractStatus(c).status === "Đang thực hiện"
+    (c) => getContractStatus(c).status === "Đang thực hiện",
   ).length;
 
   const expiringContracts = contracts.filter(
-    (c) => getContractStatus(c).status === "Sắp hết hạn"
+    (c) => getContractStatus(c).status === "Sắp hết hạn",
   ).length;
+
+  // If user doesn't have VIEW permission, show message
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem hợp đồng
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -379,6 +395,9 @@ export default function ContractsPage() {
                   Thời hạn
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Số NV / Giờ làm
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   TT thanh toán
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -389,7 +408,7 @@ export default function ContractsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex justify-center items-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
@@ -397,7 +416,7 @@ export default function ContractsPage() {
                 </tr>
               ) : filteredContracts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <svg
                       className="mx-auto h-12 w-12 text-gray-400"
                       fill="none"
@@ -439,23 +458,36 @@ export default function ContractsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getCustomerName(contract.customerId, contract.customerName)}
+                        {getCustomerName(
+                          contract.customerId,
+                          contract.customerName,
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">
-                          {contract.serviceNames && contract.serviceNames.length > 0 ? (
+                          {contract.serviceNames &&
+                          contract.serviceNames.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {contract.serviceNames.slice(0, 2).map((serviceName, idx) => (
-                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  {serviceName}
-                                </span>
-                              ))}
+                              {contract.serviceNames
+                                .slice(0, 2)
+                                .map((serviceName, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                  >
+                                    {serviceName}
+                                  </span>
+                                ))}
                               {contract.serviceNames.length > 2 && (
-                                <span className="text-xs text-gray-500">+{contract.serviceNames.length - 2}</span>
+                                <span className="text-xs text-gray-500">
+                                  +{contract.serviceNames.length - 2}
+                                </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-gray-400">Chưa có dịch vụ</span>
+                            <span className="text-gray-400">
+                              Chưa có dịch vụ
+                            </span>
                           )}
                         </div>
                       </td>
@@ -463,7 +495,6 @@ export default function ContractsPage() {
                         <div className="text-sm font-medium text-gray-900">
                           {formatCurrency(contract.finalPrice)}
                         </div>
-                  
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -474,18 +505,64 @@ export default function ContractsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {contract.numberOfEmployees != null ? (
+                            <span className="inline-flex items-center gap-1">
+                              <svg
+                                className="w-3.5 h-3.5 text-blue-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              {contract.numberOfEmployees} NV
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {contract.workStartTime && contract.workEndTime ? (
+                            <span className="inline-flex items-center gap-1">
+                              <svg
+                                className="w-3 h-3 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                              {contract.workStartTime} – {contract.workEndTime}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             contract.paymentStatus === "PAID"
                               ? "bg-green-100 text-green-800"
                               : contract.paymentStatus === "PARTIAL"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {contract.paymentStatus === "PAID" ? "Đã thanh toán" : 
-                           contract.paymentStatus === "PARTIAL" ? "Thanh toán 1 phần" : 
-                           "Chưa thanh toán"}
+                          {contract.paymentStatus === "PAID"
+                            ? "Đã thanh toán"
+                            : contract.paymentStatus === "PARTIAL"
+                              ? "Thanh toán 1 phần"
+                              : "Chưa thanh toán"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -494,10 +571,10 @@ export default function ContractsPage() {
                             status.color === "green"
                               ? "bg-green-100 text-green-800"
                               : status.color === "yellow"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : status.color === "red"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : status.color === "red"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {status.status}
@@ -534,7 +611,7 @@ export default function ContractsPage() {
             </p>
           </div>
         )}
-        
+
         {/* Pagination */}
         {!loading && filteredContracts.length > 0 && (
           <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
@@ -547,7 +624,9 @@ export default function ContractsPage() {
                 Trước
               </button>
               <button
-                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
+                }
                 disabled={currentPage >= totalPages - 1}
                 className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -558,7 +637,9 @@ export default function ContractsPage() {
               <div>
                 <p className="text-sm text-gray-700">
                   Hiển thị{" "}
-                  <span className="font-medium">{currentPage * pageSize + 1}</span>{" "}
+                  <span className="font-medium">
+                    {currentPage * pageSize + 1}
+                  </span>{" "}
                   đến{" "}
                   <span className="font-medium">
                     {Math.min((currentPage + 1) * pageSize, totalElements)}
@@ -568,18 +649,31 @@ export default function ContractsPage() {
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav
+                  className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  aria-label="Pagination"
+                >
                   <button
                     onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                     disabled={currentPage === 0}
                     className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Trước</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
-                  
+
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNumber;
                     if (totalPages <= 5) {
@@ -591,7 +685,7 @@ export default function ContractsPage() {
                     } else {
                       pageNumber = currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <button
                         key={i}
@@ -606,15 +700,27 @@ export default function ContractsPage() {
                       </button>
                     );
                   })}
-                  
+
                   <button
-                    onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages - 1, currentPage + 1))
+                    }
                     disabled={currentPage >= totalPages - 1}
                     className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Sau</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
                 </nav>
@@ -678,16 +784,18 @@ export default function ContractsPage() {
                   onChange={(e) => {
                     const ids = e.target.value
                       .split(",")
-                      .map(id => id.trim())
-                      .filter(id => id !== "")
-                      .map(id => Number(id))
-                      .filter(id => !isNaN(id));
+                      .map((id) => id.trim())
+                      .filter((id) => id !== "")
+                      .map((id) => Number(id))
+                      .filter((id) => !isNaN(id));
                     setAddForm({ ...addForm, serviceIds: ids });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="VD: 1, 2, 3"
                 />
-                <p className="text-xs text-gray-500 mt-1">Nhập các ID cách nhau bằng dấu phẩy</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Nhập các ID cách nhau bằng dấu phẩy
+                </p>
               </div>
 
               <div>
@@ -728,7 +836,8 @@ export default function ContractsPage() {
                   onChange={(e) => {
                     const basePrice = Number(e.target.value);
                     const total = basePrice + addForm.vat;
-                    const finalPrice = total + addForm.extraCost - addForm.discountCost;
+                    const finalPrice =
+                      total + addForm.extraCost - addForm.discountCost;
                     setAddForm({ ...addForm, basePrice, total, finalPrice });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -746,7 +855,8 @@ export default function ContractsPage() {
                   onChange={(e) => {
                     const vat = Number(e.target.value);
                     const total = addForm.basePrice + vat;
-                    const finalPrice = total + addForm.extraCost - addForm.discountCost;
+                    const finalPrice =
+                      total + addForm.extraCost - addForm.discountCost;
                     setAddForm({ ...addForm, vat, total, finalPrice });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -775,7 +885,8 @@ export default function ContractsPage() {
                   value={addForm.extraCost}
                   onChange={(e) => {
                     const extraCost = Number(e.target.value);
-                    const finalPrice = addForm.total + extraCost - addForm.discountCost;
+                    const finalPrice =
+                      addForm.total + extraCost - addForm.discountCost;
                     setAddForm({ ...addForm, extraCost, finalPrice });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -792,7 +903,8 @@ export default function ContractsPage() {
                   value={addForm.discountCost}
                   onChange={(e) => {
                     const discountCost = Number(e.target.value);
-                    const finalPrice = addForm.total + addForm.extraCost - discountCost;
+                    const finalPrice =
+                      addForm.total + addForm.extraCost - discountCost;
                     setAddForm({ ...addForm, discountCost, finalPrice });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -827,6 +939,57 @@ export default function ContractsPage() {
                   <option value="PARTIAL">Thanh toán 1 phần</option>
                   <option value="PAID">Đã thanh toán</option>
                 </select>
+              </div>
+
+              {/* === Số nhân viên & giờ làm === */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số lượng nhân viên *
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={addForm.numberOfEmployees}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      numberOfEmployees: Math.max(1, Number(e.target.value)),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ví dụ: 3"
+                />
+                <p className="text-xs text-gray-500 mt-1">Phải lớn hơn 0</p>
+              </div>
+
+              <div>{/* placeholder col */}</div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giờ bắt đầu ca làm
+                </label>
+                <input
+                  type="time"
+                  value={addForm.workStartTime}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, workStartTime: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giờ kết thúc ca làm
+                </label>
+                <input
+                  type="time"
+                  value={addForm.workEndTime}
+                  onChange={(e) =>
+                    setAddForm({ ...addForm, workEndTime: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
 
               <div className="col-span-2">

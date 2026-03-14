@@ -4,8 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { customerService } from "@/services/customerService";
 import customerAssignmentService from "@/services/customerAssignmentService";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 import { employeeService } from "@/services/employeeService";
 import {
   assignmentService,
@@ -31,7 +31,7 @@ export default function CustomerDetail() {
 
   const routerForEmployee = (
     employeeId: string | number,
-    assignmentId: string | number
+    assignmentId: string | number,
   ) => {
     if (role === "CUSTOMER") {
       router.push(`/admin/employees/${employeeId}`);
@@ -71,10 +71,23 @@ export default function CustomerDetail() {
   const [searchEmployee, setSearchEmployee] = useState("");
   const [assignedEmployees, setAssignedEmployees] = useState<any[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [assignedEmployeesKeyword, setAssignedEmployeesKeyword] = useState("");
+  const [assignedEmployeesMonth, setAssignedEmployeesMonth] = useState<number>(
+    new Date().getMonth() + 1,
+  );
+  const [assignedEmployeesYear, setAssignedEmployeesYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [assignedEmployeesPage, setAssignedEmployeesPage] = useState({
+    currentPage: 0,
+    pageSize: 10,
+    totalPages: 0,
+    totalElements: 0,
+  });
   const [loadingAllAssignments, setLoadingAllAssignments] = useState(false);
   const [allAssignedEmployees, setAllAssignedEmployees] = useState<any[]>([]);
   const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>(
-    []
+    [],
   );
   const [notAssignedPage, setNotAssignedPage] = useState<any>({
     content: [],
@@ -87,10 +100,10 @@ export default function CustomerDetail() {
 
   // Modal-specific filters for not-assigned list
   const [assignmentModalMonth, setAssignmentModalMonth] = useState<number>(
-    new Date().getMonth() + 1
+    new Date().getMonth() + 1,
   );
   const [assignmentModalYear, setAssignmentModalYear] = useState<number>(
-    new Date().getFullYear()
+    new Date().getFullYear(),
   );
   const [notAssignedKeyword, setNotAssignedKeyword] = useState<string>("");
   const [notAssignedEmploymentType, setNotAssignedEmploymentType] =
@@ -120,6 +133,9 @@ export default function CustomerDetail() {
     paymentStatus: "PENDING",
     description: "",
     requiresImageVerification: false,
+    numberOfEmployees: 0,
+    workStartTime: "",
+    workEndTime: "",
   });
 
   // Customer reviews (customer feedback about assigned employees)
@@ -128,7 +144,8 @@ export default function CustomerDetail() {
   const [showAddReviewModal, setShowAddReviewModal] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
   const [contractAssignments, setContractAssignments] = useState<any[]>([]);
-  const [loadingContractAssignments, setLoadingContractAssignments] = useState(false);
+  const [loadingContractAssignments, setLoadingContractAssignments] =
+    useState(false);
   const [reviewForm, setReviewForm] = useState<{
     contractId: string;
     assignmentId: string;
@@ -192,13 +209,13 @@ export default function CustomerDetail() {
   const [historyContractFilter, setHistoryContractFilter] =
     useState<string>("");
   const [historyFilterMonth, setHistoryFilterMonth] = useState<number | "">(
-    new Date().getMonth() + 1
+    new Date().getMonth() + 1,
   );
   const [historyFilterYear, setHistoryFilterYear] = useState<number | "">(
-    new Date().getFullYear()
+    new Date().getFullYear(),
   );
   const [historyPage, setHistoryPage] = useState<number>(0);
-  const [historyPageSize, setHistoryPageSize] = useState<number>(10);
+  const [historyPageSize, setHistoryPageSize] = useState<number>(15);
   const [historyTotalPages, setHistoryTotalPages] = useState<number>(0);
 
   // Filter states for Card 1
@@ -207,19 +224,23 @@ export default function CustomerDetail() {
   const [filterAssignmentType, setFilterAssignmentType] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterMonth, setFilterMonth] = useState<number>(
-    new Date().getMonth() + 1
+    new Date().getMonth() + 1,
   );
   const [filterYear, setFilterYear] = useState<number>(
-    new Date().getFullYear()
+    new Date().getFullYear(),
   );
-  const [contractFilterMonth, setContractFilterMonth] = useState<number | "">(new Date().getMonth() + 1);
-  const [contractFilterYear, setContractFilterYear] = useState<number | "">(new Date().getFullYear());
+  const [contractFilterMonth, setContractFilterMonth] = useState<number | "">(
+    new Date().getMonth() + 1,
+  );
+  const [contractFilterYear, setContractFilterYear] = useState<number | "">(
+    new Date().getFullYear(),
+  );
   const [sortBy, setSortBy] = useState<string>("startDate_desc");
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(15);
+  const [totalPages, setTotalPages] = useState<number>(0);
 
   // Load contracts for customer
   const loadContracts = async () => {
@@ -250,7 +271,7 @@ export default function CustomerDetail() {
     const loadCustomerReviews = async () => {
       if (!id) return;
       // Skip loading reviews for QLV and EMPLOYEE roles
-      if (role === 'QLV' || role === 'EMPLOYEE') return;
+      if (role === "QLV" || role === "EMPLOYEE") return;
 
       try {
         setLoadingCustomerReviews(true);
@@ -278,6 +299,8 @@ export default function CustomerDetail() {
     filterAssignmentType,
     filterStatus,
     assignmentContractFilter,
+    currentPage,
+    pageSize,
   ]);
 
   // Load history when customer is loaded
@@ -286,7 +309,14 @@ export default function CustomerDetail() {
       loadAssignmentHistories();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, historyContractFilter, historyFilterMonth, historyFilterYear, historyPage, historyPageSize]);
+  }, [
+    id,
+    historyContractFilter,
+    historyFilterMonth,
+    historyFilterYear,
+    historyPage,
+    historyPageSize,
+  ]);
 
   // Filter contracts by selected month/year (client-side)
   const displayedContracts = (contracts || []).filter((c: any) => {
@@ -299,8 +329,12 @@ export default function CustomerDetail() {
       if (!raw) return false;
       const d = new Date(raw);
       if (isNaN(d.getTime())) return false;
-      const monthOk = contractFilterMonth ? d.getMonth() + 1 === Number(contractFilterMonth) : true;
-      const yearOk = contractFilterYear ? d.getFullYear() === Number(contractFilterYear) : true;
+      const monthOk = contractFilterMonth
+        ? d.getMonth() + 1 === Number(contractFilterMonth)
+        : true;
+      const yearOk = contractFilterYear
+        ? d.getFullYear() === Number(contractFilterYear)
+        : true;
       return monthOk && yearOk;
     };
 
@@ -313,7 +347,9 @@ export default function CustomerDetail() {
       const e = new Date(endRaw);
       if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
         const selYear = contractFilterYear ? Number(contractFilterYear) : null;
-        const selMonth = contractFilterMonth ? Number(contractFilterMonth) : null;
+        const selMonth = contractFilterMonth
+          ? Number(contractFilterMonth)
+          : null;
         if (selYear && selMonth) {
           const firstOfMonth = new Date(selYear, selMonth - 1, 1);
           const lastOfMonth = new Date(selYear, selMonth, 0, 23, 59, 59, 999);
@@ -328,7 +364,7 @@ export default function CustomerDetail() {
   const loadNotAssignedEmployees = async (
     page = 0,
     pageSize: number = notAssignedPage.pageSize,
-    keyword: string | null = null
+    keyword: string | null = null,
   ) => {
     try {
       setLoadingNotAssigned(true);
@@ -388,10 +424,13 @@ export default function CustomerDetail() {
       if (currentRole === "QLT2" || currentRole === "QLV") {
         try {
           // Check if this customer is in their assigned list
-          const assignedCustomers = await customerAssignmentService.getMyAssignedCustomer2();
+          const assignedCustomers =
+            await customerAssignmentService.getMyAssignedCustomer2();
           console.log("Assigned customers:", assignedCustomers);
           console.log("Current customer ID:", id);
-          const hasAccess = assignedCustomers.content.some((c: Customer) => String(c.id) === String(id));
+          const hasAccess = assignedCustomers.content.some(
+            (c: Customer) => String(c.id) === String(id),
+          );
 
           if (!hasAccess) {
             toast.error("Bạn không có quyền xem khách hàng này");
@@ -413,13 +452,98 @@ export default function CustomerDetail() {
     }
   };
 
-  const loadAssignedEmployees = async () => {
+  const loadAssignedEmployees = async (
+    page: number = 0,
+    pageSize: number = 10,
+    keyword: string | null = null,
+    month: number | null = null,
+    year: number | null = null,
+  ) => {
     try {
       setLoadingAssignments(true);
-      const data = await assignmentService.getAllByCustomerId(id!, {});
-      setAssignedEmployees(data);
+      const q = keyword !== null ? keyword : assignedEmployeesKeyword;
+      const m = month !== null ? month : assignedEmployeesMonth;
+      const y = year !== null ? year : assignedEmployeesYear;
+
+      // Backend phân trang theo contracts, cần lấy nhiều contracts để đủ assignments
+      // Tạm thời lấy pageSize lớn hơn để đảm bảo có đủ assignments
+      const data = await assignmentService.getAllByCustomerId(id!, {
+        keyword: q || undefined,
+        month: m,
+        year: y,
+        page: 0, // Lấy từ page 0
+        pageSize: 100, // Lấy nhiều contracts
+      });
+
+      console.log("🔍 loadAssignedEmployees response:", {
+        requestedPage: page,
+        requestedPageSize: pageSize,
+        backendTotalContracts: data.totalElements,
+        backendTotalPages: data.totalPages,
+        contracts: data.content,
+      });
+
+      // Flatten all assignments from all contracts
+      const allAssignments = data.content.flatMap((contract: any) =>
+        (contract.assignments || []).map((assignment: any) => ({
+          ...assignment,
+          contractId: contract.contractId,
+          contractDescription: contract.contractDescription,
+          contractStartDate: contract.contractStartDate,
+          contractType: contract.contractType,
+        })),
+      );
+
+      console.log("📊 Total assignments after flatten:", allAssignments.length);
+
+      // Apply client-side pagination on flattened assignments
+      const totalAssignments = allAssignments.length;
+      const totalPages = Math.ceil(totalAssignments / pageSize);
+      const startIdx = page * pageSize;
+      const endIdx = startIdx + pageSize;
+      const paginatedAssignments = allAssignments.slice(startIdx, endIdx);
+
+      // Group back by contract for display
+      const groupedByContract = paginatedAssignments.reduce(
+        (acc: any[], assignment: any) => {
+          let contractGroup = acc.find(
+            (g) => g.contractId === assignment.contractId,
+          );
+          if (!contractGroup) {
+            contractGroup = {
+              contractId: assignment.contractId,
+              contractDescription: assignment.contractDescription,
+              contractStartDate: assignment.contractStartDate,
+              contractType: assignment.contractType,
+              assignments: [],
+            };
+            acc.push(contractGroup);
+          }
+          contractGroup.assignments.push(assignment);
+          return acc;
+        },
+        [],
+      );
+
+      console.log("✅ Paginated result:", {
+        page,
+        pageSize,
+        totalAssignments,
+        totalPages,
+        displayedAssignments: paginatedAssignments.length,
+        groupedContracts: groupedByContract.length,
+      });
+
+      setAssignedEmployees(groupedByContract);
+      setAssignedEmployeesPage({
+        currentPage: page,
+        pageSize: pageSize,
+        totalPages: totalPages,
+        totalElements: totalAssignments,
+      });
     } catch (error) {
       console.error("Error loading assigned employees:", error);
+      setAssignedEmployees([]);
     } finally {
       setLoadingAssignments(false);
     }
@@ -432,10 +556,16 @@ export default function CustomerDetail() {
     }
     try {
       setLoadingContractAssignments(true);
-      const resp = await assignmentService.getByContractMonthYear(Number(contractId), filterMonth, filterYear, 0, 200);
+      const resp = await assignmentService.getByContractMonthYear(
+        Number(contractId),
+        filterMonth,
+        filterYear,
+        0,
+        200,
+      );
       setContractAssignments(resp.content || []);
     } catch (error) {
-      console.error('Error loading assignments for contract:', error);
+      console.error("Error loading assignments for contract:", error);
       setContractAssignments([]);
     } finally {
       setLoadingContractAssignments(false);
@@ -453,11 +583,68 @@ export default function CustomerDetail() {
         contractId: assignmentContractFilter
           ? Number(assignmentContractFilter)
           : undefined,
+        page: 0,
+        pageSize: 1000, // Fetch up to 1000 contracts to flat map and paginate client-side
       });
       console.log("All assigned employees (grouped):", data);
-      setAllAssignedEmployees(data);
+
+      // Flatten all assignments from all contracts
+      const allAssignments = (data.content || []).flatMap((contract: any) =>
+        (contract.assignments || []).map((assignment: any) => ({
+          ...assignment,
+          contractId: contract.contractId,
+          contractDescription: contract.contractDescription,
+          contractStartDate: contract.contractStartDate,
+          contractType: contract.contractType,
+        })),
+      );
+
+      // Apply client-side pagination on flattened assignments
+      const totalAssignments = allAssignments.length;
+      const calculatedTotalPages = Math.ceil(totalAssignments / pageSize);
+
+      // Ensure currentPage is valid
+      const validPage =
+        calculatedTotalPages > 0
+          ? Math.min(currentPage, calculatedTotalPages - 1)
+          : 0;
+
+      if (currentPage !== validPage) {
+        setCurrentPage(validPage);
+      }
+
+      const startIdx = validPage * pageSize;
+      const endIdx = startIdx + pageSize;
+      const paginatedAssignments = allAssignments.slice(startIdx, endIdx);
+
+      // Group back by contract for display
+      const groupedByContract = paginatedAssignments.reduce(
+        (acc: any[], assignment: any) => {
+          let contractGroup = acc.find(
+            (g) => g.contractId === assignment.contractId,
+          );
+          if (!contractGroup) {
+            contractGroup = {
+              contractId: assignment.contractId,
+              contractDescription: assignment.contractDescription,
+              contractStartDate: assignment.contractStartDate,
+              contractType: assignment.contractType,
+              assignments: [],
+            };
+            acc.push(contractGroup);
+          }
+          contractGroup.assignments.push(assignment);
+          return acc;
+        },
+        [],
+      );
+
+      setAllAssignedEmployees(groupedByContract);
+      setTotalPages(calculatedTotalPages);
     } catch (error) {
       console.error("Error loading assigned employees:", error);
+      setAllAssignedEmployees([]);
+      setTotalPages(0);
     } finally {
       setLoadingAllAssignments(false);
     }
@@ -511,7 +698,7 @@ export default function CustomerDetail() {
 
       if (response.success) {
         toast.success(
-          response.data?.message || "Đã hoàn tác điều động thành công"
+          response.data?.message || "Đã hoàn tác điều động thành công",
         );
         setShowRollbackModal(false);
 
@@ -596,7 +783,7 @@ export default function CustomerDetail() {
     // Apply filters
     if (filterAssignmentType) {
       filtered = filtered.filter(
-        (a) => a.assignmentType === filterAssignmentType
+        (a) => a.assignmentType === filterAssignmentType,
       );
     }
     if (filterStatus) {
@@ -715,7 +902,7 @@ export default function CustomerDetail() {
   const loadEmployeesPage = async (
     page: number = 0,
     pageSize: number = employeesPage.pageSize,
-    keyword: string | null = null
+    keyword: string | null = null,
   ) => {
     try {
       setEmployeesPageLoading(true);
@@ -748,8 +935,8 @@ export default function CustomerDetail() {
 
   const handleOpenReassignmentModal = async () => {
     setShowReassignmentModal(true);
-    // Load assigned employees for "replaced" column
-    await loadAssignedEmployees();
+    // Load assigned employees for "replaced" column with pagination
+    await loadAssignedEmployees(0, assignedEmployeesPage.pageSize);
     // Load paginated system employees for "replacement" column
     await loadEmployeesPage(0);
   };
@@ -867,19 +1054,18 @@ export default function CustomerDetail() {
       console.log("=== TEMPORARY REASSIGNMENT DATA ===");
       console.log(
         "Replacement Employee ID:",
-        reassignmentData.replacementEmployeeId
+        reassignmentData.replacementEmployeeId,
       );
       console.log("Replaced Employee ID:", reassignmentData.replacedEmployeeId);
       console.log(
         "Replaced Assignment ID:",
-        reassignmentData.replacedAssignmentId
+        reassignmentData.replacedAssignmentId,
       );
       console.log("Dates:", reassignmentData.dates);
       console.log("===================================");
 
-      const response = await assignmentService.temporaryReassignment(
-        reassignmentData
-      );
+      const response =
+        await assignmentService.temporaryReassignment(reassignmentData);
 
       if (response.success) {
         toast.success("Đã điều động nhân viên tạm thời thành công");
@@ -917,14 +1103,14 @@ export default function CustomerDetail() {
     try {
       // Parse formatted numbers correctly
       const rawPrice = parseFormattedNumber(
-        String(contractForm.servicePrice || "")
+        String(contractForm.servicePrice || ""),
       );
       const servicePrice = Number(rawPrice) || 0;
       const serviceVat =
         contractForm.serviceVat === "" ? 0 : Number(contractForm.serviceVat);
       console.log(
         "Creating contract with service price:",
-        contractForm.serviceName
+        contractForm.serviceName,
       );
       if (
         !contractForm.serviceName ||
@@ -970,6 +1156,12 @@ export default function CustomerDetail() {
         paymentStatus: contractForm.paymentStatus,
         description: contractForm.description,
         requiresImageVerification: contractForm.requiresImageVerification || false,
+        numberOfEmployees:
+          contractForm.numberOfEmployees > 0
+            ? contractForm.numberOfEmployees
+            : null,
+        workStartTime: contractForm.workStartTime || null,
+        workEndTime: contractForm.workEndTime || null,
       };
 
       await contractService.create(contractData);
@@ -995,7 +1187,13 @@ export default function CustomerDetail() {
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
+
         requiresImageVerification: false,
+
+        numberOfEmployees: 0,
+        workStartTime: "",
+        workEndTime: "",
+
       });
     } catch (error: any) {
       console.error("Error creating contract:", error);
@@ -1048,22 +1246,22 @@ export default function CustomerDetail() {
               }}
               className="w-full sm:w-auto px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2 justify-center sm:justify-start"
             >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Quay lại
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Quay lại
+            </button>
           </div>
           {canAssign && (
             <button
@@ -1174,10 +1372,11 @@ export default function CustomerDetail() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${customer.status === "ACTIVE"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                    }`}
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                    customer.status === "ACTIVE"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
                 >
                   {customer.status === "ACTIVE"
                     ? "Hoạt động"
@@ -1281,7 +1480,9 @@ export default function CustomerDetail() {
             <select
               value={contractFilterMonth}
               onChange={(e) =>
-                setContractFilterMonth(e.target.value === "" ? "" : Number(e.target.value))
+                setContractFilterMonth(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
             >
@@ -1296,12 +1497,17 @@ export default function CustomerDetail() {
             <select
               value={contractFilterYear}
               onChange={(e) =>
-                setContractFilterYear(e.target.value === "" ? "" : Number(e.target.value))
+                setContractFilterYear(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                )
               }
               className="text-sm px-2 py-1 border border-gray-300 rounded-lg"
             >
               <option value="">Năm (Tất cả)</option>
-              {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 3 + i).map((y) => (
+              {Array.from(
+                { length: 7 },
+                (_, i) => new Date().getFullYear() - 3 + i,
+              ).map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
@@ -1403,14 +1609,14 @@ export default function CustomerDetail() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-                  <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                          Mã HĐ
-                        </th>
-                        <th className="w-28 sm:w-auto px-4 py-3 text-left text-xs font-semibold text-gray-600">
-                          Loại HĐ
-                        </th>
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Mã HĐ
+                  </th>
+                  <th className="w-28 sm:w-auto px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                    Loại HĐ
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
                     Dịch vụ
                   </th>
@@ -1473,12 +1679,13 @@ export default function CustomerDetail() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${contract.paymentStatus === "PAID"
-                          ? "bg-green-100 text-green-800"
-                          : contract.paymentStatus === "PARTIAL"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                          }`}
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                          contract.paymentStatus === "PAID"
+                            ? "bg-green-100 text-green-800"
+                            : contract.paymentStatus === "PARTIAL"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
                       >
                         {contract.paymentStatus === "PAID"
                           ? "Đã thanh toán"
@@ -1501,11 +1708,13 @@ export default function CustomerDetail() {
       </div>
 
       {/* Card X: Đánh giá của khách hàng (với nhân viên được phân công) */}
-      {role !== 'QLV' && role !== 'EMPLOYEE' && (
+      {role !== "QLV" && role !== "EMPLOYEE" && (
         <>
           <div className="mt-6 bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4 pb-2 border-b">
-              <h3 className="text-lg font-semibold text-gray-800">Đánh giá nhân viên</h3>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Đánh giá nhân viên
+              </h3>
               <div>
                 <button
                   onClick={async () => {
@@ -1595,13 +1804,16 @@ export default function CustomerDetail() {
                                 <svg
                                   key={s}
                                   xmlns="http://www.w3.org/2000/svg"
-                                  className={`w-4 h-4 ${r.rating >= s
-                                    ? "text-yellow-400"
-                                    : "text-gray-300"
-                                    }`}
+                                  className={`w-4 h-4 ${
+                                    r.rating >= s
+                                      ? "text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
                                   viewBox="0 0 20 20"
                                   fill={r.rating >= s ? "currentColor" : "none"}
-                                  stroke={r.rating >= s ? "none" : "currentColor"}
+                                  stroke={
+                                    r.rating >= s ? "none" : "currentColor"
+                                  }
                                 >
                                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.178c.969 0 1.371 1.24.588 1.81l-3.383 2.46a1 1 0 00-.364 1.118l1.287 3.973c.3.921-.755 1.688-1.54 1.118l-3.383-2.46a1 1 0 00-1.176 0l-3.383 2.46c-.784.57-1.84-.197-1.54-1.118l1.287-3.973a1 1 0 00-.364-1.118L2.045 9.4c-.783-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69L9.05 2.927z" />
                                 </svg>
@@ -1615,8 +1827,8 @@ export default function CustomerDetail() {
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {r.createdAt
                             ? new Intl.DateTimeFormat("vi-VN").format(
-                              new Date(r.createdAt)
-                            )
+                                new Date(r.createdAt),
+                              )
                             : "-"}
                         </td>
                       </tr>
@@ -1633,7 +1845,12 @@ export default function CustomerDetail() {
               <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Thêm đánh giá</h3>
-                  <button onClick={() => setShowAddReviewModal(false)} className="text-gray-500">Đóng</button>
+                  <button
+                    onClick={() => setShowAddReviewModal(false)}
+                    className="text-gray-500"
+                  >
+                    Đóng
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -1643,7 +1860,12 @@ export default function CustomerDetail() {
                       value={reviewForm.contractId}
                       onChange={async (e) => {
                         const newContractId = e.target.value;
-                        setReviewForm({ ...reviewForm, contractId: newContractId, employeeId: "", assignmentId: "" });
+                        setReviewForm({
+                          ...reviewForm,
+                          contractId: newContractId,
+                          employeeId: "",
+                          assignmentId: "",
+                        });
                         await loadAssignmentsForContract(newContractId);
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
@@ -1651,7 +1873,9 @@ export default function CustomerDetail() {
                       <option value="">Chọn hợp đồng</option>
                       {contracts.map((c: any) => (
                         <option key={c.id} value={String(c.id)}>
-                          HĐ #{c.id} - {c.description || c.services?.map((s: any) => s.title).join(", ")}
+                          HĐ #{c.id} -{" "}
+                          {c.description ||
+                            c.services?.map((s: any) => s.title).join(", ")}
                         </option>
                       ))}
                     </select>
@@ -1662,7 +1886,10 @@ export default function CustomerDetail() {
                     <select
                       value={reviewForm.employeeId}
                       onChange={(e) =>
-                        setReviewForm({ ...reviewForm, employeeId: e.target.value })
+                        setReviewForm({
+                          ...reviewForm,
+                          employeeId: e.target.value,
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
                     >
@@ -1672,12 +1899,17 @@ export default function CustomerDetail() {
                       ) : (
                         contractAssignments
                           .reduce((acc: any[], a: any) => {
-                            if (!acc.find((x) => x.employeeId === a.employeeId)) acc.push(a);
+                            if (!acc.find((x) => x.employeeId === a.employeeId))
+                              acc.push(a);
                             return acc;
                           }, [])
                           .map((a: any, idx: number) => (
-                            <option key={`${a.employeeId}-${idx}`} value={String(a.employeeId)}>
-                              {a.employeeName || a.employeeId} - {a.employeeCode || ""}
+                            <option
+                              key={`${a.employeeId}-${idx}`}
+                              value={String(a.employeeId)}
+                            >
+                              {a.employeeName || a.employeeId} -{" "}
+                              {a.employeeCode || ""}
                             </option>
                           ))
                       )}
@@ -1693,7 +1925,9 @@ export default function CustomerDetail() {
                           <button
                             key={v}
                             type="button"
-                            onClick={() => setReviewForm({ ...reviewForm, rating: v })}
+                            onClick={() =>
+                              setReviewForm({ ...reviewForm, rating: v })
+                            }
                             className={`text-xl ${reviewForm.rating >= v ? "text-yellow-400" : "text-gray-300"}`}
                           >
                             ★
@@ -1708,7 +1942,12 @@ export default function CustomerDetail() {
                     <textarea
                       rows={3}
                       value={reviewForm.comment}
-                      onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                      onChange={(e) =>
+                        setReviewForm({
+                          ...reviewForm,
+                          comment: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded"
                     />
                   </div>
@@ -1723,8 +1962,14 @@ export default function CustomerDetail() {
                     </button>
                     <button
                       onClick={async () => {
-                        if (!reviewForm.contractId || !reviewForm.employeeId || !reviewForm.rating) {
-                          toast.error("Vui lòng chọn hợp đồng, nhân viên và số điểm");
+                        if (
+                          !reviewForm.contractId ||
+                          !reviewForm.employeeId ||
+                          !reviewForm.rating
+                        ) {
+                          toast.error(
+                            "Vui lòng chọn hợp đồng, nhân viên và số điểm",
+                          );
                           return;
                         }
                         try {
@@ -1737,20 +1982,44 @@ export default function CustomerDetail() {
                           };
                           // find assignment: prefer contractAssignments (assignments for selected contract)
                           let found: any = undefined;
-                          if (contractAssignments && contractAssignments.length > 0) {
-                            found = contractAssignments.find((a: any) => String(a.employeeId) === reviewForm.employeeId && (a.contractId ? String(a.contractId) === reviewForm.contractId : true));
+                          if (
+                            contractAssignments &&
+                            contractAssignments.length > 0
+                          ) {
+                            found = contractAssignments.find(
+                              (a: any) =>
+                                String(a.employeeId) ===
+                                  reviewForm.employeeId &&
+                                (a.contractId
+                                  ? String(a.contractId) ===
+                                    reviewForm.contractId
+                                  : true),
+                            );
                           }
                           // fallback: assignedEmployees might be grouped by contract (each item has .assignments)
-                          if (!found && assignedEmployees && assignedEmployees.length > 0) {
-                            const flattened: any[] = assignedEmployees[0] && assignedEmployees[0].assignments
-                              ? assignedEmployees.flatMap((g: any) => g.assignments || [])
-                              : assignedEmployees;
-                            found = flattened.find((a: any) => String(a.employeeId) === reviewForm.employeeId && String(a.contractId) === reviewForm.contractId);
+                          if (
+                            !found &&
+                            assignedEmployees &&
+                            assignedEmployees.length > 0
+                          ) {
+                            const flattened: any[] =
+                              assignedEmployees[0] &&
+                              assignedEmployees[0].assignments
+                                ? assignedEmployees.flatMap(
+                                    (g: any) => g.assignments || [],
+                                  )
+                                : assignedEmployees;
+                            found = flattened.find(
+                              (a: any) =>
+                                String(a.employeeId) ===
+                                  reviewForm.employeeId &&
+                                String(a.contractId) === reviewForm.contractId,
+                            );
                           }
                           if (found) payload.assignmentId = found.id;
 
                           const res = await reviewService.create(payload);
-                          if (res && (res.success === false)) {
+                          if (res && res.success === false) {
                             toast.error(res.message || "Lỗi khi thêm đánh giá");
                           } else {
                             toast.success("Đã thêm đánh giá");
@@ -1758,7 +2027,9 @@ export default function CustomerDetail() {
                             // reload reviews
                             try {
                               setLoadingCustomerReviews(true);
-                              const r = await reviewService.getByCustomerId(Number(id));
+                              const r = await reviewService.getByCustomerId(
+                                Number(id),
+                              );
                               setCustomerReviews(r || []);
                             } catch (err) {
                               console.error(err);
@@ -1782,7 +2053,6 @@ export default function CustomerDetail() {
                 </div>
               </div>
             </div>
-
           )}
         </>
       )}
@@ -1797,7 +2067,10 @@ export default function CustomerDetail() {
             {/* Contract filter */}
             <select
               value={assignmentContractFilter}
-              onChange={(e) => setAssignmentContractFilter(e.target.value)}
+              onChange={(e) => {
+                setAssignmentContractFilter(e.target.value);
+                setCurrentPage(0);
+              }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tất cả hợp đồng</option>
@@ -1813,7 +2086,10 @@ export default function CustomerDetail() {
             {/* Month and Year filters */}
             <select
               value={filterMonth}
-              onChange={(e) => setFilterMonth(Number(e.target.value))}
+              onChange={(e) => {
+                setFilterMonth(Number(e.target.value));
+                setCurrentPage(0);
+              }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value={1}>Tháng 1</option>
@@ -1832,17 +2108,36 @@ export default function CustomerDetail() {
 
             <select
               value={filterYear}
-              onChange={(e) => setFilterYear(Number(e.target.value))}
+              onChange={(e) => {
+                setFilterYear(Number(e.target.value));
+                setCurrentPage(0);
+              }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {Array.from(
                 { length: 50 },
-                (_, i) => new Date().getFullYear() - 5 + i
+                (_, i) => new Date().getFullYear() - 5 + i,
               ).map((year) => (
                 <option key={year} value={year}>
                   Năm {year}
                 </option>
               ))}
+            </select>
+
+            {/* Page Size Filter */}
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5 nhân viên</option>
+              <option value={10}>10 nhân viên</option>
+              <option value={15}>15 nhân viên</option>
+              <option value={20}>20 nhân viên</option>
+              <option value={50}>50 nhân viên</option>
             </select>
 
             {/* Filters */}
@@ -2014,13 +2309,13 @@ export default function CustomerDetail() {
                                 }
                                 routerForEmployee(
                                   assignment.employeeId,
-                                  assignment.id
+                                  assignment.id,
                                 );
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter")
                                   router.push(
-                                    `/admin/assignments/${assignment.id}`
+                                    `/admin/assignments/${assignment.id}`,
                                   );
                               }}
                               className="border-b hover:bg-gray-50 cursor-pointer"
@@ -2046,11 +2341,11 @@ export default function CustomerDetail() {
                               <td className="px-4 py-3">
                                 <span
                                   className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getAssignmentTypeBadge(
-                                    assignment.assignmentType || ""
+                                    assignment.assignmentType || "",
                                   )}`}
                                 >
                                   {getAssignmentTypeLabel(
-                                    assignment.assignmentType || ""
+                                    assignment.assignmentType || "",
                                   )}
                                 </span>
                               </td>
@@ -2061,18 +2356,19 @@ export default function CustomerDetail() {
                               </td>
                               <td className="px-4 py-3">
                                 <span
-                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${assignment.status === "SCHEDULED"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : assignment.status === "IN_PROGRESS"
-                                      ? "bg-green-100 text-green-800"
-                                      : assignment.status === "COMPLETED"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : assignment.status === "TERMINATED"
-                                          ? "bg-orange-100 text-orange-800"
-                                          : assignment.status === "CANCELLED"
-                                            ? "bg-red-100 text-red-800"
-                                            : "bg-gray-100 text-gray-800"
-                                    }`}
+                                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                                    assignment.status === "SCHEDULED"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : assignment.status === "IN_PROGRESS"
+                                        ? "bg-green-100 text-green-800"
+                                        : assignment.status === "COMPLETED"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : assignment.status === "TERMINATED"
+                                            ? "bg-orange-100 text-orange-800"
+                                            : assignment.status === "CANCELLED"
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-gray-100 text-gray-800"
+                                  }`}
                                 >
                                   {assignment.status === "SCHEDULED"
                                     ? "Chưa bắt đầu"
@@ -2084,17 +2380,19 @@ export default function CustomerDetail() {
                                           ? "Kết thúc giữa chừng"
                                           : assignment.status === "CANCELLED"
                                             ? "Đã hủy"
-                                            : (assignment.status || "N/A")}
+                                            : assignment.status || "N/A"}
                                 </span>
                               </td>
                               {canViewEmployee && (
                                 <td className="px-4 py-3 text-right">
-
-                                  {role === 'CUSTOMER' ? (
+                                  {role === "CUSTOMER" ? (
                                     <div className="group relative flex items-center justify-center h-6  cursor-help">
                                       {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
                                       <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
-                                        <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
+                                        <FontAwesomeIcon
+                                          icon={SolidIcons.faEyeSlash}
+                                          className="text-blue-600"
+                                        />
                                         <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
                                           ********
                                         </span>
@@ -2123,13 +2421,46 @@ export default function CustomerDetail() {
                                 </span>
                               </td>
                             </tr>
-                          )
+                          ),
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
-              )
+              ),
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-end mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(0, prev - 1))
+                    }
+                    disabled={currentPage === 0}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Trước
+                  </button>
+
+                  <span className="text-sm text-gray-600">
+                    Trang {currentPage + 1} / {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(totalPages - 1, prev + 1),
+                      )
+                    }
+                    disabled={currentPage >= totalPages - 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -2162,7 +2493,9 @@ export default function CustomerDetail() {
             <select
               value={historyFilterMonth}
               onChange={(e) => {
-                setHistoryFilterMonth(e.target.value === "" ? "" : Number(e.target.value));
+                setHistoryFilterMonth(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                );
                 setHistoryPage(0);
               }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -2177,17 +2510,36 @@ export default function CustomerDetail() {
             <select
               value={historyFilterYear}
               onChange={(e) => {
-                setHistoryFilterYear(e.target.value === "" ? "" : Number(e.target.value));
+                setHistoryFilterYear(
+                  e.target.value === "" ? "" : Number(e.target.value),
+                );
                 setHistoryPage(0);
               }}
               className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Năm (Tất cả)</option>
-              {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 3 + i).map((y) => (
+              {Array.from(
+                { length: 7 },
+                (_, i) => new Date().getFullYear() - 3 + i,
+              ).map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
               ))}
+            </select>
+            <select
+              value={historyPageSize}
+              onChange={(e) => {
+                setHistoryPageSize(Number(e.target.value));
+                setHistoryPage(0);
+              }}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5 kết quả</option>
+              <option value={10}>10 kết quả</option>
+              <option value={15}>15 kết quả</option>
+              <option value={20}>20 kết quả</option>
+              <option value={50}>50 kết quả</option>
             </select>
             <button
               onClick={() => loadAssignmentHistories()}
@@ -2348,16 +2700,17 @@ export default function CustomerDetail() {
                                     <div key={`date-${dIdx}`}>
                                       {formatDate(date)}
                                     </div>
-                                  )
+                                  ),
                                 )}
                               </div>
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${history.status === "ACTIVE"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                                  }`}
+                                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  history.status === "ACTIVE"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
                               >
                                 {history.status === "ACTIVE"
                                   ? "Đang áp dụng"
@@ -2410,7 +2763,7 @@ export default function CustomerDetail() {
                               </td>
                             )}
                           </tr>
-                        )
+                        ),
                       )}
                     </tbody>
                   </table>
@@ -2418,26 +2771,9 @@ export default function CustomerDetail() {
               </div>
             ))}
 
-            {/* Pagination */}
+            {/* Pagination Controls */}
             {historyTotalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Hiển thị</span>
-                  <select
-                    value={historyPageSize}
-                    onChange={(e) => {
-                      setHistoryPageSize(Number(e.target.value));
-                      setHistoryPage(0);
-                    }}
-                    className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                  </select>
-                  <span className="text-sm text-gray-600">kết quả</span>
-                </div>
-
+              <div className="flex items-center justify-end mt-4 pt-4 border-t">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() =>
@@ -2456,7 +2792,7 @@ export default function CustomerDetail() {
                   <button
                     onClick={() =>
                       setHistoryPage((prev) =>
-                        Math.min(historyTotalPages - 1, prev + 1)
+                        Math.min(historyTotalPages - 1, prev + 1),
                       )
                     }
                     disabled={historyPage >= historyTotalPages - 1}
@@ -2568,9 +2904,10 @@ export default function CustomerDetail() {
                     {contracts.map((contract) => (
                       <option key={contract.id} value={contract.id}>
                         HĐ #{contract.id} -{" "}
-                        {contract.services?.map((s: any) => s.title).join(", ")} {" "}
+                        {contract.services?.map((s: any) => s.title).join(", ")}{" "}
                         ({formatDate(contract.startDate)} -{" "}
-                        {formatDate(contract.endDate)}) - Hợp đồng {contract.contractType === "ONE_TIME"
+                        {formatDate(contract.endDate)}) - Hợp đồng{" "}
+                        {contract.contractType === "ONE_TIME"
                           ? "Một lần"
                           : contract.contractType === "MONTHLY_FIXED"
                             ? "Hàng tháng (cố định)"
@@ -2609,7 +2946,7 @@ export default function CustomerDetail() {
                             <option key={m} value={m}>
                               Tháng {m}
                             </option>
-                          )
+                          ),
                         )}
                       </select>
                       <select
@@ -2621,7 +2958,7 @@ export default function CustomerDetail() {
                       >
                         {Array.from(
                           { length: 15 },
-                          (_, i) => new Date().getFullYear() - 2 + i
+                          (_, i) => new Date().getFullYear() - 2 + i,
                         ).map((y) => (
                           <option key={y} value={y}>
                             Năm {y}
@@ -2649,7 +2986,8 @@ export default function CustomerDetail() {
                           const days = d.getDate();
                           const selectedContract = contracts.find(
                             (c: any) =>
-                              String(c.id) === String(assignmentForm.contractId)
+                              String(c.id) ===
+                              String(assignmentForm.contractId),
                           );
 
                           // Helper to extract date string in YYYY-MM-DD format
@@ -2664,8 +3002,12 @@ export default function CustomerDetail() {
                             return String(dateInput).split("T")[0];
                           };
 
-                          const contractStartStr = toDateStr(selectedContract?.startDate);
-                          const contractEndStr = toDateStr(selectedContract?.endDate);
+                          const contractStartStr = toDateStr(
+                            selectedContract?.startDate,
+                          );
+                          const contractEndStr = toDateStr(
+                            selectedContract?.endDate,
+                          );
                           const rawWorkingDays: any[] =
                             (selectedContract &&
                               (selectedContract.workingDaysPerWeek ||
@@ -2692,7 +3034,7 @@ export default function CustomerDetail() {
                           const firstWeekday = new Date(
                             year,
                             month - 1,
-                            1
+                            1,
                           ).getDay();
                           const weeks: any[][] = [];
                           let week: any[] = [];
@@ -2703,10 +3045,11 @@ export default function CustomerDetail() {
                           for (let day = 1; day <= days; day++) {
                             const date = new Date(year, month - 1, day);
                             // Format date as YYYY-MM-DD without timezone conversion
-                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                             const weekday = date.getDay();
                             const inRange =
-                              (!contractStartStr || dateStr >= contractStartStr) &&
+                              (!contractStartStr ||
+                                dateStr >= contractStartStr) &&
                               (!contractEndStr || dateStr <= contractEndStr);
                             const allowedByWeekday =
                               allowedWeekdays.length === 0 ||
@@ -2726,22 +3069,23 @@ export default function CustomerDetail() {
                                       ...assignmentForm,
                                       dates: exists
                                         ? assignmentForm.dates.filter(
-                                          (d) => d !== dateStr
-                                        )
+                                            (d) => d !== dateStr,
+                                          )
                                         : [...assignmentForm.dates, dateStr],
                                     });
                                   }}
                                   disabled={!enabled}
-                                  className={`w-8 h-8 flex items-center justify-center text-sm border rounded ${selected
-                                    ? "bg-blue-600 text-white border-blue-700"
-                                    : enabled
-                                      ? "bg-white text-gray-800 hover:bg-gray-50"
-                                      : "bg-transparent text-gray-300 cursor-not-allowed"
-                                    }`}
+                                  className={`w-8 h-8 flex items-center justify-center text-sm border rounded ${
+                                    selected
+                                      ? "bg-blue-600 text-white border-blue-700"
+                                      : enabled
+                                        ? "bg-white text-gray-800 hover:bg-gray-50"
+                                        : "bg-transparent text-gray-300 cursor-not-allowed"
+                                  }`}
                                 >
                                   {day}
                                 </button>
-                              </td>
+                              </td>,
                             );
                             if (week.length === 7) {
                               weeks.push(week);
@@ -2752,7 +3096,7 @@ export default function CustomerDetail() {
                           if (week.length > 0) {
                             while (week.length < 7) {
                               week.push(
-                                <td key={`empty-end-${week.length}`} />
+                                <td key={`empty-end-${week.length}`} />,
                               );
                             }
                             weeks.push(week);
@@ -2853,7 +3197,7 @@ export default function CustomerDetail() {
                 >
                   {Array.from(
                     { length: 15 },
-                    (_, i) => new Date().getFullYear() - 2 + i
+                    (_, i) => new Date().getFullYear() - 2 + i,
                   ).map((y) => (
                     <option key={y} value={y}>
                       Năm {y}
@@ -2958,9 +3302,10 @@ export default function CustomerDetail() {
                             <p className="text-sm font-semibold text-gray-900">
                               {employee.monthlySalary
                                 ? formatCurrency(employee.monthlySalary) +
-                                "/tháng"
+                                  "/tháng"
                                 : employee.dailySalary
-                                  ? formatCurrency(employee.dailySalary) + "/ngày"
+                                  ? formatCurrency(employee.dailySalary) +
+                                    "/ngày"
                                   : "N/A"}
                             </p>
                           </div>
@@ -2982,7 +3327,7 @@ export default function CustomerDetail() {
                         onClick={() =>
                           loadNotAssignedEmployees(
                             Math.max(0, notAssignedPage.currentPage - 1),
-                            notAssignedPage.pageSize
+                            notAssignedPage.pageSize,
                           )
                         }
                         disabled={notAssignedPage.currentPage <= 0}
@@ -2995,9 +3340,9 @@ export default function CustomerDetail() {
                           loadNotAssignedEmployees(
                             Math.min(
                               notAssignedPage.totalPages - 1,
-                              notAssignedPage.currentPage + 1
+                              notAssignedPage.currentPage + 1,
                             ),
-                            notAssignedPage.pageSize
+                            notAssignedPage.pageSize,
                           )
                         }
                         disabled={
@@ -3357,8 +3702,9 @@ export default function CustomerDetail() {
                             "T6",
                             "T7",
                           ][d.getDay()];
-                          const displayDate = `${d.getDate()}/${d.getMonth() + 1
-                            } (${dayName})`;
+                          const displayDate = `${d.getDate()}/${
+                            d.getMonth() + 1
+                          } (${dayName})`;
 
                           dates.push(
                             <label
@@ -3368,17 +3714,17 @@ export default function CustomerDetail() {
                               <input
                                 type="checkbox"
                                 checked={reassignmentForm.selectedDates.includes(
-                                  dateStr
+                                  dateStr,
                                 )}
                                 onChange={(e) => {
                                   const newDates = e.target.checked
                                     ? [
-                                      ...reassignmentForm.selectedDates,
-                                      dateStr,
-                                    ]
+                                        ...reassignmentForm.selectedDates,
+                                        dateStr,
+                                      ]
                                     : reassignmentForm.selectedDates.filter(
-                                      (d) => d !== dateStr
-                                    );
+                                        (d) => d !== dateStr,
+                                      );
                                   setReassignmentForm({
                                     ...reassignmentForm,
                                     selectedDates: newDates.sort(),
@@ -3387,7 +3733,7 @@ export default function CustomerDetail() {
                                 className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                               />
                               <span className="text-xs">{displayDate}</span>
-                            </label>
+                            </label>,
                           );
                         }
 
@@ -3461,6 +3807,72 @@ export default function CustomerDetail() {
                     </span>
                   )}
                 </h3>
+                <div className="mb-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={assignedEmployeesMonth}
+                      onChange={(e) => {
+                        const m = Number(e.target.value);
+                        setAssignedEmployeesMonth(m);
+                        loadAssignedEmployees(
+                          0,
+                          assignedEmployeesPage.pageSize,
+                          null,
+                          m,
+                          null,
+                        );
+                      }}
+                      className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <option key={m} value={m}>
+                          Tháng {m}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={assignedEmployeesYear}
+                      onChange={(e) => {
+                        const y = Number(e.target.value);
+                        setAssignedEmployeesYear(y);
+                        loadAssignedEmployees(
+                          0,
+                          assignedEmployeesPage.pageSize,
+                          null,
+                          null,
+                          y,
+                        );
+                      }}
+                      className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      {Array.from(
+                        { length: 15 },
+                        (_, i) => new Date().getFullYear() - 2 + i,
+                      ).map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm nhân viên..."
+                    value={assignedEmployeesKeyword}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAssignedEmployeesKeyword(v);
+                      // Load with current search value
+                      loadAssignedEmployees(
+                        0,
+                        assignedEmployeesPage.pageSize,
+                        v,
+                      );
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
                 {loadingAssignments ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -3486,19 +3898,21 @@ export default function CustomerDetail() {
                           {/* Assignments under this contract */}
                           <div className="space-y-2 border-x border-b border-blue-200 rounded-b-lg p-2">
                             {contractGroup.assignments &&
-                              contractGroup.assignments.length > 0 ? (
+                            contractGroup.assignments.length > 0 ? (
                               contractGroup.assignments.map(
                                 (assignment: any, aIdx: number) => (
                                   <label
-                                    key={`replaced-${assignment.id ??
+                                    key={`replaced-${
+                                      assignment.id ??
                                       assignment.employeeId ??
                                       aIdx
-                                      }`}
-                                    className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacedAssignmentId ===
+                                    }`}
+                                    className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
+                                      reassignmentForm.replacedAssignmentId ===
                                       assignment.id
-                                      ? "border-purple-500 bg-purple-50"
-                                      : "border-gray-200 hover:bg-gray-50"
-                                      }`}
+                                        ? "border-purple-500 bg-purple-50"
+                                        : "border-gray-200 hover:bg-gray-50"
+                                    }`}
                                   >
                                     <input
                                       type="checkbox"
@@ -3556,7 +3970,7 @@ export default function CustomerDetail() {
                                       </p>
                                     </div>
                                   </label>
-                                )
+                                ),
                               )
                             ) : (
                               <p className="text-center text-gray-400 py-4 text-xs">
@@ -3565,10 +3979,56 @@ export default function CustomerDetail() {
                             )}
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 )}
+
+                {/* Pagination controls */}
+                {assignedEmployeesPage.totalPages > 0 &&
+                  !loadingAssignments && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        Trang {assignedEmployeesPage.currentPage + 1} /{" "}
+                        {Math.max(1, assignedEmployeesPage.totalPages)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            loadAssignedEmployees(
+                              Math.max(
+                                0,
+                                assignedEmployeesPage.currentPage - 1,
+                              ),
+                              assignedEmployeesPage.pageSize,
+                            )
+                          }
+                          disabled={assignedEmployeesPage.currentPage <= 0}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          onClick={() =>
+                            loadAssignedEmployees(
+                              Math.min(
+                                assignedEmployeesPage.totalPages - 1,
+                                assignedEmployeesPage.currentPage + 1,
+                              ),
+                              assignedEmployeesPage.pageSize,
+                            )
+                          }
+                          disabled={
+                            assignedEmployeesPage.currentPage >=
+                            assignedEmployeesPage.totalPages - 1
+                          }
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
               </div>
 
               {/* Column 2: Nhân viên thay thế (không phụ trách) */}
@@ -3610,11 +4070,12 @@ export default function CustomerDetail() {
                         employeesPage.content.map((employee: any) => (
                           <label
                             key={`replacement-${employee.id}`}
-                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${reassignmentForm.replacementEmployeeId ===
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
+                              reassignmentForm.replacementEmployeeId ===
                               Number(employee.id)
-                              ? "border-green-500 bg-green-50"
-                              : "border-gray-200 hover:bg-gray-50"
-                              }`}
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:bg-gray-50"
+                            }`}
                           >
                             <input
                               type="checkbox"
@@ -3661,7 +4122,7 @@ export default function CustomerDetail() {
                           onClick={() =>
                             loadEmployeesPage(
                               Math.max(0, employeesPage.currentPage - 1),
-                              employeesPage.pageSize
+                              employeesPage.pageSize,
                             )
                           }
                           disabled={employeesPage.currentPage <= 0}
@@ -3674,9 +4135,9 @@ export default function CustomerDetail() {
                             loadEmployeesPage(
                               Math.min(
                                 employeesPage.totalPages - 1,
-                                employeesPage.currentPage + 1
+                                employeesPage.currentPage + 1,
                               ),
-                              employeesPage.pageSize
+                              employeesPage.pageSize,
                             )
                           }
                           disabled={
@@ -3852,7 +4313,7 @@ export default function CustomerDetail() {
                       <input
                         type="checkbox"
                         checked={contractForm.workingDaysPerWeek.includes(
-                          day.value
+                          day.value,
                         )}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -3868,7 +4329,7 @@ export default function CustomerDetail() {
                               ...contractForm,
                               workingDaysPerWeek:
                                 contractForm.workingDaysPerWeek.filter(
-                                  (d) => d !== day.value
+                                  (d) => d !== day.value,
                                 ),
                             });
                           }
@@ -3881,6 +4342,31 @@ export default function CustomerDetail() {
                 </div>
               </div>
 
+              {/* === Số nhân viên & giờ làm === */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số lượng nhân viên
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={contractForm.numberOfEmployees || ""}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      numberOfEmployees:
+                        e.target.value === ""
+                          ? 0
+                          : Math.max(1, Number(e.target.value)),
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ví dụ: 3"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Phải lớn hơn 0 nếu có
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Trạng thái thanh toán *
@@ -3899,6 +4385,40 @@ export default function CustomerDetail() {
                   <option value="PARTIAL">Thanh toán 1 phần</option>
                   <option value="PAID">Đã thanh toán</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giờ bắt đầu ca làm
+                </label>
+                <input
+                  type="time"
+                  value={contractForm.workStartTime}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      workStartTime: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Giờ kết thúc ca làm
+                </label>
+                <input
+                  type="time"
+                  value={contractForm.workEndTime}
+                  onChange={(e) =>
+                    setContractForm({
+                      ...contractForm,
+                      workEndTime: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
 
               <div className="col-span-2">

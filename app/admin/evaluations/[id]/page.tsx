@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import evaluationService, { Evaluation } from "@/services/evaluationService";
+import verificationService, { VerificationImageResponse } from "@/services/verificationService";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
 import { authService } from "@/services/authService";
+import Image from "next/image";
 
 export default function EvaluationDetailPage() {
   const params = useParams();
@@ -16,6 +18,7 @@ export default function EvaluationDetailPage() {
 
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [verificationImages, setVerificationImages] = useState<VerificationImageResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notes, setNotes] = useState("");
@@ -27,14 +30,18 @@ export default function EvaluationDetailPage() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [aData, eData] = await Promise.all([
+        const [aData, eData, imageData] = await Promise.all([
           attendanceService.getById(attendanceId),
-          evaluationService.getByAttendanceId(Number(attendanceId)).catch(() => null)
+          evaluationService.getByAttendanceId(Number(attendanceId)).catch(() => null),
+          verificationService.getImageByAttendanceId(Number(attendanceId)).catch(() => [])
         ]);
         setAttendance(aData);
         if (eData && eData.success) {
           setEvaluation(eData.data);
           setNotes(eData.data.internalNotes || "");
+        }
+        if (imageData && imageData.length > 0) {
+          setVerificationImages(imageData);
         }
       } catch (error) {
         console.error("Error loading evaluation details:", error);
@@ -74,7 +81,7 @@ export default function EvaluationDetailPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Toaster position="top-right" />
-      
+
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -117,20 +124,50 @@ export default function EvaluationDetailPage() {
         {/* Verification Section */}
         <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
           <h2 className="text-lg font-semibold mb-4 w-full border-b pb-2">Ảnh xác thực</h2>
-          <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center mb-4 relative overflow-hidden">
-             {/* Placeholder for now since we don't have the image link logic yet */}
-             <div className="text-center p-4">
-               <svg className="w-16 h-16 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-               </svg>
-               <p className="text-gray-400 text-sm italic">Hệ thống đang tích hợp ảnh từ Cloudinary...</p>
-             </div>
+          <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center mb-4 relative overflow-hidden group">
+            {verificationImages.length > 0 ? (
+              <div className="relative w-full h-full">
+                <Image
+                  src={verificationImages[0].cloudinaryUrl}
+                  alt="Attendance Verification"
+                  fill
+                  className="object-contain"
+                />
+                <a
+                  href={verificationImages[0].cloudinaryUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all flex items-center justify-center opacity-0 hover:opacity-100"
+                >
+                  <span className="bg-white px-3 py-1 rounded text-sm shadow font-medium">Xem ảnh gốc</span>
+                </a>
+              </div>
+            ) : (
+              <div className="text-center p-4">
+                <svg className="w-16 h-16 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-gray-400 text-sm italic">Không tìm thấy ảnh xác thực.</p>
+              </div>
+            )}
           </div>
           <div className="w-full text-sm text-gray-600">
-             <div className="flex items-center gap-2 mb-2">
-               <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/></svg>
-               <span>Tọa độ GPS: 21.0285, 105.8542 (Xác thực khớp vị trí dự án)</span>
-             </div>
+            {verificationImages.length > 0 && verificationImages[0].latitude && verificationImages[0].longitude ? (
+              <div className="flex items-center gap-2 mb-2 text-green-600">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                <span>GPS: {verificationImages[0].latitude.toFixed(6)}, {verificationImages[0].longitude.toFixed(6)} {verificationImages[0].address && `(${verificationImages[0].address})`}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mb-2 text-red-500">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                <span>Không có tọa độ GPS.</span>
+              </div>
+            )}
+            {verificationImages.length > 1 && (
+              <div className="text-xs text-gray-500 mt-2">
+                Có {verificationImages.length} ảnh xác thực (hiển thị ảnh đầu tiên)
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -148,11 +185,11 @@ export default function EvaluationDetailPage() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
           />
         </div>
-        
+
         <div className="flex justify-end gap-4">
           {evaluation?.status === 'APPROVED' ? (
             <div className="flex items-center gap-2 text-green-600 font-bold">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
               Đã xác nhận bởi {evaluation.evaluatedByUsername} vào {evaluation.evaluatedAt && new Date(evaluation.evaluatedAt).toLocaleString('vi-VN')}
             </div>
           ) : (

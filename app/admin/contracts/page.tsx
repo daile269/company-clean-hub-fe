@@ -51,6 +51,7 @@ export default function ContractsPage() {
     finalPrice: 0,
     paymentStatus: "PENDING",
     description: "",
+    requiresImageVerification: false,
   });
 
   // Debounced search
@@ -131,6 +132,7 @@ export default function ContractsPage() {
         finalPrice: addForm.finalPrice,
         paymentStatus: addForm.paymentStatus,
         description: addForm.description,
+        requiresImageVerification: addForm.requiresImageVerification,
       };
 
       await contractService.create(createData);
@@ -151,6 +153,7 @@ export default function ContractsPage() {
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
+        requiresImageVerification: false,
       });
       
       // Reload contracts list
@@ -839,6 +842,22 @@ export default function ContractsPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Hợp đồng dọn dẹp văn phòng"
                 />
+              </div>
+
+              <div className="col-span-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={addForm.requiresImageVerification}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, requiresImageVerification: e.target.checked })
+                    }
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Yêu cầu xác thực hình ảnh cho phân công này
+                  </span>
+                </label>
               </div>
             </div>
 

@@ -10,15 +10,18 @@ interface AdminSidebarProps {
 }
 
 export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(user?.id ? user.id.toString() : null);
 
   useEffect(() => {
-    setUserId(user?.id ? user.id.toString() : null);
     if (typeof window === "undefined") return;
     if (!user) {
       window.location.reload();
     }
   }, [user]);
+
+  useEffect(() => {
+    setUserId(user?.id ? user.id.toString() : null);
+  }, [user?.id]);
 
   return (
     <aside
@@ -210,7 +213,7 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
         )}
         {user && (user?.roleName === "QLT1" || user?.roleName === "QLT2" || user?.roleName === "ADMIN") && (
           <Link
-            href="/admin/evaluations"
+            href="/admin/verifications"
             className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
           >
             <svg
@@ -223,10 +226,10 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
               />
             </svg>
-            Xác nhận Auto Capture
+            Duyệt xác minh hình ảnh
           </Link>
         )}
         {permissionService.hasPermission("REVIEW_VIEW_ALL") && (

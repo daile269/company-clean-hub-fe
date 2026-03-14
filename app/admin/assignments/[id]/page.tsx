@@ -902,6 +902,7 @@ export default function AssignmentDetail() {
                     <th className="py-2">Phạt</th>
                     <th className="py-2">Hỗ trợ</th>
                     <th className="py-2">Ghi chú</th>
+                    <th className="py-2">Xác thực</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -919,6 +920,15 @@ export default function AssignmentDetail() {
                         {formatCurrency(a.supportCost ?? 0)}
                       </td>
                       <td className="py-2">{a.description ?? ""}</td>
+                      <td className="py-2">
+                        {a.evaluationStatus === 'APPROVED' ? (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Đã duyệt</span>
+                        ) : a.evaluationStatus === 'PENDING' ? (
+                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">Chờ duyệt</span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">N/A</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

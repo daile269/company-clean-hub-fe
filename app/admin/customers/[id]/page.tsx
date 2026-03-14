@@ -119,6 +119,7 @@ export default function CustomerDetail() {
     finalPrice: 0,
     paymentStatus: "PENDING",
     description: "",
+    requiresImageVerification: false,
   });
 
   // Customer reviews (customer feedback about assigned employees)
@@ -968,6 +969,7 @@ export default function CustomerDetail() {
         finalPrice: calculatedFinalPrice,
         paymentStatus: contractForm.paymentStatus,
         description: contractForm.description,
+        requiresImageVerification: contractForm.requiresImageVerification || false,
       };
 
       await contractService.create(contractData);
@@ -993,6 +995,7 @@ export default function CustomerDetail() {
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
+        requiresImageVerification: false,
       });
     } catch (error: any) {
       console.error("Error creating contract:", error);
@@ -3914,6 +3917,25 @@ export default function CustomerDetail() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Hợp đồng dọn dẹp văn phòng"
                 />
+              </div>
+
+              <div className="col-span-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={contractForm.requiresImageVerification || false}
+                    onChange={(e) =>
+                      setContractForm({
+                        ...contractForm,
+                        requiresImageVerification: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Yêu cầu xác thực hình ảnh cho phân công này
+                  </span>
+                </label>
               </div>
             </div>
 

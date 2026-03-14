@@ -10,26 +10,28 @@ import { AUTO_CAPTURE_CONFIG } from "@/config/autoCaptureConfig";
 import { estimateFacePose, computeSharpness, computeBrightness } from "@/utils/faceUtils";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import attendanceService, { Attendance } from "@/services/attendanceService";
+import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
 import { authService } from "@/services/authService";
 
 export default function AutoCapturePage() {
   const params = useParams();
   const assignmentId = params?.id ? Number(params.id) : null;
   const router = useRouter();
-  
+
   // Refs for services and elements
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  
+
   const cameraServiceRef = useRef<CameraService | null>(null);
   const faceMeshServiceRef = useRef<FaceMeshService | null>(null);
   const gpsServiceRef = useRef<GpsService | null>(null);
-  
+
   // State
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [attendance, setAttendance] = useState<Attendance | null>(null);
+  const [verification, setVerification] = useState<AssignmentVerificationResponse | null>(null);
   const [status, setStatus] = useState({ text: "Đang khởi tạo...", type: "waiting" });
   const [gpsData, setGpsData] = useState<{ status: string; coords: GpsCoords | null; error: string | null }>({
     status: "⏳ Đang tìm tín hiệu GPS...",
@@ -52,37 +54,57 @@ export default function AutoCapturePage() {
   // Load Initial Data
   useEffect(() => {
     if (!assignmentId) return;
-    
+
     const loadData = async () => {
       try {
         setLoading(true);
-        const [assignData, attData] = await Promise.all([
+        const [assignData, attData, verifyData] = await Promise.all([
           assignmentService.getById(assignmentId),
-          attendanceService.getTodayAttendanceByAssignment(assignmentId)
+          attendanceService.getTodayAttendanceByAssignment(assignmentId),
+          verificationService.getVerificationByAssignment(assignmentId)
         ]);
-        
+        console.log("verifyData", verifyData);
         if (!assignData) {
           toast.error("Không tìm thấy thông tin phân công");
           router.push("/admin/attendance/today-tasks");
           return;
         }
-        
+
         setAssignment(assignData);
         setAttendance(attData);
-        
+        setVerification(verifyData);
+
         if (attData && attData.evaluationStatus === 'APPROVED') {
-            toast.success("Công việc này đã được duyệt chấm công hôm nay.");
-            router.push("/admin/attendance/today-tasks");
-            return;
+          toast.success("Công việc này đã được duyệt chấm công hôm nay.");
+          router.push("/admin/attendance/today-tasks");
+          return;
+        }
+
+        if (!verifyData) {
+          toast.error("Chưa có yêu cầu xác minh cho phân công này.");
+          router.push("/admin/attendance/today-tasks");
+          return;
+        }
+
+        if (verifyData.isCompleted) {
+          toast.success("Xác minh đã hoàn tất.");
+          router.push("/admin/attendance/today-tasks");
+          return;
+        }
+
+        if (!verifyData.canCapture) {
+          toast.error("Đã hết số lần chụp ảnh cho phép.");
+          router.push("/admin/attendance/today-tasks");
+          return;
         }
       } catch (error) {
-        console.error("Error loading capture data:", error);
+        // console.error("Error loading capture data:", error);
         toast.error("Lỗi khi tải thông tin");
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadData();
   }, [assignmentId, router]);
 
@@ -94,9 +116,9 @@ export default function AutoCapturePage() {
   // Image Processing Helpers
   const getFaceCrop = useCallback((landmarks: any) => {
     if (!videoRef.current || !cameraServiceRef.current) return null;
-    
+
     if (!tempCanvasRef.current) {
-        tempCanvasRef.current = document.createElement('canvas');
+      tempCanvasRef.current = document.createElement('canvas');
     }
     const tempCanvas = tempCanvasRef.current;
     const tempCtx = tempCanvas.getContext('2d');
@@ -129,7 +151,7 @@ export default function AutoCapturePage() {
       const dw = Math.min(sw, 96);
       const dh = Math.min(sh, 96);
 
-      tempCanvas.width  = dw;
+      tempCanvas.width = dw;
       tempCanvas.height = dh;
       tempCtx.drawImage(videoRef.current, sx, sy, sw, sh, 0, 0, dw, dh);
 
@@ -159,7 +181,7 @@ export default function AutoCapturePage() {
     const ch = canvas.height;
 
     ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth   = 2.5;
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(
       minX * cw,
       minY * ch,
@@ -172,16 +194,16 @@ export default function AutoCapturePage() {
     const padding = 10;
     const fontSize = Math.max(12, Math.floor(width / 50));
     ctx.font = `${fontSize}px Arial`;
-    
+
     const lines = [];
     lines.push(`Thời gian: ${new Date().toLocaleString('vi-VN')}`);
     lines.push(`Nhân viên: ${user?.fullName || 'N/A'}`);
     lines.push(`Địa điểm: ${assignment?.customerName || 'N/A'}`);
-    
+
     const gps = gpsServiceRef.current;
     if (gps && gps.coords) {
       lines.push(`GPS: ${gps.coords.latitude.toFixed(6)}, ${gps.coords.longitude.toFixed(6)} (±${gps.coords.accuracy.toFixed(1)}m)`);
-      
+
       if (gps.addressPrimary) {
         lines.push(`Địa chỉ 1: ${gps.addressPrimary.slice(0, 50)}${gps.addressPrimary.length > 50 ? '...' : ''}`);
       }
@@ -202,7 +224,7 @@ export default function AutoCapturePage() {
     ctx.fillStyle = 'white';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    
+
     lines.forEach((line, i) => {
       ctx.fillText(line, padding, height - bgHeight + padding / 2 + i * lineHeight);
     });
@@ -226,7 +248,7 @@ export default function AutoCapturePage() {
     if (!ctx) return;
 
     const { width, height } = cameraServiceRef.current.dimensions;
-    canvas.width  = width;
+    canvas.width = width;
     canvas.height = height;
 
     // Draw flipped video to canvas
@@ -335,7 +357,7 @@ export default function AutoCapturePage() {
       try {
         await faceMeshServiceRef.current?.send(video);
       } catch (e) {
-        console.warn('[FaceMesh] send error:', e);
+        // console.warn('[FaceMesh] send error:', e);
       } finally {
         isSendingRef.current = false;
       }
@@ -369,11 +391,11 @@ export default function AutoCapturePage() {
         await cameraServiceRef.current.start();
         const { width, height } = cameraServiceRef.current.dimensions;
         if (overlayCanvasRef.current) {
-            overlayCanvasRef.current.width = width;
-            overlayCanvasRef.current.height = height;
+          overlayCanvasRef.current.width = width;
+          overlayCanvasRef.current.height = height;
         }
       } catch (err) {
-        console.error("Camera error:", err);
+        // console.error("Camera error:", err);
         updateStatus("Lỗi truy cập camera", "error");
         return;
       }
@@ -387,7 +409,7 @@ export default function AutoCapturePage() {
         updateStatus("Sẵn sàng - hãy nhìn thẳng vào camera", "ready");
         runDetectionLoop();
       } catch (err) {
-        console.error("FaceMesh error:", err);
+        // console.error("FaceMesh error:", err);
         updateStatus("Lỗi khởi tạo nhận diện mặt", "error");
       }
     };
@@ -403,23 +425,28 @@ export default function AutoCapturePage() {
   }, [loading, onFaceMeshResults, runDetectionLoop, updateStatus]);
 
   const handleUpload = async () => {
-    if (!capturedImage || !attendance || !gpsData.coords || !gpsServiceRef.current) return;
+    if (!capturedImage || !assignment || !verification || !gpsData.coords || !gpsServiceRef.current) {
+      if (!verification) {
+        toast.error("Không tìm thấy thông tin xác minh. Vui lòng quay lại và thử lại.");
+      }
+      return;
+    }
 
     try {
       setIsUploading(true);
       const payload = {
-        attendanceId: attendance.id,
-        imageData: capturedImage, // This is base64
+        verificationId: verification.id,
+        imageData: capturedImage, // Base64 string
+        attendanceId: attendance?.id,
         latitude: gpsData.coords.latitude,
         longitude: gpsData.coords.longitude,
         address: gpsServiceRef.current.addressPrimary || gpsServiceRef.current.addressNominatim || "Không xác định"
       };
 
-      await attendanceService.capture(payload);
-      toast.success("Điểm danh thành công!");
+      await verificationService.captureVerificationImage(payload);
+      toast.success("Chụp ảnh xác minh thành công!");
       router.push("/admin/attendance/today-tasks");
     } catch (error: any) {
-      console.error("Upload error:", error);
       toast.error(error.message || "Lỗi khi gửi dữ liệu lên server");
     } finally {
       setIsUploading(false);
@@ -437,54 +464,54 @@ export default function AutoCapturePage() {
 
   if (loading) {
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-900">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
+      <div className="flex justify-center items-center min-h-screen bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-4">
       <Toaster position="top-right" />
-      
+
       <div className="w-full max-w-2xl mb-6">
         <div className="flex items-center justify-between mb-2">
-            <button 
-                onClick={() => router.back()}
-                className="text-gray-400 hover:text-white flex items-center"
-            >
-                <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Quay lại
-            </button>
-            <h1 className="text-xl font-bold text-blue-400">Chụp ảnh điểm danh</h1>
-            <div className="w-20"></div>
+          <button
+            onClick={() => router.back()}
+            className="text-gray-400 hover:text-white flex items-center"
+          >
+            <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Quay lại
+          </button>
+          <h1 className="text-xl font-bold text-blue-400">Chụp ảnh điểm danh</h1>
+          <div className="w-20"></div>
         </div>
         <div className="bg-gray-800 rounded-lg p-3 text-sm border border-gray-700">
-            <p className="font-semibold text-gray-300">{assignment?.customerName}</p>
-            <p className="text-gray-500">{assignment?.contractDescription}</p>
+          <p className="font-semibold text-gray-300">{assignment?.customerName}</p>
+          <p className="text-gray-500">{assignment?.contractDescription}</p>
         </div>
       </div>
 
       <div className="relative w-full max-w-md aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-2 border-gray-700">
         {!capturedImage ? (
           <>
-            <video 
+            <video
               ref={videoRef}
               className="absolute inset-0 w-full h-full object-cover mirror scale-x-[-1]"
               playsInline
               muted
             />
-            <canvas 
+            <canvas
               ref={overlayCanvasRef}
               className="absolute inset-0 w-full h-full pointer-events-none scale-x-[-1]"
             />
-            
+
             {progress > 0 && (
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-3/4">
                 <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-blue-500 transition-all duration-100 ease-linear"
                     style={{ width: `${progress}%` }}
                   />
@@ -493,21 +520,20 @@ export default function AutoCapturePage() {
             )}
           </>
         ) : (
-          <img 
-            src={capturedImage} 
+          <img
+            src={capturedImage}
             className="absolute inset-0 w-full h-full object-cover"
             alt="Captured"
           />
         )}
       </div>
 
-      <div className={`mt-6 w-full max-w-md px-4 py-3 rounded-xl text-center font-medium transition-colors ${
-        status.type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-800' :
+      <div className={`mt-6 w-full max-w-md px-4 py-3 rounded-xl text-center font-medium transition-colors ${status.type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-800' :
         status.type === 'warning' ? 'bg-yellow-900/50 text-yellow-200 border border-yellow-800' :
-        status.type === 'ready' ? 'bg-green-900/50 text-green-200 border border-green-800' :
-        status.type === 'capturing' ? 'bg-blue-900/50 text-blue-200 border border-blue-800' :
-        'bg-gray-800 text-gray-400 border border-gray-700'
-      }`}>
+          status.type === 'ready' ? 'bg-green-900/50 text-green-200 border border-green-800' :
+            status.type === 'capturing' ? 'bg-blue-900/50 text-blue-200 border border-blue-800' :
+              'bg-gray-800 text-gray-400 border border-gray-700'
+        }`}>
         {status.text}
       </div>
 
@@ -521,13 +547,13 @@ export default function AutoCapturePage() {
 
       {capturedImage && (
         <div className="mt-8 flex gap-4 w-full max-w-md">
-          <button 
+          <button
             onClick={handleRetake}
             className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl border border-gray-600 transition-colors"
           >
             Chụp lại
           </button>
-          <button 
+          <button
             onClick={handleUpload}
             disabled={isUploading || !gpsData.coords}
             className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors flex items-center justify-center"
@@ -545,10 +571,10 @@ export default function AutoCapturePage() {
       <div className="mt-8 bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-xs text-gray-400 max-w-md">
         <p className="font-bold mb-1">Hướng dẫn:</p>
         <ul className="list-disc ml-4 space-y-1">
-            <li>Vui lòng cho phép quyền truy cập Camera và Vị trí (GPS).</li>
-            <li>Giữ điện thoại thẳng mặt, nơi có đủ ánh sáng.</li>
-            <li>Hệ thống sẽ tự động chụp khi ảnh đạt yêu cầu và ổn định trong 1 giây.</li>
-            <li>Sau khi chụp, nhấn nút "Gửi điểm danh" để hoàn tất.</li>
+          <li>Vui lòng cho phép quyền truy cập Camera và Vị trí (GPS).</li>
+          <li>Giữ điện thoại thẳng mặt, nơi có đủ ánh sáng.</li>
+          <li>Hệ thống sẽ tự động chụp khi ảnh đạt yêu cầu và ổn định trong 1 giây.</li>
+          <li>Sau khi chụp, nhấn nút "Gửi điểm danh" để hoàn tất.</li>
         </ul>
       </div>
 

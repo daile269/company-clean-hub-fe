@@ -231,7 +231,7 @@ class AssignmentService {
       const response = await apiService.get<any>(
         `/assignments/customer/${customerId}/by-contract?${queryParams.toString()}`
       );
-      console.log('Assignments by customer (by-contract) response:', response);
+      // console.log('Assignments by customer (by-contract) response:', response);
 
       if (response.success && response.data) {
         // Return grouped data instead of flattening
@@ -419,7 +419,7 @@ class AssignmentService {
       );
 
       if (response.success && response.data) {
-        console.log('Assignments response:', response);
+        // console.log('Assignments response:', response);
         return {
           content: Array.isArray(response.data.content) ? response.data.content : [],
           totalElements: response.data.totalElements || 0,
@@ -464,7 +464,7 @@ class AssignmentService {
         `/assignments/assignments/${employeeId}/${month}/${year}`
       );
       if (response.success && response.data) {
-        console.log('Assignments response:', response);
+        // console.log('Assignments response:', response);
         return Array.isArray(response.data) ? response.data : [];
       }
 

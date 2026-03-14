@@ -22,11 +22,11 @@ export interface EvaluationRequest {
 
 const evaluationService = {
   evaluate: async (data: EvaluationRequest): Promise<ApiResponse<Evaluation>> => {
-    return await apiService.post<Evaluation>("/api/v1/evaluations", data);
+    return await apiService.post<Evaluation>("/v1/evaluations", data);
   },
 
   getByAttendanceId: async (attendanceId: number): Promise<ApiResponse<Evaluation>> => {
-    return await apiService.get<Evaluation>(`/api/v1/evaluations/attendance/${attendanceId}`);
+    return await apiService.get<Evaluation>(`/v1/evaluations/attendance/${attendanceId}`);
   },
 };
 

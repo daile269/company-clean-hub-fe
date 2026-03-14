@@ -14,7 +14,12 @@ describe('AdminSidebar', () => {
     id: 1,
     username: 'testuser',
     roleName: 'EMPLOYEE',
-    fullName: 'Test Employee'
+    fullName: 'Test Employee',
+    email: 'test@example.com',
+    phone: '123456789',
+    roleId: 2,
+    userType: 'INTERNAL',
+    token: 'fake-token'
   }
 
   it('renders Chụp ảnh chấm công link for EMPLOYEE role', () => {

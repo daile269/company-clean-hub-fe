@@ -3,21 +3,21 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { assignmentService, Assignment } from "@/services/assignmentService";
-import { authService } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TodayTasksPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const user = authService.getCurrentUser();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (user && user.roleName === "EMPLOYEE") {
       loadTodayTasks();
     } else if (user) {
-        setLoading(false);
+      setLoading(false);
     }
-  }, [user]);
+  }, [user?.id, user?.roleName]);
 
   const loadTodayTasks = async () => {
     try {
@@ -57,7 +57,7 @@ export default function TodayTasksPage() {
             {new Intl.DateTimeFormat("vi-VN", { dateStyle: 'full' }).format(new Date())}
           </p>
         </div>
-        <button 
+        <button
           onClick={loadTodayTasks}
           className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
           title="Tải lại"
@@ -86,8 +86,8 @@ export default function TodayTasksPage() {
             </div>
           ) : (
             assignments.map((task) => (
-              <div 
-                key={task.id} 
+              <div
+                key={task.id}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col"
                 onClick={() => router.push(`/admin/attendance/capture/${task.id}`)}
               >
@@ -98,11 +98,11 @@ export default function TodayTasksPage() {
                     </span>
                     <span className="text-xs text-gray-400 font-mono">#{task.id}</span>
                   </div>
-                  
+
                   <h3 className="text-lg font-bold text-gray-900 mb-1 leading-tight">
                     {task.customerName || "Địa điểm chưa xác định"}
                   </h3>
-                  
+
                   <div className="space-y-2 mt-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,7 +119,7 @@ export default function TodayTasksPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="bg-gray-50 px-5 py-4 border-t border-gray-100 mt-auto">
                   <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

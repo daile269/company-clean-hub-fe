@@ -33,8 +33,8 @@ export class GpsService {
   private watchId: number | null = null;
 
   constructor(callbacks: GpsCallbacks = {}) {
-    this.onUpdate = callbacks.onUpdate || (() => {});
-    this.onDebug = callbacks.onDebug || (() => {});
+    this.onUpdate = callbacks.onUpdate || (() => { });
+    this.onDebug = callbacks.onDebug || (() => { });
   }
 
   startTracking() {
@@ -49,20 +49,20 @@ export class GpsService {
     this.watchId = navigator.geolocation.watchPosition(
       (position) => {
         this.coords = {
-          latitude:  position.coords.latitude,
+          latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-          accuracy:  position.coords.accuracy,
+          accuracy: position.coords.accuracy,
           timestamp: position.timestamp
         };
         this.error = null;
         this.osmMapLink = `https://www.openstreetmap.org/?mlat=${this.coords.latitude}&mlon=${this.coords.longitude}#map=19/${this.coords.latitude}/${this.coords.longitude}`;
-        
-        this.onUpdate({ 
+
+        this.onUpdate({
           status: `✅ GPS: ${this.coords.latitude.toFixed(5)}, ${this.coords.longitude.toFixed(5)} (±${Math.round(this.coords.accuracy)}m)`,
           coords: this.coords,
           osmLink: this.osmMapLink
         });
-        
+
         this.fetchAllAddresses(this.coords.latitude, this.coords.longitude);
       },
       (err) => {
@@ -93,7 +93,7 @@ export class GpsService {
     const now = Date.now();
     const waitTime = this.addressPrimary ? 60000 : 10000;
     if (now - this.lastGeocodeTime < waitTime) return;
-    
+
     this.lastGeocodeTime = now;
 
     // Chạy song song cả Google/BDC và Nominatim
@@ -117,7 +117,7 @@ export class GpsService {
       const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${AUTO_CAPTURE_CONFIG.GOOGLE_MAPS_API_KEY}&language=vi`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.status === 'OK' && data.results && data.results[0]) {
         this.addressPrimary = data.results[0].formatted_address.replace(', Việt Nam', '').trim();
         this.onUpdate({ primaryAddress: this.addressPrimary || undefined });
@@ -125,7 +125,7 @@ export class GpsService {
         throw new Error(`Google Maps Error: ${data.status}`);
       }
     } catch (e) {
-      console.warn('[Google Geocode Error]', e);
+      // console.warn('[Google Geocode Error]', e);
       return this.fetchBigDataCloudAddress(lat, lon);
     }
   }
@@ -136,7 +136,7 @@ export class GpsService {
       const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=vi`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data && data.localityInfo) {
         const allInfo = [...data.localityInfo.administrative, ...data.localityInfo.informative];
         let ward = "";
@@ -156,7 +156,7 @@ export class GpsService {
         this.onUpdate({ primaryAddress: this.addressPrimary || undefined });
       }
     } catch (e) {
-      console.warn('[BigDataCloud Error]', e);
+      // console.warn('[BigDataCloud Error]', e);
     }
   }
 
@@ -168,13 +168,13 @@ export class GpsService {
         headers: { 'User-Agent': AUTO_CAPTURE_CONFIG.USER_AGENT }
       });
       const data = await response.json();
-      
+
       if (data && data.display_name) {
         this.addressNominatim = data.display_name.replace(', Việt Nam', '').trim();
         this.onUpdate({ nominatimAddress: this.addressNominatim || undefined });
       }
     } catch (e) {
-      console.warn('[Nominatim Geocode Error]', e);
+      // console.warn('[Nominatim Geocode Error]', e);
     }
   }
 }

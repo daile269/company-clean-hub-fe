@@ -13,16 +13,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    // Initialize with current user if available
+    return authService.getCurrentUser();
+  });
   const router = useRouter();
 
   useEffect(() => {
     // Check if user is logged in
     const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
+    if (currentUser !== user) {
+      setUser(currentUser);
+    }
     setIsLoading(false);
-  }, []);
+  }, [user]);
 
   const logout = () => {
     authService.logout();

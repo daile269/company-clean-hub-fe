@@ -16,7 +16,7 @@ export default function PayrollPage() {
   const [navigatingToId, setNavigatingToId] = useState<number | null>(null);
   const [scrollToId, setScrollToId] = useState<number | null>(null);
 
-  // Refs for scrolling to specific payroll rows
+
   const payrollRefs = useRef<{ [key: number]: HTMLTableRowElement | HTMLDivElement | null }>({});
   const hasScrolled = useRef(false);
 

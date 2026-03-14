@@ -97,6 +97,7 @@ export interface Contract {
   description?: string;
   notes?: string;
   value?: number;                // Legacy field (backward compatible)
+  requiresImageVerification?: boolean; // Yêu cầu xác thực hình ảnh
   createdAt: Date;
   updatedAt: Date;
 }

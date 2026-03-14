@@ -241,7 +241,7 @@ class AssignmentService {
       const response = await apiService.get<any>(
         `/assignments/customer/${customerId}/by-contract?${queryParams.toString()}`
       );
-      console.log('Assignments by customer (by-contract) response:', response);
+      // console.log('Assignments by customer (by-contract) response:', response);
 
       if (response.success && response.data) {
         // Return full pagination response with grouped data
@@ -447,7 +447,7 @@ class AssignmentService {
       );
 
       if (response.success && response.data) {
-        console.log('Assignments response:', response);
+        // console.log('Assignments response:', response);
         return {
           content: Array.isArray(response.data.content) ? response.data.content : [],
           totalElements: response.data.totalElements || 0,
@@ -492,7 +492,7 @@ class AssignmentService {
         `/assignments/assignments/${employeeId}/${month}/${year}`
       );
       if (response.success && response.data) {
-        console.log('Assignments response:', response);
+        // console.log('Assignments response:', response);
         return Array.isArray(response.data) ? response.data : [];
       }
 
@@ -510,6 +510,21 @@ class AssignmentService {
       } catch (e) {
         console.error("Error fetching assignments (and failed to stringify error):", error);
       }
+      return [];
+    }
+  }
+
+  async getTodayAssignmentsForCapture(employeeId: number): Promise<Assignment[]> {
+    try {
+      const response = await apiService.get<Assignment[]>(
+        `/assignments/employee/${employeeId}/today-capture`
+      );
+      if (response.success && response.data) {
+        return Array.isArray(response.data) ? response.data : [];
+      }
+      return [];
+    } catch (error) {
+      console.error(`Error fetching today assignments for capture:`, error);
       return [];
     }
   }

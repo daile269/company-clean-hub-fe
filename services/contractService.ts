@@ -222,6 +222,7 @@ export const create = async (contractData: any): Promise<Contract> => {
       finalPrice: contractData.finalPrice,
       paymentStatus: contractData.paymentStatus || 'PENDING',
       description: contractData.description || '',
+      requiresImageVerification: contractData.requiresImageVerification || false,
     };
 
     const response = await apiService.post<any>('/contracts', payload);
@@ -247,6 +248,7 @@ export const create = async (contractData: any): Promise<Contract> => {
       workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       paymentStatus: apiContract.paymentStatus,
       description: apiContract.description,
+      requiresImageVerification: apiContract.requiresImageVerification,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
     };
@@ -299,6 +301,9 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
     if (contractData.workingDaysPerWeek !== undefined) {
       payload.workingDaysPerWeek = contractData.workingDaysPerWeek;
     }
+    if ((contractData as any).requiresImageVerification !== undefined) {
+      payload.requiresImageVerification = (contractData as any).requiresImageVerification;
+    }
     if (contractData.numberOfEmployees !== undefined) {
       payload.numberOfEmployees = contractData.numberOfEmployees;
     }
@@ -307,6 +312,7 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
     }
     if (contractData.workEndTime !== undefined) {
       payload.workEndTime = contractData.workEndTime || null;
+
     }
     const response = await apiService.put<any>(`/contracts/${id}`, payload);
 

@@ -27,19 +27,6 @@ export default function ContractsPage() {
   const canView = usePermission("CONTRACT_VIEW");
   const canCreate = usePermission("CONTRACT_CREATE");
 
-  // If user doesn't have VIEW permission, show message
-  if (!canView) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg text-gray-600">
-            Bạn không có quyền xem hợp đồng
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const [addForm, setAddForm] = useState({
     customerId: "",
     serviceIds: [] as number[],
@@ -53,6 +40,7 @@ export default function ContractsPage() {
     finalPrice: 0,
     paymentStatus: "PENDING",
     description: "",
+    requiresImageVerification: false,
     numberOfEmployees: 0,
     workStartTime: "",
     workEndTime: "",
@@ -141,6 +129,7 @@ export default function ContractsPage() {
         finalPrice: addForm.finalPrice,
         paymentStatus: addForm.paymentStatus,
         description: addForm.description,
+        requiresImageVerification: addForm.requiresImageVerification,
         numberOfEmployees: addForm.numberOfEmployees || null,
         workStartTime: addForm.workStartTime || null,
         workEndTime: addForm.workEndTime || null,
@@ -164,6 +153,7 @@ export default function ContractsPage() {
         finalPrice: 0,
         paymentStatus: "PENDING",
         description: "",
+        requiresImageVerification: false,
         numberOfEmployees: 0,
         workStartTime: "",
         workEndTime: "",
@@ -212,6 +202,19 @@ export default function ContractsPage() {
   const expiringContracts = contracts.filter(
     (c) => getContractStatus(c).status === "Sắp hết hạn",
   ).length;
+
+  // If user doesn't have VIEW permission, show message
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">
+            Bạn không có quyền xem hợp đồng
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -1002,6 +1005,22 @@ export default function ContractsPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Hợp đồng dọn dẹp văn phòng"
                 />
+              </div>
+
+              <div className="col-span-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={addForm.requiresImageVerification}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, requiresImageVerification: e.target.checked })
+                    }
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Yêu cầu xác thực hình ảnh cho phân công này
+                  </span>
+                </label>
               </div>
             </div>
 

@@ -13,6 +13,7 @@ export interface LoginResponse {
   username: string;
   email: string;
   phone: string;
+  fullName: string;
   roleName: string;
   roleId: number;
   userType: string;
@@ -23,6 +24,7 @@ export interface AuthUser {
   username: string;
   email: string;
   phone: string;
+  fullName: string;
   roleName: string;
   roleId: number;
   userType: string;
@@ -89,14 +91,35 @@ class AuthService {
     return null;
   }
 
+  private cachedUser: AuthUser | null = null;
+  private lastUserStr: string | null = null;
+  private lastToken: string | null = null;
+
   getCurrentUser(): AuthUser | null {
     if (typeof window !== 'undefined') {
       const userStr = localStorage.getItem('user');
       const token = localStorage.getItem('token');
-      if (userStr && token) {
-        const user = JSON.parse(userStr);
-        return { ...user, token };
+
+      if (userStr === this.lastUserStr && token === this.lastToken && this.cachedUser) {
+        return this.cachedUser;
       }
+
+      if (userStr && token) {
+        try {
+          const user = JSON.parse(userStr);
+          this.lastUserStr = userStr;
+          this.lastToken = token;
+          this.cachedUser = { ...user, token };
+          return this.cachedUser;
+        } catch (error) {
+          console.error("Error parsing user from localStorage:", error);
+          return null;
+        }
+      }
+
+      this.cachedUser = null;
+      this.lastUserStr = null;
+      this.lastToken = null;
     }
     return null;
   }

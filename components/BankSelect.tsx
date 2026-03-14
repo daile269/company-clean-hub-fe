@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import banksData from "@/utils/binBank.json";
 
 type Bank = {
@@ -31,13 +31,16 @@ export default function BankSelect({ value, onChange }: BankSelectProps) {
     }, []);
 
     // Filter banks based on search term
-    useEffect(() => {
+    const filteredBanks = useMemo(() => {
         const term = search.toLowerCase();
-        const list = (banksData as any).data.filter((b: Bank) =>
+        return (banksData as any).data.filter((b: Bank) =>
             b.shortName.toLowerCase().includes(term) || b.name.toLowerCase().includes(term)
         );
-        setFiltered(list);
     }, [search]);
+
+    useEffect(() => {
+        setFiltered(filteredBanks);
+    }, [filteredBanks]);
 
     const selectedBank = (banksData as any).data.find((b: Bank) => b.shortName === value);
 

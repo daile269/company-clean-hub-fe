@@ -19,6 +19,9 @@ import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
 import { authService } from "@/services/authService";
 import { reviewService } from "@/services/reviewService";
+import EmployeeLeaveCalendar from "@/components/employee/EmployeeLeaveCalendar";
+import EmployeeResignDialog from "@/components/employee/EmployeeResignDialog";
+
 export default function EmployeeDetail() {
   const getTypeLabel = (t: "customer" | "coworker" | "manager") =>
     t === "customer"
@@ -879,6 +882,25 @@ export default function EmployeeDetail() {
           </div>
         </div>
       </div>
+
+      {/* Lịch làm việc & Chấm dứt Văn phòng */}
+      {employee.employeeType === "COMPANY_STAFF" && canEdit && (
+        <div className="mt-6 flex flex-col xl:flex-row gap-6">
+          <div className="flex-grow">
+            <EmployeeLeaveCalendar 
+              employeeId={employee.id} 
+              onLeaveUpdated={loadEmployee} 
+            />
+          </div>
+          <div className="xl:w-1/3">
+            <EmployeeResignDialog 
+              employeeId={employee.id} 
+              onSuccess={loadEmployee} 
+            />
+          </div>
+        </div>
+      )}
+
       {/* Assignments */}
       <div className="mt-6">
         <div className="flex justify-between items-center mb-3">

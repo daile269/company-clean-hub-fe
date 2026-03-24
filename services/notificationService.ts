@@ -46,29 +46,24 @@ class NotificationService {
     const query = new URLSearchParams();
     if (params?.type && params.type !== 'ALL') query.set('type', params.type);
     if (params?.isRead !== undefined) query.set('isRead', String(params.isRead));
+    if (params?.page !== undefined) query.set('page', String(params.page));
+    if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize));
 
-    const endpoint = query.toString()
-      ? `/notifications?${query.toString()}`
-      : '/notifications';
+    const endpoint = `/notifications${query.toString() ? '?' + query.toString() : ''}`;
 
-    // Dùng fetch trực tiếp vì BE trả về plain array [],
-    // còn apiService.request() làm { ...array } biến array thành object mất isArray
-    const token = apiService.getToken();
-    const url = `${API_BASE_URL}${endpoint}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    // BE trả về plain array, paginated {content:[]}, hoặc wrapped {data:[]}
-    if (Array.isArray(json)) return json;
-    if (Array.isArray(json?.content)) return json.content; // paginated response mới
-    if (Array.isArray(json?.data)) return json.data;
-    return [];
+    try {
+      const res = await apiService.get<any>(endpoint);
+      // BE trả về ApiResponse<PageResponse<T>> hoặc ApiResponse<T[]>
+      const data = res.data;
+      if (!data) return [];
+      
+      if (Array.isArray(data.content)) return data.content;
+      if (Array.isArray(data)) return data;
+      return [];
+    } catch (e) {
+      console.error('Error in notificationService.getAll:', e);
+      return [];
+    }
   }
 
   /**
@@ -82,39 +77,33 @@ class NotificationService {
     if (params?.page !== undefined) query.set('page', String(params.page));
     if (params?.pageSize !== undefined) query.set('pageSize', String(params.pageSize));
 
-    const endpoint = query.toString() ? `/notifications?${query.toString()}` : '/notifications';
-    const token = apiService.getToken();
-    const url = `${API_BASE_URL}${endpoint}`;
-
+    const endpoint = `/notifications${query.toString() ? '?' + query.toString() : ''}`;
     const empty: PaginatedNotificationResponse = {
       content: [], page: params?.page ?? 0, pageSize: params?.pageSize ?? 10,
       totalElements: 0, totalPages: 0, first: true, last: true,
     };
 
     try {
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      if (!res.ok) return empty;
-      const json = await res.json();
+      const res = await apiService.get<any>(endpoint);
+      const data = res.data;
+      if (!data) return empty;
+
       // Response là paginated object { content, totalPages, ... }
-      if (json?.content !== undefined) return json as PaginatedNotificationResponse;
+      if (data.content !== undefined) return data as PaginatedNotificationResponse;
+      
       // Response là plain array (backward compat — wrap lại)
-      if (Array.isArray(json)) {
+      if (Array.isArray(data)) {
         return {
-          content: json,
-          page: 0, pageSize: json.length,
-          totalElements: json.length,
-          totalPages: json.length > 0 ? 1 : 0,
+          content: data,
+          page: 0, pageSize: data.length,
+          totalElements: data.length,
+          totalPages: data.length > 0 ? 1 : 0,
           first: true, last: true,
         };
       }
       return empty;
-    } catch {
+    } catch (e) {
+      console.error('Error in notificationService.getAllPaginated:', e);
       return empty;
     }
   }
@@ -123,24 +112,33 @@ class NotificationService {
   async getUnreadCount(): Promise<number> {
     try {
       const res = await apiService.get<UnreadCountResponse>('/notifications/unread/count');
-      // API trả về trực tiếp { count: N } hoặc wrapped trong data
-      const body = res as any;
-      if (typeof body?.data?.count === 'number') return body.data.count;
-      if (typeof body?.count === 'number') return body.count;
+      // API trả về ApiResponse<{ count: N }>
+      if (res.success && res.data) {
+        return res.data.count;
+      }
       return 0;
-    } catch {
+    } catch (e) {
+      console.error('Error in notificationService.getUnreadCount:', e);
       return 0;
     }
   }
 
   /** Đánh dấu 1 thông báo đã đọc */
   async markAsRead(id: number): Promise<void> {
-    await apiService.put(`/notifications/${id}/read`);
+    try {
+      await apiService.put(`/notifications/${id}/read`);
+    } catch (e) {
+      console.error('Error in notificationService.markAsRead:', e);
+    }
   }
 
   /** Đánh dấu tất cả đã đọc */
   async markAllAsRead(): Promise<void> {
-    await apiService.put('/notifications/read-all');
+    try {
+      await apiService.put('/notifications/read-all');
+    } catch (e) {
+      console.error('Error in notificationService.markAllAsRead:', e);
+    }
   }
 
   /**

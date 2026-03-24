@@ -76,30 +76,29 @@ export default function EmployeeResignDialog({ employeeId, onSuccess, compact = 
             <form onSubmit={handleSubmit}>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Ngày chính thức nghỉ</label>
-                <div 
-                  className="relative cursor-pointer group" 
-                  onClick={() => dateInputRef.current?.showPicker()}
-                >
-                  <input
-                    type="text"
-                    readOnly
-                    value={resignDate ? resignDate.split('-').reverse().join('/') : ''}
-                    placeholder="dd/mm/yyyy"
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all cursor-pointer"
-                  />
+                <div className="relative group overflow-hidden">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      value={resignDate ? resignDate.split('-').reverse().join('/') : ''}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                    />
+                    <div className="absolute right-3 top-2.5 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
                   <input
                     ref={dateInputRef}
                     type="date"
                     value={resignDate}
                     onChange={(e) => setResignDate(e.target.value)}
-                    className="absolute bottom-0 left-0 w-full h-0 opacity-0 pointer-events-none"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full block"
                     required
                   />
-                  <div className="absolute right-3 top-2.5 text-slate-400 group-hover:text-blue-500 transition-colors">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
                 </div>
               </div>
 

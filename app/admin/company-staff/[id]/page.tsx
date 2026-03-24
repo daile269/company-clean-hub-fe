@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { usePermission } from '@/hooks/usePermission';
 import { authService } from '@/services/authService';
+import EmployeeLeaveCalendar from "@/components/employee/EmployeeLeaveCalendar";
 export default function CompanyStaffDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -59,7 +60,7 @@ export default function CompanyStaffDetailPage() {
   const [assignmentTotalElements, setAssignmentTotalElements] = useState(0);
   const [assignmentMonth, setAssignmentMonth] = useState(new Date().getMonth() + 1);
   const [assignmentYear, setAssignmentYear] = useState(new Date().getFullYear());
-
+  const [activeSchedule, setActiveSchedule] = useState<Assignment | null>(null);
 
   // Work schedule assignment modal
   const [showWorkScheduleModal, setShowWorkScheduleModal] = useState(false);
@@ -120,6 +121,20 @@ export default function CompanyStaffDetailPage() {
       setAssignments(response.content || []);
       setAssignmentTotalPages(response.totalPages || 0);
       setAssignmentTotalElements(response.totalElements || 0);
+
+      // Tìm lịch làm việc active
+      const active = response.content?.find((a: Assignment) => 
+         a.assignmentType === 'FIXED_BY_COMPANY' && 
+         (a.status?.toUpperCase() === 'ACTIVE' || a.status?.toUpperCase() === 'IN_PROGRESS')
+       );
+      if (active) {
+        setActiveSchedule(active);
+      } else if (response.content?.length > 0) {
+        // Falls back to checking if there is any fixed company if active not found in current page
+        // it's a best-effort since we might not load everything
+        const anyFixed = response.content?.find((a: Assignment) => a.assignmentType === 'FIXED_BY_COMPANY');
+        if (anyFixed && !activeSchedule) setActiveSchedule(anyFixed);
+      }
     } catch (error: any) {
       console.error("Error loading assignments:", error);
       toast.error(error.message || "Không thể tải danh sách phân công");
@@ -635,6 +650,30 @@ export default function CompanyStaffDetailPage() {
               </div>
             </div>
 
+            {activeSchedule?.workingDaysPerWeek && activeSchedule.workingDaysPerWeek.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-xs text-gray-500 mb-1">Lịch làm việc trong tuần</p>
+                <div className="flex gap-2 flex-wrap mt-1">
+                  {activeSchedule.workingDaysPerWeek.map(day => {
+                    const dayMap: Record<string, string> = {
+                      'MONDAY': 'T.Hai',
+                      'TUESDAY': 'T.Ba',
+                      'WEDNESDAY': 'T.Tư',
+                      'THURSDAY': 'T.Năm',
+                      'FRIDAY': 'T.Sáu',
+                      'SATURDAY': 'T.Bảy',
+                      'SUNDAY': 'C.Nhật'
+                    };
+                    return (
+                      <span key={day} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-100 shadow-sm">
+                        {dayMap[day] || day}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {employee.description && (
               <div className="pt-2 border-t">
                 <p className="text-xs text-gray-500 mb-1">Mô tả</p>
@@ -932,6 +971,16 @@ export default function CompanyStaffDetailPage() {
           )}
         </div>
       )}
+
+      {/* Lịch làm việc & Chấm dứt Văn phòng */}
+      <div className="mt-6">
+        <EmployeeLeaveCalendar 
+          employeeId={employee.id} 
+          onResignSuccess={() => {
+            loadEmployee();
+          }}
+        />
+      </div>
 
       {/* Assignments */}
       <div className="mt-6">

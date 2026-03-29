@@ -44,6 +44,7 @@ export interface ApiContract {
   workEndTime?: string;          // Giờ kết thúc ca làm (HH:mm:ss)
   paymentStatus: string;
   description?: string;
+  requiresImageVerification?: boolean; // Yêu cầu xác thực hình ảnh
   createdAt: string;
   updatedAt: string;
 }
@@ -73,6 +74,7 @@ export const getAll = async (params: ContractPaginationParams): Promise<Contract
       workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
       workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
+      requiresImageVerification: (apiContract as any).requiresImageVerification,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
     }));
@@ -115,6 +117,7 @@ export const getByCustomerId = async (customerId: string): Promise<Contract[]> =
       workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
       workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
+      requiresImageVerification: (apiContract as any).requiresImageVerification,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
     }));
@@ -153,6 +156,7 @@ export const getById = async (id: string): Promise<Contract> => {
       workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
       workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
+      requiresImageVerification: apiContract.requiresImageVerification,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
     };
@@ -337,6 +341,7 @@ export const update = async (id: string, contractData: Partial<Contract>): Promi
       workStartTime: apiContract.workStartTime ? apiContract.workStartTime.substring(0, 5) : undefined,
       workEndTime: apiContract.workEndTime ? apiContract.workEndTime.substring(0, 5) : undefined,
       description: apiContract.description,
+      requiresImageVerification: apiContract.requiresImageVerification,
       createdAt: new Date(apiContract.createdAt),
       updatedAt: new Date(apiContract.updatedAt),
     };

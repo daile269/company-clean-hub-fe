@@ -64,8 +64,11 @@ export default function NotificationBell() {
     const unread = data.filter((n) => !n.isRead);
     setTypeCounts({
       ALL: unread.length,
-      WORK_TIME_CONFLICT: unread.filter((n) => n.type === "WORK_TIME_CONFLICT").length,
-      NEW_EMPLOYEE_CREATED: unread.filter((n) => n.type === "NEW_EMPLOYEE_CREATED").length,
+      WORK_TIME_CONFLICT: unread.filter((n) => n.type === "WORK_TIME_CONFLICT")
+        .length,
+      NEW_EMPLOYEE_CREATED: unread.filter(
+        (n) => n.type === "NEW_EMPLOYEE_CREATED",
+      ).length,
     });
   }, []);
 
@@ -182,7 +185,10 @@ export default function NotificationBell() {
       setTypeCounts((prev) => ({
         ...prev,
         ALL: Math.max(0, prev.ALL - 1),
-        [notif.type]: Math.max(0, (prev[notif.type as keyof TypeCount] ?? 1) - 1),
+        [notif.type]: Math.max(
+          0,
+          (prev[notif.type as keyof TypeCount] ?? 1) - 1,
+        ),
       }));
     }
     // Navigate
@@ -433,12 +439,32 @@ export default function NotificationBell() {
               }}
               className="w-full flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium py-1 hover:bg-blue-50 rounded-lg transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h8" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 10h16M4 14h8"
+                />
               </svg>
               Xem tất cả thông báo
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
           </div>

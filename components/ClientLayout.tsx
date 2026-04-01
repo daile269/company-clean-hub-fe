@@ -1,5 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import Header from "@/components/Header";
 
@@ -10,6 +11,76 @@ export default function ClientLayout({
 }) {
   const pathname = usePathname();
   const isAdminPage = pathname?.startsWith("/admin");
+
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a");
+
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href) return;
+
+      // Check if it's a hash link
+      if (href.includes("#")) {
+        const [path, hash] = href.split("#");
+        
+        // Normalize path for comparison
+        const normalizedPath = path === "" || path === "/" ? "/" : path;
+        const normalizedCurrentPath = pathname === "" || pathname === "/" ? "/" : pathname;
+        
+        const isCurrentPage = normalizedPath === normalizedCurrentPath || normalizedPath === pathname;
+
+        if (isCurrentPage && hash) {
+          const element = document.getElementById(hash);
+          if (element) {
+            e.preventDefault();
+            const headerOffset = 100; // Adjusted for sticky header
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition =
+              elementPosition + window.scrollY - headerOffset;
+
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: "smooth",
+            });
+
+            // Remove hash from URL
+            window.history.pushState(null, "", pathname);
+          }
+        }
+      } else if (href === "/" && pathname === "/") {
+        // Scroll to top for home link on home page
+        e.preventDefault();
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+        window.history.pushState(null, "", "/");
+      }
+    };
+
+    document.addEventListener("click", handleAnchorClick);
+
+    // Handle initial hash on mount
+    if (window.location.hash) {
+      const id = window.location.hash.substring(1);
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          const headerOffset = 100;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition =
+            elementPosition + window.scrollY - headerOffset;
+          window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      }, 500);
+    }
+
+    return () => document.removeEventListener("click", handleAnchorClick);
+  }, [pathname]);
 
   return (
     <>

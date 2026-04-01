@@ -76,16 +76,6 @@ export default function Intro() {
 
             <a
               href="#contact"
-              onClick={(e) => {
-                e.preventDefault();
-                const el = document.getElementById("contact");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "start" });
-                } else {
-                  // fallback: update hash
-                  window.location.hash = "#contact";
-                }
-              }}
               className="inline-block bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition transform-gpu hover:-translate-y-0.5 active:translate-y-0 pulse-zoom"
               aria-label="Đặt dịch vụ - chuyển tới phần Liên hệ"
             >

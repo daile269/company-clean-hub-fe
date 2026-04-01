@@ -268,7 +268,11 @@ export default function VeSinhGiatGheTham() {
                 className="flex items-center gap-6 p-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-lg hover:shadow-2xl transition-all hover:scale-105"
               >
                 <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-2xl transition-all hover:scale-110 animate-pulse">
-                  <img src="/Icon_of_Zalo.svg.png" alt="Zalo" className="w-8 h-8" />
+                  <img
+                    src="/Icon_of_Zalo.svg.png"
+                    alt="Zalo"
+                    className="w-8 h-8"
+                  />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
@@ -315,10 +319,10 @@ export default function VeSinhGiatGheTham() {
                 <p className="text-gray-700 mb-2">
                   <span className="font-semibold">Email:</span>{" "}
                   <a
-                    href="mailto:panpacific365@gmail.com"
+                    href="mailto:info@opticlean.com.vn"
                     className="text-blue-600 hover:text-blue-800"
                   >
-                    panpacific365@gmail.com
+                    info@opticlean.com.vn - sp.opticlean@gmail.com
                   </a>
                 </p>
                 <p className="text-gray-700">

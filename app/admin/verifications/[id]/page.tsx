@@ -54,13 +54,8 @@ export default function VerificationDetailPage() {
 
     try {
       setProcessing(true);
-      // Business rule: after manager approves, always disable image verification
+      // Business rule: after manager approves, backend will automatically disable image verification
       await verificationService.approveVerification(verification.id, true);
-      if (verification.contractId) {
-        await contractService.update(String(verification.contractId), {
-          requiresImageVerification: false,
-        } as any);
-      }
       toast.success("Đã duyệt xác minh thành công!");
       router.push("/admin/verifications");
     } catch (error: any) {

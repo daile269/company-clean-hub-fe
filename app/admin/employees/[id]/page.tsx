@@ -611,7 +611,6 @@ export default function EmployeeDetail() {
   };
 
   const handleDeleteImage = async (imageId: string) => {
-    if (!canEdit) return;
     try {
       setIsDeletingImage(true);
       await employeeService.deleteImage(id!, imageId);
@@ -629,7 +628,6 @@ export default function EmployeeDetail() {
   };
 
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!canEdit) return;
     const files = e.target.files;
     if (!files || !id) return;
 
@@ -662,7 +660,6 @@ export default function EmployeeDetail() {
   const handleUploadEmployeeImage = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (!canEdit) return;
     const files = e.target.files;
     if (!files || !id) return;
 
@@ -2366,27 +2363,29 @@ export default function EmployeeDetail() {
                         alt={`Employee image ${image.id}`}
                         className="w-full h-full object-cover rounded-lg border border-gray-200"
                       />
-                      {/* Delete button */}
-                      <button
-                        onClick={() => setImageToDelete(image.id.toString())}
-                        disabled={isDeletingImage}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Xóa ảnh"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
+                      {/* Delete button - Hidden for EMPLOYEE role */}
+                      {role !== 'EMPLOYEE' && (
+                        <button
+                          onClick={() => setImageToDelete(image.id.toString())}
+                          disabled={isDeletingImage}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Xóa ảnh"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   ))}
 

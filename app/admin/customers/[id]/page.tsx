@@ -1155,7 +1155,8 @@ export default function CustomerDetail() {
         finalPrice: calculatedFinalPrice,
         paymentStatus: contractForm.paymentStatus,
         description: contractForm.description,
-        requiresImageVerification: contractForm.requiresImageVerification || false,
+        requiresImageVerification:
+          contractForm.requiresImageVerification || false,
         numberOfEmployees:
           contractForm.numberOfEmployees > 0
             ? contractForm.numberOfEmployees
@@ -1193,7 +1194,6 @@ export default function CustomerDetail() {
         numberOfEmployees: 0,
         workStartTime: "",
         workEndTime: "",
-
       });
     } catch (error: any) {
       console.error("Error creating contract:", error);
@@ -2862,7 +2862,7 @@ export default function CustomerDetail() {
                     <option value="SUPPORT">
                       Phân công hỗ trợ (chọn ngày)
                     </option>
-                    <option value="TEMPORARY">Tạm thời</option>
+                    {/* <option value="TEMPORARY">Tạm thời</option> */}
                   </select>
                 </div>
 

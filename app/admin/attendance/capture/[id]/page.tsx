@@ -11,6 +11,7 @@ import { estimateFacePose, computeSharpness, computeBrightness } from "@/utils/f
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import attendanceService, { Attendance } from "@/services/attendanceService";
 import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
+import workScheduleService, { WorkScheduleResponse } from "@/services/workScheduleService";
 import { authService } from "@/services/authService";
 
 export default function AutoCapturePage() {
@@ -32,6 +33,7 @@ export default function AutoCapturePage() {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [verification, setVerification] = useState<AssignmentVerificationResponse | null>(null);
+  const [todayWorkSchedule, setTodayWorkSchedule] = useState<WorkScheduleResponse | null>(null);
   const [status, setStatus] = useState({ text: "Đang khởi tạo...", type: "waiting" });
   const [gpsData, setGpsData] = useState<{ status: string; coords: GpsCoords | null; error: string | null }>({
     status: "⏳ Đang tìm tín hiệu GPS...",
@@ -74,31 +76,44 @@ export default function AutoCapturePage() {
         setAttendance(attData);
         setVerification(verifyData);
 
+        // Lấy work_schedule của hôm nay cho assignment này
+        const today = new Date().toISOString().split("T")[0];
+        try {
+          const schedules = await workScheduleService.getByDateRange(today, today, undefined, "SCHEDULED");
+          const todaySchedule = schedules.find((s) => s.assignmentId === assignmentId) || null;
+          setTodayWorkSchedule(todaySchedule);
+          if (!todaySchedule) {
+            toast.error("Không tìm thấy lịch chấm công hôm nay cho phân công này.");
+            router.push("/admin/attendance/today-tasks");
+            return;
+          }
+        } catch {
+          toast.error("Lỗi khi tải lịch chấm công hôm nay");
+          router.push("/admin/attendance/today-tasks");
+          return;
+        }
+
         if (attData && attData.evaluationStatus === 'APPROVED') {
           toast.success("Công việc này đã được duyệt chấm công hôm nay.");
           router.push("/admin/attendance/today-tasks");
           return;
         }
 
-        if (!verifyData) {
-          toast.error("Chưa có yêu cầu xác minh cho phân công này.");
-          router.push("/admin/attendance/today-tasks");
-          return;
-        }
-
-        if (verifyData.isCompleted) {
-          toast.success("Xác minh đã hoàn tất.");
-          router.push("/admin/attendance/today-tasks");
-          return;
-        }
-
-        if (!verifyData.canCapture) {
-          toast.error("Đã hết số lần chụp ảnh cho phép.");
-          router.push("/admin/attendance/today-tasks");
-          return;
+        // Chỉ kiểm tra verification cho NEW_EMPLOYEE_VERIFICATION
+        // CONTRACT_REQUIREMENT không cần verification - chụp là sinh attendance ngay
+        if (verifyData) {
+          if (verifyData.isCompleted) {
+            toast.success("Xác minh đã hoàn tất.");
+            router.push("/admin/attendance/today-tasks");
+            return;
+          }
+          if (!verifyData.canCapture) {
+            toast.error("Đã hết số lần chụp ảnh cho phép.");
+            router.push("/admin/attendance/today-tasks");
+            return;
+          }
         }
       } catch (error) {
-        // console.error("Error loading capture data:", error);
         toast.error("Lỗi khi tải thông tin");
       } finally {
         setLoading(false);
@@ -425,26 +440,23 @@ export default function AutoCapturePage() {
   }, [loading, onFaceMeshResults, runDetectionLoop, updateStatus]);
 
   const handleUpload = async () => {
-    if (!capturedImage || !assignment || !verification || !gpsData.coords || !gpsServiceRef.current) {
-      if (!verification) {
-        toast.error("Không tìm thấy thông tin xác minh. Vui lòng quay lại và thử lại.");
+    if (!capturedImage || !assignment || !todayWorkSchedule || !gpsData.coords || !gpsServiceRef.current) {
+      if (!todayWorkSchedule) {
+        toast.error("Không tìm thấy lịch chấm công hôm nay. Vui lòng quay lại và thử lại.");
       }
       return;
     }
 
     try {
       setIsUploading(true);
-      const payload = {
-        verificationId: verification.id,
-        imageData: capturedImage, // Base64 string
-        attendanceId: attendance?.id,
+      await workScheduleService.capturePhoto({
+        workScheduleId: todayWorkSchedule.id,
+        imageBase64: capturedImage,
         latitude: gpsData.coords.latitude,
         longitude: gpsData.coords.longitude,
-        address: gpsServiceRef.current.addressPrimary || gpsServiceRef.current.addressNominatim || "Không xác định"
-      };
-
-      await verificationService.captureVerificationImage(payload);
-      toast.success("Chụp ảnh xác minh thành công!");
+        address: gpsServiceRef.current.addressPrimary || gpsServiceRef.current.addressNominatim || "Không xác định",
+      });
+      toast.success("Chụp ảnh chấm công thành công!");
       router.push("/admin/attendance/today-tasks");
     } catch (error: any) {
       toast.error(error.message || "Lỗi khi gửi dữ liệu lên server");

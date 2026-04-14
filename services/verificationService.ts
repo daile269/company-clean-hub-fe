@@ -25,7 +25,7 @@ export interface AssignmentVerificationResponse {
     employeeCode: string;
     contractId: number;
     reason: string;
-    status: 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'AUTO_APPROVED';
+    status: 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'AUTO_APPROVED' | 'BYPASS_APPROVED';
     maxAttempts: number;
     currentAttempts: number;
     approvedBy: string | null;
@@ -200,6 +200,28 @@ export const rejectVerification = async (
     }
 };
 
+// Duyệt bỏ qua xác minh (không cần đủ ảnh)
+export const bypassApproveVerification = async (
+    verificationId: number,
+    notes?: string
+): Promise<AssignmentVerificationResponse> => {
+    try {
+        const response = await apiService.put<AssignmentVerificationResponse>(
+            `/verifications/${verificationId}/bypass-approve`,
+            notes || ''
+        );
+
+        if (!response.success || !response.data) {
+            throw new Error(response.message || 'Failed to bypass approve verification');
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error('Error bypass approving verification:', error);
+        throw error;
+    }
+};
+
 const verificationService = {
     getVerificationByAssignment,
     captureVerificationImage,
@@ -209,6 +231,7 @@ const verificationService = {
     getPendingVerifications,
     approveVerification,
     rejectVerification,
+    bypassApproveVerification,
 };
 
 export default verificationService;

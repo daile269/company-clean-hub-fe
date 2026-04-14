@@ -8,6 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
 import { authService } from "@/services/authService";
 import Image from "next/image";
+import GpsMap from "@/components/GpsMap";
 
 export default function EvaluationDetailPage() {
   const params = useParams();
@@ -153,10 +154,18 @@ export default function EvaluationDetailPage() {
           </div>
           <div className="w-full text-sm text-gray-600">
             {verificationImages.length > 0 && verificationImages[0].latitude && verificationImages[0].longitude ? (
-              <div className="flex items-center gap-2 mb-2 text-green-600">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
-                <span>GPS: {verificationImages[0].latitude.toFixed(6)}, {verificationImages[0].longitude.toFixed(6)} {verificationImages[0].address && `(${verificationImages[0].address})`}</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 mb-2 text-green-600">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                  <span>GPS: {verificationImages[0].latitude.toFixed(6)}, {verificationImages[0].longitude.toFixed(6)} {verificationImages[0].address && `(${verificationImages[0].address})`}</span>
+                </div>
+                <GpsMap
+                  latitude={verificationImages[0].latitude}
+                  longitude={verificationImages[0].longitude}
+                  address={verificationImages[0].address}
+                  height={220}
+                />
+              </>
             ) : (
               <div className="flex items-center gap-2 mb-2 text-red-500">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>

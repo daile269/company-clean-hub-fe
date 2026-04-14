@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
 import contractService from "@/services/contractService";
 import Image from "next/image";
+import GpsMap from "@/components/GpsMap";
 
 export default function VerificationDetailPage() {
   const router = useRouter();
@@ -85,6 +86,27 @@ export default function VerificationDetailPage() {
     }
   };
 
+  const handleBypassApprove = async () => {
+    if (!verification) return;
+
+    const notes = prompt("Nhập ghi chú (tùy chọn):");
+    if (notes === null) return;
+
+    if (!confirm("Duyệt bỏ qua xác minh? Nhân viên sẽ được duyệt mà không cần đủ ảnh.")) return;
+
+    try {
+      setProcessing(true);
+      await verificationService.bypassApproveVerification(verification.id, notes || undefined);
+      toast.success("Đã duyệt bỏ qua xác minh thành công!");
+      router.push("/admin/verifications");
+    } catch (error: any) {
+      console.error("Error bypass approving verification:", error);
+      toast.error(error.message || "Lỗi khi duyệt bỏ qua xác minh");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
       PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Chờ chụp" },
@@ -92,6 +114,7 @@ export default function VerificationDetailPage() {
       APPROVED: { bg: "bg-green-100", text: "text-green-800", label: "Đã duyệt" },
       REJECTED: { bg: "bg-red-100", text: "text-red-800", label: "Từ chối" },
       AUTO_APPROVED: { bg: "bg-purple-100", text: "text-purple-800", label: "Tự động duyệt" },
+      BYPASS_APPROVED: { bg: "bg-orange-100", text: "text-orange-800", label: "Duyệt bỏ qua" },
     };
 
     const config = statusConfig[status] || { bg: "bg-gray-100", text: "text-gray-800", label: status };
@@ -208,10 +231,13 @@ export default function VerificationDetailPage() {
                         {new Date(image.capturedAt).toLocaleString("vi-VN")}
                       </p>
                       {image.latitude && image.longitude && (
-                        <p className="text-gray-600">
-                          <span className="font-medium">GPS:</span> {image.latitude.toFixed(6)},{" "}
-                          {image.longitude.toFixed(6)}
-                        </p>
+                        <>
+                          <p className="text-gray-600">
+                            <span className="font-medium">GPS:</span> {image.latitude.toFixed(6)},{" "}
+                            {image.longitude.toFixed(6)}
+                          </p>
+                          <GpsMap latitude={image.latitude} longitude={image.longitude} address={image.address} />
+                        </>
                       )}
                       {image.address && (
                         <p className="text-gray-600">
@@ -232,7 +258,7 @@ export default function VerificationDetailPage() {
           </div>
 
           {/* Action buttons */}
-          {verification.status !== "APPROVED" && verification.status !== "AUTO_APPROVED" && (
+          {verification.status !== "APPROVED" && verification.status !== "AUTO_APPROVED" && verification.status !== "BYPASS_APPROVED" && (
             <div className="border-t pt-4">
               <div className="flex gap-4 justify-end">
                 <button
@@ -242,6 +268,13 @@ export default function VerificationDetailPage() {
                 >
                   Từ chối
                 </button>
+                <button
+                  onClick={handleBypassApprove}
+                  disabled={processing}
+                  className="px-6 py-2 border border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 disabled:opacity-50"
+                  title="Duyệt ngay mà không cần đủ ảnh xác minh"
+                >
+                  Không cần xác minh                </button>
                 <button
                   onClick={handleApprove}
                   disabled={processing || verificationImages.length === 0}

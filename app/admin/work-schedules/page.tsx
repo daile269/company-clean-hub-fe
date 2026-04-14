@@ -7,6 +7,7 @@ import workScheduleService, {
   WorkScheduleResponse,
   VerificationImageData,
 } from "@/services/workScheduleService";
+import GpsMap from "@/components/GpsMap";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const now = new Date();
@@ -80,6 +81,12 @@ function ImageModal({ image, employeeName, date, onClose }: {
               </div>
             )}
           </div>
+          {image.latitude && image.longitude && (
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Vị trí GPS</p>
+              <GpsMap latitude={image.latitude} longitude={image.longitude} address={image.address} height={200} />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <button onClick={() => window.open(image.cloudinaryUrl, "_blank")}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">

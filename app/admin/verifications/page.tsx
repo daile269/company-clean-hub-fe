@@ -38,6 +38,7 @@ export default function VerificationsPage() {
       APPROVED: { bg: "bg-green-100", text: "text-green-800", label: "Đã duyệt" },
       REJECTED: { bg: "bg-red-100", text: "text-red-800", label: "Từ chối" },
       AUTO_APPROVED: { bg: "bg-purple-100", text: "text-purple-800", label: "Tự động duyệt" },
+      BYPASS_APPROVED: { bg: "bg-orange-100", text: "text-orange-800", label: "Duyệt bỏ qua" },
     };
 
     const config = statusConfig[status] || { bg: "bg-gray-100", text: "text-gray-800", label: status };

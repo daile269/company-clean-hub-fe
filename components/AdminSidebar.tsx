@@ -213,27 +213,6 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
         )}
         {user && (user?.roleName === "QLT1" || user?.roleName === "QLT2" || user?.roleName === "ADMIN") && (
           <Link
-            href="/admin/verifications"
-            className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
-          >
-            <svg
-              className="mr-4 h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
-              />
-            </svg>
-            Duyệt xác minh hình ảnh
-          </Link>
-        )}
-        {user && (user?.roleName === "QLT1" || user?.roleName === "QLT2" || user?.roleName === "ADMIN") && (
-          <Link
             href="/admin/work-schedules"
             className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
           >

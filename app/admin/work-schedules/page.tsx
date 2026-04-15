@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import workScheduleService, {
   WorkScheduleContractSummary,
@@ -7,6 +8,7 @@ import workScheduleService, {
   WorkScheduleResponse,
   VerificationImageData,
 } from "@/services/workScheduleService";
+import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
 import GpsMap from "@/components/GpsMap";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -147,6 +149,104 @@ function CreateAttendanceModal({ scheduleId, date, employeeName, onClose, onSucc
   );
 }
 
+// ─── Verification Pinned Card ─────────────────────────────────────────────────
+function VerificationPinnedCard({ onClick }: { onClick: () => void }) {
+  return (
+
+     <button
+  onClick={onClick}
+  className="bg-white border rounded-xl p-5 text-left hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between h-full"
+>
+  {/* Phần trên */}
+  <div className="flex items-start justify-between mb-3">
+    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+          <svg className="w110 ro10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+        </div>
+    <div>
+      <p className="font-semibold text-gray-900 line-clamp-1">
+        Xác minh nhân viên mới
+      </p>
+      <p className="text-xs text-gray-400 mt-0.5">
+        Duyệt ảnh xác minh danh tính
+      </p>
+    </div>
+    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">
+      📌
+    </span>
+  </div>
+
+  {/* Phần dưới */}
+  <p className="text-xs text-purple-600 mt-2">
+    Nhấn để xem danh sách nhân viên đang chờ xác minh →
+  </p>
+</button>
+  );
+}
+
+// ─── Verification Employee Card ───────────────────────────────────────────────
+const VERIFICATION_STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  PENDING:        { bg: "bg-yellow-100", text: "text-yellow-700", label: "Chờ chụp" },
+  IN_PROGRESS:    { bg: "bg-blue-100",   text: "text-blue-700",   label: "Đang chụp" },
+  APPROVED:       { bg: "bg-green-100",  text: "text-green-700",  label: "Đã duyệt" },
+  AUTO_APPROVED:  { bg: "bg-purple-100", text: "text-purple-700", label: "Tự động duyệt" },
+  BYPASS_APPROVED:{ bg: "bg-orange-100", text: "text-orange-700", label: "Duyệt bỏ qua" },
+  REJECTED:       { bg: "bg-red-100",    text: "text-red-700",    label: "Từ chối" },
+};
+
+function VerificationEmployeeCard({ verification }: { verification: AssignmentVerificationResponse }) {
+  const router = useRouter();
+  const cfg = VERIFICATION_STATUS_CONFIG[verification.status] ?? { bg: "bg-gray-100", text: "text-gray-700", label: verification.status };
+  const progress = verification.maxAttempts > 0
+    ? Math.min((verification.currentAttempts / verification.maxAttempts) * 100, 100)
+    : 0;
+
+  const handleClick = () => {
+    router.push(`/admin/verifications/${verification.id}?from=/admin/work-schedules`);
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="bg-white border rounded-xl p-5 text-left hover:shadow-md hover:border-purple-300 transition-all"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold text-sm flex-shrink-0">
+          {verification.employeeName.charAt(0)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-gray-900 truncate">{verification.employeeName}</p>
+          <p className="text-xs text-gray-400">{verification.employeeCode}</p>
+        </div>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${cfg.bg} ${cfg.text}`}>
+          {cfg.label}
+        </span>
+      </div>
+
+      {/* Progress bar ảnh */}
+      <div className="mb-2">
+        <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <span>Ảnh xác minh</span>
+          <span className="font-medium">{verification.currentAttempts}/{verification.maxAttempts}</span>
+        </div>
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${progress >= 100 ? "bg-green-500" : "bg-purple-400"}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center text-xs text-gray-400 mt-2">
+        <span>Tạo: {new Date(verification.createdAt).toLocaleDateString("vi-VN")}</span>
+        <span className="text-purple-600 font-medium">Xem chi tiết →</span>
+      </div>
+    </button>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WorkSchedulesPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -167,6 +267,11 @@ export default function WorkSchedulesPage() {
   const [schedules, setSchedules] = useState<WorkScheduleResponse[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
 
+  // Verification panel (ghim đầu list)
+  const [showVerificationPanel, setShowVerificationPanel] = useState(false);
+  const [verifications, setVerifications] = useState<AssignmentVerificationResponse[]>([]);
+  const [loadingVerifications, setLoadingVerifications] = useState(false);
+
   // Modals
   const [imageModal, setImageModal] = useState<{ schedule: WorkScheduleResponse; image: VerificationImageData } | null>(null);
   const [loadingImageId, setLoadingImageId] = useState<number | null>(null);
@@ -183,6 +288,32 @@ export default function WorkSchedulesPage() {
   }, [month, year, sort]);
 
   useEffect(() => { loadContracts(); }, [loadContracts]);
+
+  // ── Load pending verifications ──
+  const loadVerifications = useCallback(async () => {
+    setLoadingVerifications(true);
+    try {
+      const data = await verificationService.getPendingVerifications();
+      setVerifications(data);
+    } catch { toast.error("Lỗi khi tải danh sách xác minh"); }
+    finally { setLoadingVerifications(false); }
+  }, []);
+
+  // ── Open verification panel ──
+  const handleOpenVerificationPanel = () => {
+    setShowVerificationPanel(true);
+    setSelectedContract(null);
+    setSelectedEmployee(null);
+    setSchedules([]);
+    setEmployees([]);
+    loadVerifications();
+  };
+
+  // ── Close verification panel → back to contracts ──
+  const handleCloseVerificationPanel = () => {
+    setShowVerificationPanel(false);
+    setVerifications([]);
+  };
 
   // ── Select contract → load employees ──
   const handleSelectContract = async (contract: WorkScheduleContractSummary) => {
@@ -238,7 +369,14 @@ export default function WorkSchedulesPage() {
   };
 
   // ── Breadcrumb back ──
-  const goBackToContracts = () => { setSelectedContract(null); setSelectedEmployee(null); setSchedules([]); setEmployees([]); };
+  const goBackToContracts = () => {
+    setSelectedContract(null);
+    setSelectedEmployee(null);
+    setSchedules([]);
+    setEmployees([]);
+    setShowVerificationPanel(false);
+    setVerifications([]);
+  };
   const goBackToEmployees = () => { setSelectedEmployee(null); setSchedules([]); };
 
   return (
@@ -253,15 +391,15 @@ export default function WorkSchedulesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
-        <select value={month} onChange={e => { setMonth(+e.target.value); setSelectedContract(null); setSelectedEmployee(null); }}
+        <select value={month} onChange={e => { setMonth(+e.target.value); setSelectedContract(null); setSelectedEmployee(null); setShowVerificationPanel(false); }}
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
-        <select value={year} onChange={e => { setYear(+e.target.value); setSelectedContract(null); setSelectedEmployee(null); }}
+        <select value={year} onChange={e => { setYear(+e.target.value); setSelectedContract(null); setSelectedEmployee(null); setShowVerificationPanel(false); }}
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        {!selectedContract && (
+        {!selectedContract && !showVerificationPanel && (
           <select value={sort} onChange={e => setSort(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="name">Sắp xếp: Tên khách hàng</option>
@@ -272,9 +410,15 @@ export default function WorkSchedulesPage() {
       </div>
 
       {/* Breadcrumb */}
-      {(selectedContract || selectedEmployee) && (
+      {(selectedContract || selectedEmployee || showVerificationPanel) && (
         <div className="flex items-center gap-2 text-sm mb-4 text-gray-500">
-          <button onClick={goBackToContracts} className="hover:text-blue-600">Hợp đồng</button>
+          <button onClick={goBackToContracts} className="hover:text-blue-600">Tổng quan</button>
+          {showVerificationPanel && !selectedEmployee && (
+            <>
+              <span>/</span>
+              <span className="text-gray-900 font-medium">Xác minh nhân viên mới</span>
+            </>
+          )}
           {selectedContract && (
             <>
               <span>/</span>
@@ -294,15 +438,16 @@ export default function WorkSchedulesPage() {
       )}
 
       {/* ── Level 1: Contracts ── */}
-      {!selectedContract && (
+      {!selectedContract && !showVerificationPanel && (
         <div>
           {loadingContracts ? (
             <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
-          ) : contracts.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">Không có dữ liệu chấm công hình ảnh trong tháng này</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {contracts.map(c => (
+              {/* ── Card ghim: Xác minh nhân viên mới ── */}
+              <VerificationPinnedCard onClick={handleOpenVerificationPanel} />
+
+              {contracts.length === 0 ? null : contracts.map(c => (
                 <button key={c.contractId} onClick={() => handleSelectContract(c)}
                   className="bg-white border rounded-xl p-5 text-left hover:shadow-md hover:border-blue-300 transition-all">
                   <div className="flex items-start justify-between mb-3">
@@ -312,7 +457,6 @@ export default function WorkSchedulesPage() {
                     </div>
                     <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">{c.totalEmployees} NV</span>
                   </div>
-                  {/* Progress bar */}
                   <div className="mb-2">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Tỷ lệ chụp</span>
@@ -328,6 +472,34 @@ export default function WorkSchedulesPage() {
                     {c.scheduledCount > 0 && <span className="text-yellow-600">⏳ {c.scheduledCount} chưa đến</span>}
                   </div>
                 </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Verification Panel: Level 2 — danh sách nhân viên chờ xác minh ── */}
+      {showVerificationPanel && !selectedEmployee && (
+        <div>
+          {loadingVerifications ? (
+            <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600" /></div>
+          ) : verifications.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-gray-500 font-medium">Không có nhân viên nào chờ xác minh</p>
+              <p className="text-gray-400 text-sm mt-1">Tất cả đã được duyệt</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {verifications.map(v => (
+                <VerificationEmployeeCard
+                  key={v.id}
+                  verification={v}
+                />
               ))}
             </div>
           )}

@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
-import contractService from "@/services/contractService";
 import Image from "next/image";
 import GpsMap from "@/components/GpsMap";
 
-export default function VerificationDetailPage() {
+function VerificationDetailContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const verificationId = params.id as string;
+  const backUrl = searchParams.get("from") ?? "/admin/work-schedules";
 
   const [verification, setVerification] = useState<AssignmentVerificationResponse | null>(null);
   const [verificationImages, setVerificationImages] = useState<any[]>([]);
@@ -30,7 +31,7 @@ export default function VerificationDetailPage() {
       
       if (!verification) {
         toast.error("Không tìm thấy yêu cầu xác minh");
-        router.push("/admin/verifications");
+        router.push(backUrl);
         return;
       }
 
@@ -40,7 +41,7 @@ export default function VerificationDetailPage() {
     } catch (error) {
       console.error("Error loading verification detail:", error);
       toast.error("Lỗi khi tải chi tiết xác minh");
-      router.push("/admin/verifications");
+      router.push(backUrl);
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ export default function VerificationDetailPage() {
       // Business rule: after manager approves, backend will automatically disable image verification
       await verificationService.approveVerification(verification.id, true);
       toast.success("Đã duyệt xác minh thành công!");
-      router.push("/admin/verifications");
+      router.push(backUrl);
     } catch (error: any) {
       console.error("Error approving verification:", error);
       toast.error(error.message || "Lỗi khi duyệt xác minh");
@@ -77,7 +78,7 @@ export default function VerificationDetailPage() {
       setProcessing(true);
       await verificationService.rejectVerification(verification.id, reason);
       toast.success("Đã từ chối xác minh. Nhân viên có thể chụp lại.");
-      router.push("/admin/verifications");
+      router.push(backUrl);
     } catch (error: any) {
       console.error("Error rejecting verification:", error);
       toast.error(error.message || "Lỗi khi từ chối xác minh");
@@ -98,7 +99,7 @@ export default function VerificationDetailPage() {
       setProcessing(true);
       await verificationService.bypassApproveVerification(verification.id, notes || undefined);
       toast.success("Đã duyệt bỏ qua xác minh thành công!");
-      router.push("/admin/verifications");
+      router.push(backUrl);
     } catch (error: any) {
       console.error("Error bypass approving verification:", error);
       toast.error(error.message || "Lỗi khi duyệt bỏ qua xác minh");
@@ -155,7 +156,7 @@ export default function VerificationDetailPage() {
 
       <div className="mb-6">
         <button
-          onClick={() => router.push("/admin/verifications")}
+          onClick={() => router.push(backUrl)}
           className="text-blue-600 hover:text-blue-900 flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -288,5 +289,17 @@ export default function VerificationDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VerificationDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+      </div>
+    }>
+      <VerificationDetailContent />
+    </Suspense>
   );
 }

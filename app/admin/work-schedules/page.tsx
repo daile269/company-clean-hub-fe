@@ -24,14 +24,20 @@ function fmtDateTime(d: string) {
 }
 
 // ─── Status badge ────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: WorkScheduleResponse["status"] }) {
+function StatusBadge({ status, scheduledDate }: { status: WorkScheduleResponse["status"]; scheduledDate?: string }) {
+  const isPastScheduled = status === "SCHEDULED" && scheduledDate && new Date(scheduledDate) < new Date(new Date().toDateString());
   const map = {
     VERIFIED: "bg-green-100 text-green-700",
     MISSED: "bg-red-100 text-red-700",
-    SCHEDULED: "bg-yellow-100 text-yellow-700",
+    SCHEDULED: isPastScheduled ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700",
     CANCELLED: "bg-gray-100 text-gray-500",
   };
-  const label = { VERIFIED: "Đã chụp", MISSED: "Quên chụp", SCHEDULED: "Chưa đến", CANCELLED: "Đã hủy" };
+  const label = { 
+    VERIFIED: "Đã chụp", 
+    MISSED: "Quên chụp", 
+    SCHEDULED: isPastScheduled ? "Đã qua" : "Chưa đến", 
+    CANCELLED: "Đã hủy" 
+  };
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status]}`}>
       {label[status]}
@@ -566,7 +572,7 @@ export default function WorkSchedulesPage() {
                       <td className="px-4 py-3 text-gray-500 text-xs">
                         {s.reason === "NEW_EMPLOYEE_VERIFICATION" ? "Xác minh NV mới" : "Chấm công HĐ"}
                       </td>
-                      <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
+                      <td className="px-4 py-3"><StatusBadge status={s.status} scheduledDate={s.scheduledDate} /></td>
                       <td className="px-4 py-3 text-gray-500 text-xs">
                         {s.photoCapturedAt ? fmtDateTime(s.photoCapturedAt) : "—"}
                       </td>
@@ -579,7 +585,7 @@ export default function WorkSchedulesPage() {
                             {loadingImageId === s.id ? "Đang tải..." : "📷 Xem ảnh"}
                           </button>
                         )}
-                        {s.status === "MISSED" && (
+                        {(s.status === "MISSED" || (s.status === "SCHEDULED" && new Date(s.scheduledDate) < new Date(new Date().toDateString()))) && (
                           <button
                             onClick={() => setCreateModal(s)}
                             className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-xs hover:bg-orange-100">

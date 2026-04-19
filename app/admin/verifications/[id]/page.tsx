@@ -263,13 +263,6 @@ function VerificationDetailContent() {
             <div className="border-t pt-4">
               <div className="flex gap-4 justify-end">
                 <button
-                  onClick={handleReject}
-                  disabled={processing}
-                  className="px-6 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50"
-                >
-                  Từ chối
-                </button>
-                <button
                   onClick={handleBypassApprove}
                   disabled={processing}
                   className="px-6 py-2 border border-orange-500 text-orange-600 rounded-lg hover:bg-orange-50 disabled:opacity-50"

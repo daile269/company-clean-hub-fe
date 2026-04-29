@@ -248,7 +248,7 @@ export default function CustomerDetail() {
     setLoadingContracts(true);
     try {
       const contractsList = await contractService.getByCustomerId(id);
-      setContracts(contractsList);
+      setContracts([...contractsList].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()));
     } catch (error: any) {
       console.error("Error loading contracts:", error);
       toast.error(error.message || "Không thể tải danh sách hợp đồng");
@@ -1228,7 +1228,7 @@ export default function CustomerDetail() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-6">
       <Toaster position="top-right" />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <div className="flex items-center gap-3">
@@ -2059,123 +2059,93 @@ export default function CustomerDetail() {
 
       {/* Card 4: Nhân viên đang phụ trách */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">
+        <div className="mb-4 pb-2 border-b">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
             Nhân viên đang phụ trách
           </h3>
-          <div className="flex items-center gap-2">
-            {/* Contract filter */}
-            <select
-              value={assignmentContractFilter}
-              onChange={(e) => {
-                setAssignmentContractFilter(e.target.value);
-                setCurrentPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tất cả hợp đồng</option>
-              {contracts.map((contract) => (
-                <option key={contract.id} value={contract.id}>
-                  HĐ #{contract.id} -{" "}
-                  {contract.description ||
-                    contract.services?.map((s: any) => s.title).join(", ")}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col gap-2">
+            {/* Hàng 1: Contract filter */}
+            <div className="flex gap-2">
+              <select
+                value={assignmentContractFilter}
+                onChange={(e) => {
+                  setAssignmentContractFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
+              >
+                <option value="">Tất cả hợp đồng</option>
+                {contracts.map((contract) => (
+                  <option key={contract.id} value={contract.id}>
+                    HĐ #{contract.id} -{" "}
+                    {contract.description ||
+                      contract.services?.map((s: any) => s.title).join(", ")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Hàng 2: Tháng, Năm, Số lượng */}
+            <div className="flex gap-2">
+              <select
+                value={filterMonth}
+                onChange={(e) => {
+                  setFilterMonth(Number(e.target.value));
+                  setCurrentPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                <option value={1}>Tháng 1</option>
+                <option value={2}>Tháng 2</option>
+                <option value={3}>Tháng 3</option>
+                <option value={4}>Tháng 4</option>
+                <option value={5}>Tháng 5</option>
+                <option value={6}>Tháng 6</option>
+                <option value={7}>Tháng 7</option>
+                <option value={8}>Tháng 8</option>
+                <option value={9}>Tháng 9</option>
+                <option value={10}>Tháng 10</option>
+                <option value={11}>Tháng 11</option>
+                <option value={12}>Tháng 12</option>
+              </select>
 
-            {/* Month and Year filters */}
-            <select
-              value={filterMonth}
-              onChange={(e) => {
-                setFilterMonth(Number(e.target.value));
-                setCurrentPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={1}>Tháng 1</option>
-              <option value={2}>Tháng 2</option>
-              <option value={3}>Tháng 3</option>
-              <option value={4}>Tháng 4</option>
-              <option value={5}>Tháng 5</option>
-              <option value={6}>Tháng 6</option>
-              <option value={7}>Tháng 7</option>
-              <option value={8}>Tháng 8</option>
-              <option value={9}>Tháng 9</option>
-              <option value={10}>Tháng 10</option>
-              <option value={11}>Tháng 11</option>
-              <option value={12}>Tháng 12</option>
-            </select>
+              <select
+                value={filterYear}
+                onChange={(e) => {
+                  setFilterYear(Number(e.target.value));
+                  setCurrentPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                {Array.from(
+                  { length: 50 },
+                  (_, i) => new Date().getFullYear() - 5 + i,
+                ).map((year) => (
+                  <option key={year} value={year}>
+                    Năm {year}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={filterYear}
-              onChange={(e) => {
-                setFilterYear(Number(e.target.value));
-                setCurrentPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              {Array.from(
-                { length: 50 },
-                (_, i) => new Date().getFullYear() - 5 + i,
-              ).map((year) => (
-                <option key={year} value={year}>
-                  Năm {year}
-                </option>
-              ))}
-            </select>
+              {/* Page Size Filter */}
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                <option value={5}>5 nhân viên</option>
+                <option value={10}>10 nhân viên</option>
+                <option value={15}>15 nhân viên</option>
+                <option value={20}>20 nhân viên</option>
+                <option value={50}>50 nhân viên</option>
+              </select>
 
-            {/* Page Size Filter */}
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={5}>5 nhân viên</option>
-              <option value={10}>10 nhân viên</option>
-              <option value={15}>15 nhân viên</option>
-              <option value={20}>20 nhân viên</option>
-              <option value={50}>50 nhân viên</option>
-            </select>
-
-            {/* Filters */}
-            {/* <select
-              value={filterAssignmentType}
-              onChange={(e) => setFilterAssignmentType(e.target.value)}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tất cả loại</option>
-              <option value="FIXED_BY_CONTRACT">Cố định HĐ</option>
-              <option value="FIXED_BY_DAY">Cố định ngày</option>
-              <option value="TEMPORARY">Tạm thời</option>
-            </select> */}
-
-            {/* <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="IN_PROGRESS">Đang thực hiện</option>
-              <option value="COMPLETED">Hoàn thành</option>
-              <option value="CANCELLED">Đã hủy</option>
-            </select> */}
-
-            {/* <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="startDate_desc">Mới nhất</option>
-              <option value="startDate_asc">Cũ nhất</option>
-            </select> */}
-
-            <button
-              onClick={loadAllAssignedEmployeesForCustomer}
-              className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
-            >
+              <button
+                onClick={loadAllAssignedEmployeesForCustomer}
+                className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+              >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="w-4 h-4"
@@ -2191,7 +2161,8 @@ export default function CustomerDetail() {
                 />
               </svg>
               Làm mới
-            </button>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2468,99 +2439,105 @@ export default function CustomerDetail() {
 
       {/* Card 5: Lịch sử điều động */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">
+        <div className="mb-4 pb-2 border-b">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
             Lịch sử điều động
           </h3>
-          <div className="flex items-center gap-2">
-            <select
-              value={historyContractFilter}
-              onChange={(e) => {
-                setHistoryContractFilter(e.target.value);
-                setHistoryPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tất cả hợp đồng</option>
-              {contracts.map((contract) => (
-                <option key={contract.id} value={contract.id}>
-                  HĐ #{contract.id} -{" "}
-                  {contract.description ||
-                    contract.services?.map((s: any) => s.title).join(", ")}
-                </option>
-              ))}
-            </select>
-            <select
-              value={historyFilterMonth}
-              onChange={(e) => {
-                setHistoryFilterMonth(
-                  e.target.value === "" ? "" : Number(e.target.value),
-                );
-                setHistoryPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tháng (Tất cả)</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  Tháng {m}
-                </option>
-              ))}
-            </select>
-            <select
-              value={historyFilterYear}
-              onChange={(e) => {
-                setHistoryFilterYear(
-                  e.target.value === "" ? "" : Number(e.target.value),
-                );
-                setHistoryPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Năm (Tất cả)</option>
-              {Array.from(
-                { length: 7 },
-                (_, i) => new Date().getFullYear() - 3 + i,
-              ).map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            <select
-              value={historyPageSize}
-              onChange={(e) => {
-                setHistoryPageSize(Number(e.target.value));
-                setHistoryPage(0);
-              }}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={5}>5 kết quả</option>
-              <option value={10}>10 kết quả</option>
-              <option value={15}>15 kết quả</option>
-              <option value={20}>20 kết quả</option>
-              <option value={50}>50 kết quả</option>
-            </select>
-            <button
-              onClick={() => loadAssignmentHistories()}
-              className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+          <div className="flex flex-col gap-2">
+            {/* Hàng 1: Contract filter */}
+            <div className="flex gap-2">
+              <select
+                value={historyContractFilter}
+                onChange={(e) => {
+                  setHistoryContractFilter(e.target.value);
+                  setHistoryPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Làm mới
-            </button>
+                <option value="">Tất cả hợp đồng</option>
+                {contracts.map((contract) => (
+                  <option key={contract.id} value={contract.id}>
+                    HĐ #{contract.id} -{" "}
+                    {contract.description ||
+                      contract.services?.map((s: any) => s.title).join(", ")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Hàng 2: Tháng, Năm, Số lượng, Làm mới */}
+            <div className="flex gap-2">
+              <select
+                value={historyFilterMonth}
+                onChange={(e) => {
+                  setHistoryFilterMonth(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  );
+                  setHistoryPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                <option value="">Tháng (Tất cả)</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    Tháng {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={historyFilterYear}
+                onChange={(e) => {
+                  setHistoryFilterYear(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  );
+                  setHistoryPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                <option value="">Năm (Tất cả)</option>
+                {Array.from(
+                  { length: 7 },
+                  (_, i) => new Date().getFullYear() - 3 + i,
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={historyPageSize}
+                onChange={(e) => {
+                  setHistoryPageSize(Number(e.target.value));
+                  setHistoryPage(0);
+                }}
+                className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1"
+              >
+                <option value={5}>5 kết quả</option>
+                <option value={10}>10 kết quả</option>
+                <option value={15}>15 kết quả</option>
+                <option value={20}>20 kết quả</option>
+                <option value={50}>50 kết quả</option>
+              </select>
+              <button
+                onClick={() => loadAssignmentHistories()}
+                className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 shrink-0"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Làm mới
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2810,9 +2787,9 @@ export default function CustomerDetail() {
       {/* Assignment Modal */}
       {showAssignmentModal && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="bg-white rounded-lg p-4 sm:p-8 max-w-4xl w-3/4 sm:w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900">
                 Phân công nhân viên cho {customer.name}
               </h2>
               <button
@@ -2840,7 +2817,7 @@ export default function CustomerDetail() {
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
                 Thông tin phân công
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Loại phân công *
@@ -2882,7 +2859,7 @@ export default function CustomerDetail() {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <label className="block text-xs font-medium text-gray-700 mb-2">
                     Hợp đồng *
                   </label>
@@ -2929,7 +2906,7 @@ export default function CustomerDetail() {
                   )}
                 </div>
                 {assignmentForm.assignmentType === "SUPPORT" && (
-                  <div className="col-span-2">
+                  <div className="col-span-1 sm:col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-2">
                       Chọn ngày hỗ trợ
                     </label>
@@ -3149,7 +3126,7 @@ export default function CustomerDetail() {
                   />
                 </div>
 
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Mô tả
                   </label>
@@ -3173,13 +3150,13 @@ export default function CustomerDetail() {
 
             {/* Employee List (with month/year filter + pagination) */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <select
                   value={assignmentModalMonth}
                   onChange={(e) =>
                     setAssignmentModalMonth(Number(e.target.value))
                   }
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg"
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg flex-1 sm:flex-none"
                 >
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                     <option key={m} value={m}>
@@ -3219,7 +3196,7 @@ export default function CustomerDetail() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
                 <input
                   type="text"
                   placeholder="Tìm kiếm theo tên..."
@@ -3230,7 +3207,7 @@ export default function CustomerDetail() {
                     // immediate reload (could debounce)
                     loadNotAssignedEmployees(0, notAssignedPage.pageSize, v);
                   }}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
                 />
 
                 <button

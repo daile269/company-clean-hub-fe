@@ -20,9 +20,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (window.innerWidth <= 640) {
+      setSidebarOpen(false);
+    }
+  }, [pathname]);
 
   // If on login page, render children without admin layout
   if (pathname === "/admin/login") {
@@ -126,8 +133,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Main Content */}
         <main
-          className={`flex-1 ${sidebarOpen ? "ml-64" : "ml-0"
-            } transition-all duration-300 p-8`}
+          className={`flex-1 min-w-0 ${sidebarOpen ? "ml-64" : "ml-0"
+            } transition-all duration-300 p-4 sm:p-8`}
         >
           {children}
         </main>

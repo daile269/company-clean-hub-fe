@@ -342,15 +342,9 @@ export default function InvoiceDetailPage() {
                     {formatCurrency(invoice.subtotal)}
                   </div>
                 </div>
-                <div className="flex justify-between">
-                  <div className="text-xs text-gray-500">VAT</div>
-                  <div className="font-medium">
-                    {formatCurrency(invoice.vatAmount)}
-                  </div>
-                </div>
                 {invoice.penalty && invoice.penalty > 0 && (
                   <>
-                    <div className="flex justify-between mt-2 pt-2 border-t">
+                    <div className="flex justify-between mt-1">
                       <div className="text-xs text-gray-500">Khấu trừ chi phí</div>
                       <div className="font-medium text-red-600">- {formatCurrency(invoice.penalty)}</div>
                     </div>
@@ -360,9 +354,19 @@ export default function InvoiceDetailPage() {
                         <div className="text-right max-w-xs break-words text-xs">{invoice.penaltyReason}</div>
                       </div>
                     )}
+                    <div className="flex justify-between mt-1 pt-1 border-t border-dashed border-gray-200">
+                      <div className="text-xs text-gray-500">Tổng sau khấu trừ</div>
+                      <div className="font-medium">{formatCurrency((invoice.subtotal ?? 0) - (invoice.penalty ?? 0))}</div>
+                    </div>
                   </>
                 )}
-                <div className="flex justify-between mt-2">
+                <div className="flex justify-between mt-1">
+                  <div className="text-xs text-gray-500">VAT</div>
+                  <div className="font-medium">
+                    {formatCurrency(invoice.vatAmount)}
+                  </div>
+                </div>
+                <div className="flex justify-between mt-2 pt-2 border-t">
                   <div className="text-sm text-gray-500">Tổng cộng</div>
                   <div className="text-lg font-bold text-green-600">
                     {formatCurrency(invoice.totalAmount)}
@@ -479,7 +483,7 @@ export default function InvoiceDetailPage() {
         {(invoice.invoiceType === "MONTHLY_FIXED" || invoice.invoiceType === "MONTHLY_ACTUAL") &&
           invoice.numEmployees != null && (
             <div className="mt-6 bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">Công thức tính giá trị hóa đơn</h3>
+              <h3 className="text-lg font-semibold mb-4">Công thức tính tổng cơ bản của hóa đơn</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                 <div className="bg-gray-50 rounded p-3 text-center">
                   <div className="text-xs text-gray-500 mb-1">Ngày full tháng</div>

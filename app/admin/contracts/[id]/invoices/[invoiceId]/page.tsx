@@ -3,7 +3,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import invoiceService from "@/services/invoiceService";
-import { apiService } from "@/services/api";
 import { usePermission } from "@/hooks/usePermission";
 
 export default function InvoiceDetailPage() {
@@ -516,7 +515,14 @@ export default function InvoiceDetailPage() {
                   const recurringLinePrice = invoice.invoiceLines
                     ?.filter((l: any) => l.serviceType === "RECURRING")
                     .reduce((sum: number, l: any) => sum + (l.price ?? 0), 0) ?? 0;
+                  const oneTimeTotal = invoice.invoiceLines
+                    ?.filter((l: any) => l.serviceType === "ONE_TIME")
+                    .reduce((sum: number, l: any) => sum + (l.baseAmount ?? 0), 0) ?? 0;
                   const isActual = invoice.invoiceType === "MONTHLY_ACTUAL";
+                  const denom = (invoice.actualWorkingDays ?? 0) * numEmp;
+                  const recurringAmount = isActual
+                    ? recurringLinePrice * actual
+                    : (denom > 0 ? recurringLinePrice / denom * actual : 0);
                   return (
                     <div className="space-y-1 text-gray-700">
                       <div>
@@ -532,20 +538,31 @@ export default function InvoiceDetailPage() {
                           <>Đơn giá/công = <span className="font-semibold">{formatCurrency(recurringLinePrice)}</span></>
                         ) : (
                           <>
-                            Giá 1 công = {formatCurrency(recurringLinePrice)} ÷ {(invoice.actualWorkingDays ?? 0) * numEmp} công
-                            = <span className="font-semibold">{formatCurrency((invoice.actualWorkingDays ?? 0) * numEmp > 0 ? recurringLinePrice / ((invoice.actualWorkingDays ?? 0) * numEmp) : 0)}</span>
+                            Giá 1 công = {formatCurrency(recurringLinePrice)} ÷ {denom} công
+                            = <span className="font-semibold">{formatCurrency(denom > 0 ? recurringLinePrice / denom : 0)}</span>
                           </>
                         )}
                       </div>
                       <div className="font-semibold text-green-800">
                         {isActual ? (
-                          <>Thành tiền = {formatCurrency(recurringLinePrice)} × {actual} công{numEmp > 1 ? ` ÷ ${numEmp} NV` : ""}
-                            {" "}= {formatCurrency(numEmp > 0 ? recurringLinePrice * actual / numEmp : 0)}</>
+                          <>Dịch vụ định kỳ = {formatCurrency(recurringLinePrice)} × {actual} công
+                            {" "}= {formatCurrency(recurringAmount)}</>
                         ) : (
-                          <>Thành tiền = {formatCurrency((invoice.actualWorkingDays ?? 0) * numEmp > 0 ? recurringLinePrice / ((invoice.actualWorkingDays ?? 0) * numEmp) : 0)} × {actual} công
-                            {" "}= {formatCurrency((invoice.actualWorkingDays ?? 0) * numEmp > 0 ? recurringLinePrice / ((invoice.actualWorkingDays ?? 0) * numEmp) * actual : 0)}</>
+                          <>Dịch vụ định kỳ = {formatCurrency(denom > 0 ? recurringLinePrice / denom : 0)} × {actual} công
+                            {" "}= {formatCurrency(recurringAmount)}</>
                         )}
                       </div>
+                      {oneTimeTotal > 0 && (
+                        <div>
+                          Dịch vụ một lần: <span className="font-semibold">{formatCurrency(oneTimeTotal)}</span>
+                        </div>
+                      )}
+                      {oneTimeTotal > 0 && (
+                        <div className="font-semibold text-green-900 pt-1 border-t border-green-200 mt-1">
+                          Tổng cơ bản = {formatCurrency(recurringAmount)} + {formatCurrency(oneTimeTotal)}
+                          {" "}= {formatCurrency(recurringAmount + oneTimeTotal)}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

@@ -508,15 +508,15 @@ export default function InvoiceDetailPage() {
                   const planned = (invoice.plannedDaysInPeriod ?? 0) * (invoice.numEmployees ?? 0);
                   const absence = invoice.absenceDays ?? 0;
                   const actual = Math.max(0, planned - absence);
-                  const denom = (invoice.actualWorkingDays ?? 0) * (invoice.numEmployees ?? 0);
-                  const recurringTotal = invoice.invoiceLines
+                  const numEmp = invoice.numEmployees ?? 1;
+                  const recurringLinePrice = invoice.invoiceLines
                     ?.filter((l: any) => l.serviceType === "RECURRING")
                     .reduce((sum: number, l: any) => sum + (l.price ?? 0), 0) ?? 0;
-                  const pricePerUnit = denom > 0 ? recurringTotal / denom : 0;
+                  const isActual = invoice.invoiceType === "MONTHLY_ACTUAL";
                   return (
                     <div className="space-y-1 text-gray-700">
                       <div>
-                        Công kế hoạch theo kỳ = {invoice.plannedDaysInPeriod ?? 0} ngày × {invoice.numEmployees ?? 0} người
+                        Công kế hoạch theo kỳ = {invoice.plannedDaysInPeriod ?? 0} ngày × {numEmp} người
                         = <span className="font-semibold">{planned} công</span>
                       </div>
                       <div>
@@ -524,12 +524,23 @@ export default function InvoiceDetailPage() {
                         = <span className="font-semibold text-green-700">{actual} công</span>
                       </div>
                       <div className="pt-2 border-t border-green-200 mt-2">
-                        Giá 1 công = {formatCurrency(recurringTotal)} ÷ {denom} công
-                        = <span className="font-semibold">{formatCurrency(pricePerUnit)}</span>
+                        {isActual ? (
+                          <>Đơn giá/công = <span className="font-semibold">{formatCurrency(recurringLinePrice)}</span></>
+                        ) : (
+                          <>
+                            Giá 1 công = {formatCurrency(recurringLinePrice)} ÷ {(invoice.actualWorkingDays ?? 0) * numEmp} công
+                            = <span className="font-semibold">{formatCurrency((invoice.actualWorkingDays ?? 0) * numEmp > 0 ? recurringLinePrice / ((invoice.actualWorkingDays ?? 0) * numEmp) : 0)}</span>
+                          </>
+                        )}
                       </div>
                       <div className="font-semibold text-green-800">
-                        Thành tiền = {formatCurrency(pricePerUnit)} × {actual} công
-                        = {formatCurrency(pricePerUnit * actual)}
+                        {isActual ? (
+                          <>Thành tiền = {formatCurrency(recurringLinePrice)} × {actual} công{numEmp > 1 ? ` ÷ ${numEmp} NV` : ""}
+                            {" "}= {formatCurrency(numEmp > 0 ? recurringLinePrice * actual / numEmp : 0)}</>
+                        ) : (
+                          <>Thành tiền = {formatCurrency((invoice.actualWorkingDays ?? 0) * numEmp > 0 ? recurringLinePrice / ((invoice.actualWorkingDays ?? 0) * numEmp) : 0)} × {actual} công
+                            {" "}= {formatCurrency((invoice.actualWorkingDays ?? 0) * numEmp > 0 ? recurringLinePrice / ((invoice.actualWorkingDays ?? 0) * numEmp) * actual : 0)}</>
+                        )}
                       </div>
                     </div>
                   );

@@ -476,6 +476,68 @@ export default function InvoiceDetailPage() {
           </div>
         )}
 
+        {(invoice.invoiceType === "MONTHLY_FIXED" || invoice.invoiceType === "MONTHLY_ACTUAL") &&
+          invoice.numEmployees != null && (
+            <div className="mt-6 bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold mb-4">Công thức tính giá trị hóa đơn</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div className="bg-gray-50 rounded p-3 text-center">
+                  <div className="text-xs text-gray-500 mb-1">Ngày full tháng</div>
+                  <div className="text-xl font-bold text-gray-800">{invoice.actualWorkingDays ?? "-"}</div>
+                  
+                </div>
+                <div className="bg-blue-50 rounded p-3 text-center">
+                  <div className="text-xs text-gray-500 mb-1">Ngày theo kỳ HĐ</div>
+                  <div className="text-xl font-bold text-blue-700">{invoice.plannedDaysInPeriod ?? "-"}</div>
+                  <div className="text-xs text-gray-400">ngày</div>
+                </div>
+                <div className="bg-gray-50 rounded p-3 text-center">
+                  <div className="text-xs text-gray-500 mb-1">Số nhân viên</div>
+                  <div className="text-xl font-bold text-gray-800">{invoice.numEmployees ?? "-"}</div>
+                  <div className="text-xs text-gray-400">người</div>
+                </div>
+                <div className="bg-red-50 rounded p-3 text-center">
+                  <div className="text-xs text-gray-500 mb-1">Ngày nghỉ</div>
+                  <div className="text-xl font-bold text-red-600">{invoice.absenceDays ?? 0}</div>
+                  <div className="text-xs text-gray-400">công</div>
+                </div>
+              </div>
+              <div className="mt-4 bg-green-50 rounded p-4 text-sm">
+                <div className="font-medium text-gray-700 mb-2">Công thức tính thành tiền:</div>
+                {(() => {
+                  const planned = (invoice.plannedDaysInPeriod ?? 0) * (invoice.numEmployees ?? 0);
+                  const absence = invoice.absenceDays ?? 0;
+                  const actual = Math.max(0, planned - absence);
+                  const denom = (invoice.actualWorkingDays ?? 0) * (invoice.numEmployees ?? 0);
+                  const recurringTotal = invoice.invoiceLines
+                    ?.filter((l: any) => l.serviceType === "RECURRING")
+                    .reduce((sum: number, l: any) => sum + (l.price ?? 0), 0) ?? 0;
+                  const pricePerUnit = denom > 0 ? recurringTotal / denom : 0;
+                  return (
+                    <div className="space-y-1 text-gray-700">
+                      <div>
+                        Công kế hoạch theo kỳ = {invoice.plannedDaysInPeriod ?? 0} ngày × {invoice.numEmployees ?? 0} người
+                        = <span className="font-semibold">{planned} công</span>
+                      </div>
+                      <div>
+                        Công thực tế = {planned} − {absence} (nghỉ)
+                        = <span className="font-semibold text-green-700">{actual} công</span>
+                      </div>
+                      <div className="pt-2 border-t border-green-200 mt-2">
+                        Giá 1 công = {formatCurrency(recurringTotal)} ÷ {denom} công
+                        = <span className="font-semibold">{formatCurrency(pricePerUnit)}</span>
+                      </div>
+                      <div className="font-semibold text-green-800">
+                        Thành tiền = {formatCurrency(pricePerUnit)} × {actual} công
+                        = {formatCurrency(pricePerUnit * actual)}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
         <div className="mt-6 bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Chi tiết hóa đơn</h3>
           <div className="overflow-x-auto">

@@ -340,14 +340,12 @@ export default function AssignmentDetail() {
   const handleRollbackTerminate = async () => {
     if (!assignment || !canEdit) return;
 
+    let toastId: string | undefined;
     try {
       setRollingBack(true);
-      const toastId = toast.loading("Đang hoàn tác tạm dừng phân công...");
+      toastId = toast.loading("Đang hoàn tác tạm dừng phân công...");
 
       const response = await assignmentService.rollbackTerminate(assignment.id);
-
-      toast.dismiss(toastId);
-      setRollingBack(false);
 
       if (response && response.success) {
         toast.success("Đã hoàn tác tạm dừng phân công");
@@ -356,9 +354,11 @@ export default function AssignmentDetail() {
         toast.error(response?.message || "Hoàn tác thất bại");
       }
     } catch (error: any) {
-      setRollingBack(false);
       console.error("Error rollback terminate:", error);
       toast.error(error?.message || "Không thể hoàn tác");
+    } finally {
+      if (toastId) toast.dismiss(toastId);
+      setRollingBack(false);
     }
   };
 

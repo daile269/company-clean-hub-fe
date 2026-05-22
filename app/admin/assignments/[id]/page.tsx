@@ -47,6 +47,13 @@ export default function AssignmentDetail() {
   const [attPageSize] = useState<number>(20);
   const [attTotalPages, setAttTotalPages] = useState<number>(0);
   const [attTotalElements, setAttTotalElements] = useState<number>(0);
+  const canRollbackTermination = Boolean(
+    assignment &&
+    (assignment.status === "TERMINATED" ||
+      (assignment.assignmentType !== "SUPPORT" &&
+        !!assignment.endDate &&
+        (assignment.status === "IN_PROGRESS" || assignment.status === "SCHEDULED")))
+  );
 
   // Load assignment data from API
   useEffect(() => {
@@ -446,7 +453,7 @@ export default function AssignmentDetail() {
               Sửa
             </button>
           )}
-          {canEdit && assignment.status !== "TERMINATED" && (
+          {canEdit && assignment.status !== "TERMINATED" && !canRollbackTermination && (
             <button
               onClick={handleTerminate}
               disabled={terminating}
@@ -500,7 +507,7 @@ export default function AssignmentDetail() {
               )}
             </button>
           )}
-          {canEdit && assignment.status === "TERMINATED" && (
+          {canEdit && canRollbackTermination && (
             <button
               onClick={handleRollbackTerminate}
               disabled={rollingBack}

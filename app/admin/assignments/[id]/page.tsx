@@ -353,6 +353,8 @@ export default function AssignmentDetail() {
       toastId = toast.loading("Đang hoàn tác tạm dừng phân công...");
 
       const response = await assignmentService.rollbackTerminate(assignment.id);
+      toast.dismiss(toastId);
+      toastId = undefined;
 
       if (response && response.success) {
         toast.success("Đã hoàn tác tạm dừng phân công");

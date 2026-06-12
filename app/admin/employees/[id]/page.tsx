@@ -88,6 +88,8 @@ export default function EmployeeDetail() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
   const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [insuranceUserEdited, setInsuranceUserEdited] = useState<boolean>(false);
+  const [advanceUserEdited, setAdvanceUserEdited] = useState<boolean>(false);
   const [payrollId, setPayrollId] = useState<number | null>(null);
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   // Time-based edit restriction states (for QLV role)
@@ -519,6 +521,8 @@ export default function EmployeeDetail() {
   const loadPayrollForMonth = async (month: number, year: number) => {
     try {
       setIsLoadingPayroll(true);
+      setInsuranceUserEdited(false);
+      setAdvanceUserEdited(false);
       const response = await payrollService.getPayrolls({
         month,
         year,
@@ -536,8 +540,33 @@ export default function EmployeeDetail() {
         setAdvanceAmount(employeePayroll.advanceTotal || 0);
       } else {
         setPayrollId(null);
-        setInsuranceAmount(0);
-        setAdvanceAmount(0);
+        setAdvanceAmount(employee?.monthlyAdvanceLimit || 0);
+
+        if (employee?.employeeType === "COMPANY_STAFF") {
+          setInsuranceAmount(employee?.socialInsurance || 0);
+        } else {
+          // CONTRACT_STAFF chưa có payroll tháng này: đọc từ tháng trước để hiển thị gợi ý
+          const prevMonth = month === 1 ? 12 : month - 1;
+          const prevYear = month === 1 ? year - 1 : year;
+          try {
+            const prevResponse = await payrollService.getPayrolls({
+              month: prevMonth,
+              year: prevYear,
+              page: 0,
+              pageSize: 100,
+            });
+            const prevPayroll = prevResponse.content?.find(
+              (p) => Number(p.employeeId) === Number(id)
+            );
+            setInsuranceAmount(
+              prevPayroll && prevPayroll.insuranceTotal > 0
+                ? prevPayroll.insuranceTotal
+                : 0
+            );
+          } catch {
+            setInsuranceAmount(0);
+          }
+        }
       }
     } catch (error) {
       console.error("Error loading payroll:", error);
@@ -570,25 +599,26 @@ export default function EmployeeDetail() {
       toast.error(error.message || "Có lỗi xảy ra khi cập nhật nhân viên", { duration: 5000 });
     }
 
-    // Action 2: Update/create payroll (independent of Action 1)
-    if (insuranceAmount > 0 || advanceAmount > 0) {
+    // Action 2: Update/create payroll — chỉ khi user thực sự chỉnh sửa insurance hoặc advance
+    const shouldUpdatePayroll = insuranceUserEdited || advanceUserEdited;
+    if (shouldUpdatePayroll) {
       try {
         if (payrollId) {
-          // Update existing payroll with both insurance and advance
+          // Payroll đã tồn tại — chỉ gửi field nào user đã chỉnh
           await payrollService.recalculatePayroll(payrollId, {
-            insuranceTotal: insuranceAmount,
-            advanceTotal: advanceAmount,
+            insuranceTotal: insuranceUserEdited ? insuranceAmount : undefined,
+            advanceTotal: advanceUserEdited ? advanceAmount : undefined,
           });
           payrollUpdateSuccess = true;
           toast.success("Đã cập nhật bảo hiểm và tiền ứng thành công", { duration: 5000 });
         } else {
-          // Create new payroll
+          // Payroll chưa tồn tại — tạo mới, chỉ gửi field user đã nhập
           const createData = {
             employeeId: Number(id),
             month: selectedMonth,
             year: selectedYear,
-            insuranceAmount: insuranceAmount > 0 ? insuranceAmount : undefined,
-            advanceSalary: advanceAmount > 0 ? advanceAmount : undefined,
+            insuranceAmount: insuranceUserEdited && insuranceAmount > 0 ? insuranceAmount : undefined,
+            advanceSalary: advanceUserEdited && advanceAmount > 0 ? advanceAmount : undefined,
           };
           await payrollService.calculatePayroll(createData);
           payrollUpdateSuccess = true;
@@ -2147,7 +2177,10 @@ export default function EmployeeDetail() {
                   <input
                     type="number"
                     value={insuranceAmount}
-                    onChange={(e) => setInsuranceAmount(Number(e.target.value))}
+                    onChange={(e) => {
+                      setInsuranceAmount(Number(e.target.value));
+                      setInsuranceUserEdited(true);
+                    }}
                     className={`${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     placeholder="0"
                     min="0"
@@ -2175,7 +2208,10 @@ export default function EmployeeDetail() {
                   <input
                     type="number"
                     value={advanceAmount}
-                    onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                    onChange={(e) => {
+                      setAdvanceAmount(Number(e.target.value));
+                      setAdvanceUserEdited(true);
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0"
                     min="0"

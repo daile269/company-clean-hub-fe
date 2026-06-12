@@ -142,55 +142,14 @@ class NotificationService {
   }
 
   /**
-   * Kết nối SSE realtime — chỉ gọi 1 lần khi login.
-   * Trả về hàm cleanup để đóng kết nối.
+   * Kết nối SSE realtime — DISABLED vì EventSource không hỗ trợ JWT token trong header.
+   * TODO: Implement custom SSE client với fetch/XMLHttpRequest nếu cần realtime notification.
+   * Hiện tại dùng polling thông thường qua getAll() hoặc getUnreadCount().
    */
   connectSSE(onNotification: (n: NotificationResponse) => void): () => void {
-    const token = apiService.getToken();
-    if (!token) return () => {};
-
-    // Dùng native EventSource + token qua URL param vì EventSource không hỗ trợ custom header
-    // Nếu BE chấp nhận query param token:
-    const url = `${API_BASE_URL}/notifications/subscribe?token=${encodeURIComponent(token)}`;
-
-    let es: EventSource | null = null;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
-    let closed = false;
-
-    const connect = () => {
-      if (closed) return;
-      es = new EventSource(url);
-
-      es.addEventListener('connected', () => {
-        console.log('[SSE] Notification stream connected');
-      });
-
-      es.addEventListener('notification', (event: MessageEvent) => {
-        try {
-          const notif: NotificationResponse = JSON.parse(event.data);
-          onNotification(notif);
-        } catch (e) {
-          console.warn('[SSE] Failed to parse notification event:', e);
-        }
-      });
-
-      es.onerror = () => {
-        console.warn('[SSE] Connection error, retrying in 30s...');
-        es?.close();
-        if (!closed) {
-          // Tăng delay lên 30s để tránh reconnect liên tục khi server bị quá tải
-          retryTimeout = setTimeout(connect, 30000);
-        }
-      };
-    };
-
-    connect();
-
-    return () => {
-      closed = true;
-      if (retryTimeout) clearTimeout(retryTimeout);
-      es?.close();
-    };
+    console.log('[SSE] SSE connection disabled - using polling instead');
+    // Return empty cleanup function
+    return () => {};
   }
 }
 

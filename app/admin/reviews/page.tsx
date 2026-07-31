@@ -8,6 +8,9 @@ import contractService from "@/services/contractService";
 import { assignmentService } from "@/services/assignmentService";
 import { customerService } from "@/services/customerService";
 import { employeeService } from "@/services/employeeService";
+import SearchSelect from "@/components/SearchSelect";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 
 export default function ReviewsPage() {
   const router = useRouter();
@@ -48,6 +51,23 @@ export default function ReviewsPage() {
   const [employeeOptions, setEmployeeOptions] = useState<any[]>([]);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const contractOptionsForSelect = contractOptions.map((c) => ({
+    id: c.id,
+    label: c.contractNumber ? `${c.contractNumber}` : `${c.id}`,
+    subLabel: c.customerName || undefined
+  }));
+
+  const customerOptionsForSelect = customerOptions.map((cu: any) => ({
+    id: cu.id,
+    label: cu.name ? `${cu.name}` : `${cu.id}`
+  }));
+
+  const employeeOptionsForSelect = employeeOptions.map((emp: any) => ({
+    id: emp.id,
+    label: emp.name ? `${emp.name}` : `${emp.id}`,
+    subLabel: emp.employeeCode || undefined
+  }));
   const [forbidden, setForbidden] = useState(false);
 
   const load = async () => {
@@ -149,7 +169,10 @@ export default function ReviewsPage() {
     loadOptions();
   }, []);
 
-  const handleFilter = () => {
+  const handleResetFilters = () => {
+    setFilterContractId("");
+    setFilterCustomerId("");
+    setFilterEmployeeId("");
     setPage(0);
   };
 
@@ -216,66 +239,50 @@ export default function ReviewsPage() {
         <h1 className="text-2xl font-bold">Quản lý đánh giá</h1>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-8 items-end">
-        <div>
-          <label className="block text-sm text-gray-600 mb-2">
-            Chọn hợp đồng
-          </label>
-          <select
-            value={filterContractId}
-            onChange={(e) => setFilterContractId(e.target.value)}
-            className="px-3 py-2 border rounded"
-          >
-            <option value="">Tất cả</option>
-            {contractOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.contractNumber ?? c.id}{" "}
-                {c.customerName ? `- ${c.customerName}` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-2">
-            Chọn khách hàng
-          </label>
-          <select
-            value={filterCustomerId}
-            onChange={(e) => setFilterCustomerId(e.target.value)}
-            className="px-3 py-2 border rounded"
-          >
-            <option value="">Tất cả</option>
-            {customerOptions.map((cu: any) => (
-              <option key={cu.id} value={cu.id}>
-                {cu.name ?? cu.id}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-2">
-            Chọn nhân viên
-          </label>
-          <select
-            value={filterEmployeeId}
-            onChange={(e) => setFilterEmployeeId(e.target.value)}
-            className="px-3 py-2 border rounded"
-          >
-            <option value="">Tất cả</option>
-            {employeeOptions.map((emp: any) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.name ?? emp.id}{" "}
-                {emp.employeeCode ? `(${emp.employeeCode})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
+        <SearchSelect
+          label="Chọn hợp đồng"
+          placeholder="Tất cả hợp đồng"
+          options={contractOptionsForSelect}
+          value={filterContractId}
+          onChange={(val) => {
+            setFilterContractId(String(val));
+            setPage(0);
+          }}
+          icon={SolidIcons.faFileContract}
+        />
+        
+        <SearchSelect
+          label="Chọn khách hàng"
+          placeholder="Tất cả khách hàng"
+          options={customerOptionsForSelect}
+          value={filterCustomerId}
+          onChange={(val) => {
+            setFilterCustomerId(String(val));
+            setPage(0);
+          }}
+          icon={SolidIcons.faUsers}
+        />
+
+        <SearchSelect
+          label="Chọn nhân viên"
+          placeholder="Tất cả nhân viên"
+          options={employeeOptionsForSelect}
+          value={filterEmployeeId}
+          onChange={(val) => {
+            setFilterEmployeeId(String(val));
+            setPage(0);
+          }}
+          icon={SolidIcons.faUserTie}
+        />
+
         <div>
           <button
-            onClick={handleFilter}
-            className="px-3 py-2 bg-blue-600 text-white rounded inline-flex items-center gap-2"
+            onClick={handleResetFilters}
+            className="w-full px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-semibold flex items-center justify-center gap-2 border border-gray-200 transition-colors cursor-pointer text-xs"
           >
-            🔎Lọc
+            <FontAwesomeIcon icon={SolidIcons.faSync} className="text-[10px]" />
+            Đặt lại bộ lọc
           </button>
         </div>
       </div>

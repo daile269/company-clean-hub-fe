@@ -88,6 +88,8 @@ export default function EmployeeDetail() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
   const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [insuranceUserEdited, setInsuranceUserEdited] = useState<boolean>(false);
+  const [advanceUserEdited, setAdvanceUserEdited] = useState<boolean>(false);
   const [payrollId, setPayrollId] = useState<number | null>(null);
   const [isLoadingPayroll, setIsLoadingPayroll] = useState(false);
   // Time-based edit restriction states (for QLV role)
@@ -519,6 +521,8 @@ export default function EmployeeDetail() {
   const loadPayrollForMonth = async (month: number, year: number) => {
     try {
       setIsLoadingPayroll(true);
+      setInsuranceUserEdited(false);
+      setAdvanceUserEdited(false);
       const response = await payrollService.getPayrolls({
         month,
         year,
@@ -536,8 +540,33 @@ export default function EmployeeDetail() {
         setAdvanceAmount(employeePayroll.advanceTotal || 0);
       } else {
         setPayrollId(null);
-        setInsuranceAmount(0);
-        setAdvanceAmount(0);
+        setAdvanceAmount(employee?.monthlyAdvanceLimit || 0);
+
+        if (employee?.employeeType === "COMPANY_STAFF") {
+          setInsuranceAmount(employee?.socialInsurance || 0);
+        } else {
+          // CONTRACT_STAFF chưa có payroll tháng này: đọc từ tháng trước để hiển thị gợi ý
+          const prevMonth = month === 1 ? 12 : month - 1;
+          const prevYear = month === 1 ? year - 1 : year;
+          try {
+            const prevResponse = await payrollService.getPayrolls({
+              month: prevMonth,
+              year: prevYear,
+              page: 0,
+              pageSize: 100,
+            });
+            const prevPayroll = prevResponse.content?.find(
+              (p) => Number(p.employeeId) === Number(id)
+            );
+            setInsuranceAmount(
+              prevPayroll && prevPayroll.insuranceTotal > 0
+                ? prevPayroll.insuranceTotal
+                : 0
+            );
+          } catch {
+            setInsuranceAmount(0);
+          }
+        }
       }
     } catch (error) {
       console.error("Error loading payroll:", error);
@@ -570,25 +599,26 @@ export default function EmployeeDetail() {
       toast.error(error.message || "Có lỗi xảy ra khi cập nhật nhân viên", { duration: 5000 });
     }
 
-    // Action 2: Update/create payroll (independent of Action 1)
-    if (insuranceAmount > 0 || advanceAmount > 0) {
+    // Action 2: Update/create payroll — chỉ khi user thực sự chỉnh sửa insurance hoặc advance
+    const shouldUpdatePayroll = insuranceUserEdited || advanceUserEdited;
+    if (shouldUpdatePayroll) {
       try {
         if (payrollId) {
-          // Update existing payroll with both insurance and advance
+          // Payroll đã tồn tại — chỉ gửi field nào user đã chỉnh
           await payrollService.recalculatePayroll(payrollId, {
-            insuranceTotal: insuranceAmount,
-            advanceTotal: advanceAmount,
+            insuranceTotal: insuranceUserEdited ? insuranceAmount : undefined,
+            advanceTotal: advanceUserEdited ? advanceAmount : undefined,
           });
           payrollUpdateSuccess = true;
           toast.success("Đã cập nhật bảo hiểm và tiền ứng thành công", { duration: 5000 });
         } else {
-          // Create new payroll
+          // Payroll chưa tồn tại — tạo mới, chỉ gửi field user đã nhập
           const createData = {
             employeeId: Number(id),
             month: selectedMonth,
             year: selectedYear,
-            insuranceAmount: insuranceAmount > 0 ? insuranceAmount : undefined,
-            advanceSalary: advanceAmount > 0 ? advanceAmount : undefined,
+            insuranceAmount: insuranceUserEdited && insuranceAmount > 0 ? insuranceAmount : undefined,
+            advanceSalary: advanceUserEdited && advanceAmount > 0 ? advanceAmount : undefined,
           };
           await payrollService.calculatePayroll(createData);
           payrollUpdateSuccess = true;
@@ -1817,7 +1847,7 @@ export default function EmployeeDetail() {
           <h3 className="text-lg font-semibold text-gray-800">
             Hình ảnh nhân viên
           </h3>
-          {employeeImages.length > 0 && canEdit && (
+          {employeeImages.length > 0 && (
             <button
               onClick={() => setShowImageManageModal(true)}
               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
@@ -1920,7 +1950,7 @@ export default function EmployeeDetail() {
               </div>
             )}
           </>
-        ) : canEdit ? (
+        ) : (
           <ImageUploader
             onChange={handleUploadEmployeeImage}
             isLoading={isUploadingEmployeeImage}
@@ -1931,8 +1961,6 @@ export default function EmployeeDetail() {
             width="w-7/12"
             multiple={true}
           />
-        ) : (
-          <div className="text-gray-400 italic text-center py-8">Chưa có hình ảnh</div>
         )}
       </div>
 
@@ -2149,7 +2177,10 @@ export default function EmployeeDetail() {
                   <input
                     type="number"
                     value={insuranceAmount}
-                    onChange={(e) => setInsuranceAmount(Number(e.target.value))}
+                    onChange={(e) => {
+                      setInsuranceAmount(Number(e.target.value));
+                      setInsuranceUserEdited(true);
+                    }}
                     className={`${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     placeholder="0"
                     min="0"
@@ -2177,7 +2208,10 @@ export default function EmployeeDetail() {
                   <input
                     type="number"
                     value={advanceAmount}
-                    onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                    onChange={(e) => {
+                      setAdvanceAmount(Number(e.target.value));
+                      setAdvanceUserEdited(true);
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0"
                     min="0"
@@ -2365,7 +2399,7 @@ export default function EmployeeDetail() {
                         alt={`Employee image ${image.id}`}
                         className="w-full h-full object-cover rounded-lg border border-gray-200"
                       />
-                      {/* Delete button - Hidden for non-editors */}
+                      {/* Delete button - Hidden for EMPLOYEE role */}
                       {canEdit && (
                         <button
                           onClick={() => setImageToDelete(image.id.toString())}
@@ -2393,62 +2427,62 @@ export default function EmployeeDetail() {
 
                   {/* Upload area */}
                   {canEdit && (
-                    <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleUploadImage}
-                        disabled={isUploadingImage}
-                        className="hidden"
-                      />
-                      {isUploadingImage && (
-                        <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <svg
-                              className="animate-spin h-6 w-6 text-blue-600"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                            <p className="text-xs font-medium text-gray-600">
-                              Đang tải...
-                            </p>
-                          </div>
+                  <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleUploadImage}
+                      disabled={isUploadingImage}
+                      className="hidden"
+                    />
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg
+                            className="animate-spin h-6 w-6 text-blue-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          <p className="text-xs font-medium text-gray-600">
+                            Đang tải...
+                          </p>
                         </div>
-                      )}
-                      <div className="text-center">
-                        <svg
-                          className="w-8 h-8 mx-auto text-gray-400 mb-2"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        <p className="text-xs font-medium text-gray-600">
-                          {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
-                        </p>
                       </div>
-                    </label>
+                    )}
+                    <div className="text-center">
+                      <svg
+                        className="w-8 h-8 mx-auto text-gray-400 mb-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      <p className="text-xs font-medium text-gray-600">
+                        {isUploadingImage ? "Đang tải..." : "Thêm ảnh"}
+                      </p>
+                    </div>
+                  </label>
                   )}
                 </div>
               </div>

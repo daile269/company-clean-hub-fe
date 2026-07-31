@@ -50,7 +50,8 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
         </Link>
         {user &&
           user?.roleName !== "CUSTOMER" &&
-          user?.roleName !== "EMPLOYEE" && (
+          user?.roleName !== "EMPLOYEE" &&
+          user?.roleName !== "QLV" && (
             <Link
               href="/admin/company-staff"
               className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
@@ -120,7 +121,8 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
         {user &&
           user?.roleName !== "CUSTOMER" &&
           user?.roleName !== "EMPLOYEE" &&
-          user?.roleName !== "ACCOUNTANT" && (
+          user?.roleName !== "ACCOUNTANT" &&
+          user?.roleName !== "QLV" && (
             <Link
               href="/admin/assignments"
               className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"

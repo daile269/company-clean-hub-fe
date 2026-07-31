@@ -2400,7 +2400,7 @@ export default function EmployeeDetail() {
                         className="w-full h-full object-cover rounded-lg border border-gray-200"
                       />
                       {/* Delete button - Hidden for EMPLOYEE role */}
-                      {role !== 'EMPLOYEE' && (
+                      {canEdit && (
                         <button
                           onClick={() => setImageToDelete(image.id.toString())}
                           disabled={isDeletingImage}
@@ -2426,6 +2426,7 @@ export default function EmployeeDetail() {
                   ))}
 
                   {/* Upload area */}
+                  {canEdit && (
                   <label className="relative aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors bg-gray-50">
                     <input
                       type="file"
@@ -2482,6 +2483,7 @@ export default function EmployeeDetail() {
                       </p>
                     </div>
                   </label>
+                  )}
                 </div>
               </div>
 

@@ -50,6 +50,8 @@ class EmployeeService {
       healthInsurance: apiEmployee.healthInsurance,
       monthlyAdvanceLimit: apiEmployee.monthlyAdvanceLimit || undefined,
       description: apiEmployee.description || undefined,
+      cccdFrontImage: apiEmployee.cccdFrontImage || undefined,
+      cccdBackImage: apiEmployee.cccdBackImage || undefined,
       joinDate: apiEmployee.createdAt
         ? new Date(apiEmployee.createdAt)
         : new Date(),
@@ -121,7 +123,7 @@ class EmployeeService {
   async create(employee: Partial<Employee>): Promise<ApiResponse<ApiEmployee>> {
     // Map frontend model to backend EmployeeRequest DTO
     const apiEmployee = {
-      username: employee.employeeCode,
+      username: employee.username || employee.phone,
       password: employee.password,
       employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,
@@ -135,6 +137,8 @@ class EmployeeService {
       description: employee.description || "",
       employmentType: "CONTRACT_STAFF",
       monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
+      cccdFrontImage: employee.cccdFrontImage !== undefined ? employee.cccdFrontImage : undefined,
+      cccdBackImage: employee.cccdBackImage !== undefined ? employee.cccdBackImage : undefined,
     };
 
     return await apiService.post<ApiEmployee>("/employees", apiEmployee);
@@ -146,7 +150,7 @@ class EmployeeService {
   ): Promise<ApiResponse<ApiEmployee>> {
     // Map frontend model to backend EmployeeRequest DTO
     const apiEmployee = {
-      username: employee.username,
+      username: employee.username || employee.phone,
       password: employee.password || "123456",
       employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,
@@ -160,6 +164,8 @@ class EmployeeService {
       description: employee.description || "",
       employmentType: "CONTRACT_STAFF",
       monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
+      cccdFrontImage: employee.cccdFrontImage !== undefined ? employee.cccdFrontImage : undefined,
+      cccdBackImage: employee.cccdBackImage !== undefined ? employee.cccdBackImage : undefined,
     };
 
     return await apiService.put<ApiEmployee>(`/employees/${id}`, apiEmployee);
@@ -174,7 +180,7 @@ class EmployeeService {
   ): Promise<ApiResponse<ApiEmployee>> {
     // Map frontend model to backend EmployeeRequest DTO for COMPANY_STAFF
     const apiEmployee = {
-      username: employee.employeeCode,
+      username: employee.username || employee.phone,
       password: employee.password,
       employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,
@@ -191,6 +197,8 @@ class EmployeeService {
       allowance: employee.allowance || null,
       insuranceSalary: employee.socialInsurance || null,
       monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
+      cccdFrontImage: employee.cccdFrontImage !== undefined ? employee.cccdFrontImage : undefined,
+      cccdBackImage: employee.cccdBackImage !== undefined ? employee.cccdBackImage : undefined,
     };
 
     return await apiService.post<ApiEmployee>("/employees", apiEmployee);
@@ -202,7 +210,7 @@ class EmployeeService {
   ): Promise<ApiResponse<ApiEmployee>> {
     // Map frontend model to backend EmployeeRequest DTO for COMPANY_STAFF
     const apiEmployee = {
-      username: employee.username,
+      username: employee.username || employee.phone,
       password: employee.password || "123456",
       employeeCode: employee.employeeCode,
       roleId: employee.roleId || 2,
@@ -219,6 +227,8 @@ class EmployeeService {
       allowance: employee.allowance || null,
       insuranceSalary: employee.socialInsurance || null,
       monthlyAdvanceLimit: employee.monthlyAdvanceLimit || null,
+      cccdFrontImage: employee.cccdFrontImage !== undefined ? employee.cccdFrontImage : undefined,
+      cccdBackImage: employee.cccdBackImage !== undefined ? employee.cccdBackImage : undefined,
     };
 
     return await apiService.put<ApiEmployee>(`/employees/${id}`, apiEmployee);
@@ -257,6 +267,24 @@ class EmployeeService {
   ): Promise<ApiResponse<EmployeeImage[]>> {
     return apiService.postFormData<EmployeeImage[]>(
       `/employees/${employeeId}/images`,
+      formData
+    );
+  }
+
+  async uploadCccdImages(
+    employeeId: string,
+    frontFile?: File,
+    backFile?: File
+  ): Promise<ApiResponse<ApiEmployee>> {
+    const formData = new FormData();
+    if (frontFile) {
+      formData.append("frontFile", frontFile);
+    }
+    if (backFile) {
+      formData.append("backFile", backFile);
+    }
+    return apiService.postFormData<ApiEmployee>(
+      `/employees/${employeeId}/cccd-images`,
       formData
     );
   }

@@ -9,6 +9,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 import { usePermission } from "@/hooks/usePermission";
 import BankSelect from "@/components/BankSelect";
+import SearchSelect from "@/components/SearchSelect";
+import {
+  VIETNAM_PROVINCES,
+  formatLocationAddress,
+  parseLocationAddress,
+} from "@/utils/vietnamLocations";
 import { authService } from "@/services/authService";
 export default function CompanyStaffPage() {
   const router = useRouter();
@@ -66,6 +72,30 @@ export default function CompanyStaffPage() {
   const [addLoading, setAddLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [cccdFrontFile, setCccdFrontFile] = useState<File | null>(null);
+  const [cccdFrontPreview, setCccdFrontPreview] = useState<string>("");
+  const [cccdBackFile, setCccdBackFile] = useState<File | null>(null);
+  const [cccdBackPreview, setCccdBackPreview] = useState<string>("");
+  const [addProvince, setAddProvince] = useState<string>("");
+  const [addWard, setAddWard] = useState<string>("");
+  const [addDetailAddress, setAddDetailAddress] = useState<string>("");
+  const [errorAlertMessage, setErrorAlertMessage] = useState<string>("");
+
+  const handleCccdFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCccdFrontFile(file);
+      setCccdFrontPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleCccdBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCccdBackFile(file);
+      setCccdBackPreview(URL.createObjectURL(file));
+    }
+  };
   const role = authService.getUserRole();
 
   // Format number utilities
@@ -164,12 +194,20 @@ export default function CompanyStaffPage() {
   const handleOpenAddModal = async () => {
     setShowAddModal(true);
     setGeneratingCode(true);
+    setCccdFrontFile(null);
+    setCccdFrontPreview("");
+    setCccdBackFile(null);
+    setCccdBackPreview("");
+    setAddProvince("");
+    setAddWard("");
+    setAddDetailAddress("");
     try {
       const code = await employeeService.generateEmployeeCode("COMPANY_STAFF");
       console.log("Generated employee code:", code);
       setAddForm({
         ...addForm,
         employeeCode: code,
+        address: "",
       });
     } catch (error) {
       console.error("Error generating employee code:", error);
@@ -180,12 +218,12 @@ export default function CompanyStaffPage() {
   };
 
   const handleAddEmployee = async () => {
-    if (!addForm.employeeCode || addForm.employeeCode.trim() === "") {
-      toast.error("Mã nhân viên không được để trống");
+    if (!addForm.phone || addForm.phone.trim() === "") {
+      toast.error("Số điện thoại không được để trống");
       return;
     }
-    if (addForm.employeeCode.length > 50) {
-      toast.error("Mã nhân viên không được vượt quá 50 ký tự");
+    if (addForm.phone.length > 50) {
+      toast.error("Số điện thoại không được vượt quá 50 ký tự");
       return;
     }
     if (!addForm.password || addForm.password.trim() === "") {
@@ -196,34 +234,43 @@ export default function CompanyStaffPage() {
       toast.error("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
-    if (!addForm.phone || addForm.phone.trim() === "") {
-      toast.error("Số điện thoại không được để trống");
-      return;
-    }
-    if (addForm.phone.length > 50) {
-      toast.error("Số điện thoại không được vượt quá 50 ký tự");
-      return;
-    }
-    if (!addForm.idCard || addForm.idCard.trim() === "") {
-      toast.error("CCCD không được để trống");
-      return;
-    }
-    if (addForm.idCard.length > 50) {
-      toast.error("CCCD không được vượt quá 50 ký tự");
-      return;
-    }
     if (!addForm.name || addForm.name.trim() === "") {
-      toast.error("Tên nhân viên không được để trống");
+      toast.error("Họ và tên không được để trống");
       return;
     }
     if (addForm.name.length > 150) {
-      toast.error("Tên không được vượt quá 150 ký tự");
+      toast.error("Họ tên không được vượt quá 150 ký tự");
+      return;
+    }
+    if (!addForm.idCard || addForm.idCard.trim() === "") {
+      toast.error("Số CCCD không được để trống");
       return;
     }
 
+    const locationAddress = formatLocationAddress(addWard, addProvince);
+    const fullAddress = addDetailAddress.trim()
+      ? `${addDetailAddress.trim()}, ${locationAddress}`
+      : locationAddress;
+
+    if (!fullAddress || fullAddress.trim() === "") {
+      toast.error(
+        "Vui lòng chọn Tỉnh/Thành phố và Phường/Xã cho chỗ ở hiện tại",
+      );
+      return;
+    }
+
+    if (!cccdFrontFile) {
+      toast.error("Vui lòng tải lên ảnh CCCD mặt trước");
+      return;
+    }
+    if (!cccdBackFile) {
+      toast.error("Vui lòng tải lên ảnh CCCD mặt sau");
+      return;
+    }
+
+    setErrorAlertMessage("");
     try {
       setAddLoading(true);
-      // Parse formatted numbers
       const monthlySalary = addForm.monthlySalary
         ? Number(parseFormattedNumber(addForm.monthlySalary))
         : 0;
@@ -237,14 +284,29 @@ export default function CompanyStaffPage() {
         ? Number(parseFormattedNumber(addForm.monthlyAdvanceLimit))
         : 0;
 
-      const response = await employeeService.createCompanyStaff({
+      const payload = {
         ...addForm,
+        address: fullAddress,
+        username: addForm.phone.trim(),
+        phone: addForm.phone.trim(),
+        employeeCode: addForm.employeeCode || "",
+        idCard: addForm.idCard || addForm.phone.trim(),
         monthlySalary,
         allowance,
         socialInsurance,
         monthlyAdvanceLimit,
-      });
-      if (response.success) {
+      };
+
+      const response = await employeeService.createCompanyStaff(payload);
+      if (response.success && response.data) {
+        const newEmpId = String(response.data.id);
+        if (cccdFrontFile || cccdBackFile) {
+          await employeeService.uploadCccdImages(
+            newEmpId,
+            cccdFrontFile || undefined,
+            cccdBackFile || undefined,
+          );
+        }
         toast.success("Đã thêm nhân viên văn phòng thành công");
         setShowAddModal(false);
         setAddForm({
@@ -264,13 +326,21 @@ export default function CompanyStaffPage() {
           socialInsurance: "",
           monthlyAdvanceLimit: "",
         });
+        setCccdFrontFile(null);
+        setCccdFrontPreview("");
+        setCccdBackFile(null);
+        setCccdBackPreview("");
         loadEmployees();
       } else {
-        toast.error(response.message || "Thêm nhân viên thất bại");
+        const errMsg = response.message || "Thêm nhân viên thất bại";
+        toast.error(errMsg);
+        setErrorAlertMessage(errMsg);
       }
     } catch (error: any) {
       console.error("Error adding employee:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi thêm nhân viên");
+      const errMsg = error.message || "Có lỗi xảy ra khi thêm nhân viên";
+      toast.error(errMsg);
+      setErrorAlertMessage(errMsg);
     } finally {
       setAddLoading(false);
     }
@@ -717,10 +787,88 @@ export default function CompanyStaffPage() {
                     </button>
                   </div>
 
+                  {/* Unique Fields Note */}
+                  <div className="mb-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100 flex items-start gap-2.5 text-blue-900 text-xs shadow-2xs">
+                    <FontAwesomeIcon icon={SolidIcons.faInfoCircle} className="text-blue-500 text-sm mt-0.5 shrink-0" />
+                    <div className="leading-relaxed">
+                      <span className="font-semibold text-blue-950">Thông tin không được trùng lặp:</span>{" "}
+                      Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân hàng và Mã nhân viên.
+                    </div>
+                  </div>
+
+                  {/* Error Alert Panel when duplicate or server error occurs */}
+                  {errorAlertMessage && (
+                    <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-800 shadow-sm animate-fade-in">
+                      <FontAwesomeIcon icon={SolidIcons.faExclamationTriangle} className="text-red-600 text-sm mt-0.5 shrink-0" />
+                      <div className="flex-1 text-xs">
+                        <p className="font-semibold text-red-900 mb-0.5">Phát hiện trùng lặp hoặc lỗi dữ liệu!</p>
+                        <p className="text-red-700 leading-relaxed font-medium">{errorAlertMessage}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setErrorAlertMessage("")}
+                        className="text-red-400 hover:text-red-600 text-xs p-1 transition-colors"
+                        title="Đóng thông báo"
+                      >
+                        <FontAwesomeIcon icon={SolidIcons.faTimes} />
+                      </button>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Mã nhân viên (username đăng nhập) *
+                        Số điện thoại (Tên đăng nhập){" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={addForm.phone}
+                        onChange={(e) =>
+                          setAddForm({
+                            ...addForm,
+                            phone: e.target.value,
+                            username: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="VD: 0901234567"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Mật khẩu <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={addForm.password || ""}
+                        onChange={(e) =>
+                          setAddForm({ ...addForm, password: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Mật khẩu"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Họ và tên <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={addForm.name}
+                        onChange={(e) =>
+                          setAddForm({ ...addForm, name: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nhập họ tên"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Mã nhân viên (Tự động sinh)
                       </label>
                       <input
                         type="text"
@@ -738,52 +886,10 @@ export default function CompanyStaffPage() {
                         readOnly={generatingCode}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Mật khẩu *
-                      </label>
-                      <input
-                        type="password"
-                        value={addForm.password || ""}
-                        onChange={(e) =>
-                          setAddForm({ ...addForm, password: e.target.value })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Mật khẩu"
-                      />
-                    </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Họ và tên *
-                      </label>
-                      <input
-                        type="text"
-                        value={addForm.name}
-                        onChange={(e) =>
-                          setAddForm({ ...addForm, name: e.target.value })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nhập họ tên"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Số điện thoại *
-                      </label>
-                      <input
-                        type="tel"
-                        value={addForm.phone}
-                        onChange={(e) =>
-                          setAddForm({ ...addForm, phone: e.target.value })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="0123456789"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CCCD *
+                        Số CCCD <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -796,19 +902,187 @@ export default function CompanyStaffPage() {
                       />
                     </div>
 
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Địa chỉ
+                    <div className="col-span-2 border-t pt-3 mt-1">
+                      <label className="block text-sm font-semibold text-gray-800 mb-2">
+                        Chỗ ở hiện tại <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        value={addForm.address}
-                        onChange={(e) =>
-                          setAddForm({ ...addForm, address: e.target.value })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nhập địa chỉ"
-                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Tỉnh / Thành phố <span className="text-red-500">*</span>
+                          </label>
+                          <SearchSelect
+                            options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                            value={addProvince}
+                            onChange={(val) => {
+                              setAddProvince(String(val));
+                              setAddWard("");
+                            }}
+                            placeholder="-- Chọn Tỉnh / Thành phố --"
+                            searchPlaceholder="Tìm Tỉnh / Thành phố..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Phường / Xã / Quận <span className="text-red-500">*</span>
+                          </label>
+                          <SearchSelect
+                            options={
+                              addProvince
+                                ? (VIETNAM_PROVINCES.find((p) => p.name === addProvince)?.wards.map((w) => ({ id: w, label: w })) || [])
+                                : []
+                            }
+                            value={addWard}
+                            onChange={(val) => setAddWard(String(val))}
+                            disabled={!addProvince}
+                            placeholder="-- Chọn Phường / Xã / Quận --"
+                            searchPlaceholder="Tìm Phường / Xã / Quận..."
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Địa chỉ chi tiết (Số nhà, tên đường... - Tùy chọn)
+                        </label>
+                        <input
+                          type="text"
+                          value={addDetailAddress}
+                          onChange={(e) => setAddDetailAddress(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="VD: Số 123 đường Nguyễn Huệ"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 border-t pt-3 mt-1">
+                      <label className="block text-sm font-semibold text-gray-800 mb-2">
+                        Hình ảnh Căn cước công dân (CCCD){" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Mặt trước */}
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center bg-gray-50 hover:bg-blue-50/50 transition-colors">
+                          <label className="block text-xs font-semibold text-gray-700 mb-2">
+                            Mặt trước CCCD{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          {cccdFrontPreview ? (
+                            <div className="relative w-full h-32 rounded border overflow-hidden mb-2">
+                              <img
+                                src={cccdFrontPreview}
+                                alt="CCCD Mặt trước"
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCccdFrontFile(null);
+                                  setCccdFrontPreview("");
+                                }}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                id="cs-cccd-front-input"
+                                onChange={handleCccdFrontChange}
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor="cs-cccd-front-input"
+                                className="cursor-pointer flex flex-col items-center justify-center py-4"
+                              >
+                                <svg
+                                  className="w-7 h-7 text-blue-500 mb-1"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <span className="text-xs font-medium text-blue-600">
+                                  Chọn ảnh Mặt trước
+                                </span>
+                                <span className="text-[10px] text-gray-400 mt-0.5">
+                                  PNG, JPG, JPEG
+                                </span>
+                              </label>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Mặt sau */}
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center bg-gray-50 hover:bg-blue-50/50 transition-colors">
+                          <label className="block text-xs font-semibold text-gray-700 mb-2">
+                            Mặt sau CCCD <span className="text-red-500">*</span>
+                          </label>
+                          {cccdBackPreview ? (
+                            <div className="relative w-full h-32 rounded border overflow-hidden mb-2">
+                              <img
+                                src={cccdBackPreview}
+                                alt="CCCD Mặt sau"
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCccdBackFile(null);
+                                  setCccdBackPreview("");
+                                }}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                id="cs-cccd-back-input"
+                                onChange={handleCccdBackChange}
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor="cs-cccd-back-input"
+                                className="cursor-pointer flex flex-col items-center justify-center py-4"
+                              >
+                                <svg
+                                  className="w-7 h-7 text-blue-500 mb-1"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <span className="text-xs font-medium text-blue-600">
+                                  Chọn ảnh Mặt sau
+                                </span>
+                                <span className="text-[10px] text-gray-400 mt-0.5">
+                                  PNG, JPG, JPEG
+                                </span>
+                              </label>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div>

@@ -138,6 +138,8 @@ export interface Employee {
   status?: string;               // Trạng thái
   description?: string;          // Mô tả
   regionalManagerId?: string;    // Thuộc QLV nào
+  cccdFrontImage?: string;       // Ảnh CCCD mặt trước (Cloudinary public ID)
+  cccdBackImage?: string;        // Ảnh CCCD mặt sau (Cloudinary public ID)
   joinDate: string | Date;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -167,6 +169,8 @@ export interface ApiEmployee {
   socialInsurance: number;
   healthInsurance: number;
   monthlyAdvanceLimit: number | null; // Số tiền xin ứng hàng tháng
+  cccdFrontImage?: string;
+  cccdBackImage?: string;
   description: string | null;
   createdAt: string | null;
   updatedAt: string | null;

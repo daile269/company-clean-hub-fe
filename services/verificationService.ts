@@ -139,6 +139,23 @@ export const getImageByAttendanceId = async (
     }
 };
 
+// Customer: Lấy verifications của nhân viên làm việc theo hợp đồng của customer đang đăng nhập
+export const getMyAssignmentVerifications = async (): Promise<AssignmentVerificationResponse[]> => {
+    try {
+        const response = await apiService.get<AssignmentVerificationResponse[]>(
+            '/verifications/my-assignments'
+        );
+
+        if (response.success && response.data) {
+            return Array.isArray(response.data) ? response.data : [];
+        }
+        return [];
+    } catch (error) {
+        console.error('Error fetching my assignment verifications:', error);
+        return [];
+    }
+};
+
 // Lấy danh sách verification đang chờ duyệt
 export const getPendingVerifications = async (): Promise<AssignmentVerificationResponse[]> => {
     try {
@@ -228,6 +245,7 @@ const verificationService = {
     getVerificationImages,
     canCaptureImage,
     getImageByAttendanceId,
+    getMyAssignmentVerifications,
     getPendingVerifications,
     approveVerification,
     rejectVerification,

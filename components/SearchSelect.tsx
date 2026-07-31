@@ -3,13 +3,13 @@ import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 
-interface Option {
+export interface Option {
   id: string | number;
   label: string;
   subLabel?: string;
 }
 
-interface SearchSelectProps {
+export interface SearchSelectProps {
   options: Option[];
   value: string | number;
   onChange: (value: string | number) => void;
@@ -18,6 +18,9 @@ interface SearchSelectProps {
   label?: string;
   icon?: any; // FontAwesome icon
   disabled?: boolean;
+  showAllOption?: boolean;
+  allOptionLabel?: string;
+  className?: string;
 }
 
 export default function SearchSelect({
@@ -29,6 +32,9 @@ export default function SearchSelect({
   label,
   icon,
   disabled = false,
+  showAllOption = false,
+  allOptionLabel = "Tất cả",
+  className = "",
 }: SearchSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -46,15 +52,16 @@ export default function SearchSelect({
   }, []);
 
   // Filter options based on search query
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(search.toLowerCase()) ||
-    (opt.subLabel && opt.subLabel.toLowerCase().includes(search.toLowerCase()))
+  const filteredOptions = options.filter(
+    (opt) =>
+      opt.label.toLowerCase().includes(search.toLowerCase()) ||
+      (opt.subLabel && opt.subLabel.toLowerCase().includes(search.toLowerCase()))
   );
 
   const selectedOption = options.find((opt) => String(opt.id) === String(value));
 
   return (
-    <div className="flex flex-col gap-1.5 w-full relative" ref={dropdownRef}>
+    <div className={`flex flex-col gap-1.5 w-full relative ${className}`} ref={dropdownRef}>
       {label && (
         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider select-none">
           {label}
@@ -66,7 +73,7 @@ export default function SearchSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-4 py-2.5 flex items-center justify-between hover:border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-left text-sm font-medium disabled:opacity-50 cursor-pointer"
+        className="w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-4 py-2.5 flex items-center justify-between hover:border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-left text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         <div className="flex items-center gap-2 overflow-hidden mr-2">
           {icon && (
@@ -91,9 +98,9 @@ export default function SearchSelect({
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 w-full mt-1.5 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden flex flex-col max-h-60 min-w-[200px]">
+        <div className="absolute top-full left-0 z-50 w-full mt-1.5 bg-white border border-gray-100 rounded-2xl shadow-lg overflow-hidden flex flex-col max-h-64 min-w-[200px]">
           {/* Search box */}
-          <div className="p-2 border-b border-gray-50 flex items-center gap-2 bg-gray-50/50">
+          <div className="p-2 border-b border-gray-100 flex items-center gap-2 bg-gray-50/70">
             <FontAwesomeIcon icon={SolidIcons.faSearch} className="text-gray-400 text-xs ml-2" />
             <input
               type="text"
@@ -107,7 +114,7 @@ export default function SearchSelect({
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="text-gray-400 hover:text-gray-600 text-xs px-1"
+                className="text-gray-400 hover:text-gray-600 text-xs px-1 cursor-pointer"
               >
                 <FontAwesomeIcon icon={SolidIcons.faTimes} />
               </button>
@@ -115,21 +122,23 @@ export default function SearchSelect({
           </div>
 
           {/* Options list */}
-          <div className="overflow-y-auto divide-y divide-gray-50">
-            <button
-              type="button"
-              onClick={() => {
-                onChange("");
-                setIsOpen(false);
-                setSearch("");
-              }}
-              className={`w-full px-4 py-2.5 text-left text-xs font-semibold text-blue-600 hover:bg-blue-50/30 flex items-center justify-between cursor-pointer`}
-            >
-              <span>Tất cả</span>
-              {!value && (
-                <FontAwesomeIcon icon={SolidIcons.faCheck} className="text-[10px] text-blue-600" />
-              )}
-            </button>
+          <div className="overflow-y-auto divide-y divide-gray-50 max-h-48">
+            {showAllOption && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("");
+                  setIsOpen(false);
+                  setSearch("");
+                }}
+                className={`w-full px-4 py-2.5 text-left text-xs font-semibold text-blue-600 hover:bg-blue-50/30 flex items-center justify-between cursor-pointer`}
+              >
+                <span>{allOptionLabel}</span>
+                {!value && (
+                  <FontAwesomeIcon icon={SolidIcons.faCheck} className="text-[10px] text-blue-600" />
+                )}
+              </button>
+            )}
 
             {filteredOptions.length === 0 ? (
               <div className="px-4 py-3 text-center text-xs text-gray-400">
@@ -148,7 +157,7 @@ export default function SearchSelect({
                       setSearch("");
                     }}
                     className={`w-full px-4 py-2.5 text-left text-xs text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-between cursor-pointer ${
-                      isSelected ? "bg-blue-50/20 font-semibold text-blue-600" : ""
+                      isSelected ? "bg-blue-50/30 font-semibold text-blue-600" : ""
                     }`}
                   >
                     <div className="flex flex-col truncate">

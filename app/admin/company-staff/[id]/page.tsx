@@ -4,14 +4,25 @@ import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 // mock data removed — use real API data
 import { Employee } from "@/types";
-import { employeeService, buildCloudinaryUrl, type EmployeeImage } from "@/services/employeeService";
+import {
+  employeeService,
+  buildCloudinaryUrl,
+  type EmployeeImage,
+} from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
-import { usePermission } from '@/hooks/usePermission';
-import { authService } from '@/services/authService';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
+import { usePermission } from "@/hooks/usePermission";
+import BankSelect from "@/components/BankSelect";
+import SearchSelect from "@/components/SearchSelect";
+import {
+  VIETNAM_PROVINCES,
+  formatLocationAddress,
+  parseLocationAddress,
+} from "@/utils/vietnamLocations";
+import { authService } from "@/services/authService";
 import EmployeeLeaveCalendar from "@/components/employee/EmployeeLeaveCalendar";
 export default function CompanyStaffDetailPage() {
   const router = useRouter();
@@ -23,15 +34,41 @@ export default function CompanyStaffDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Employee | null>(null);
+  const [editProvince, setEditProvince] = useState<string>("");
+  const [editWard, setEditWard] = useState<string>("");
+  const [editDetailAddress, setEditDetailAddress] = useState<string>("");
+  const [editCccdFrontFile, setEditCccdFrontFile] = useState<File | null>(null);
+  const [editCccdFrontPreview, setEditCccdFrontPreview] = useState<string>("");
+  const [editCccdBackFile, setEditCccdBackFile] = useState<File | null>(null);
+  const [editCccdBackPreview, setEditCccdBackPreview] = useState<string>("");
+
+  const handleEditCccdFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditCccdFrontFile(file);
+      setEditCccdFrontPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleEditCccdBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditCccdBackFile(file);
+      setEditCccdBackPreview(URL.createObjectURL(file));
+    }
+  };
   const [savingEmployee, setSavingEmployee] = useState(false);
   // Time-based edit restriction states (for QLV role)
-  const [isEditingRestricted, setIsEditingRestricted] = useState<boolean>(false);
+  const [isEditingRestricted, setIsEditingRestricted] =
+    useState<boolean>(false);
   const [restrictionMessage, setRestrictionMessage] = useState<string>("");
+  const [editErrorAlert, setEditErrorAlert] = useState<string>("");
   const role = authService.getUserRole();
   // Format number utilities
   const formatNumber = (num: number | string) => {
     if (!num && num !== 0) return "";
-    const rawValue = typeof num === 'string' ? parseFormattedNumber(num) : num.toString();
+    const rawValue =
+      typeof num === "string" ? parseFormattedNumber(num) : num.toString();
     return new Intl.NumberFormat("vi-VN").format(Number(rawValue));
   };
 
@@ -40,7 +77,7 @@ export default function CompanyStaffDetailPage() {
   };
 
   const handleNumberInput = (value: string) => {
-    return value.replace(/[^0-9]/g, '');
+    return value.replace(/[^0-9]/g, "");
   };
 
   // Image management states
@@ -50,7 +87,8 @@ export default function CompanyStaffDetailPage() {
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
   const [isDeletingImage, setIsDeletingImage] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isUploadingEmployeeImage, setIsUploadingEmployeeImage] = useState(false);
+  const [isUploadingEmployeeImage, setIsUploadingEmployeeImage] =
+    useState(false);
 
   // Assignment states
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -59,8 +97,12 @@ export default function CompanyStaffDetailPage() {
   const [assignmentPageSize] = useState(8);
   const [assignmentTotalPages, setAssignmentTotalPages] = useState(0);
   const [assignmentTotalElements, setAssignmentTotalElements] = useState(0);
-  const [assignmentMonth, setAssignmentMonth] = useState(new Date().getMonth() + 1);
-  const [assignmentYear, setAssignmentYear] = useState(new Date().getFullYear());
+  const [assignmentMonth, setAssignmentMonth] = useState(
+    new Date().getMonth() + 1,
+  );
+  const [assignmentYear, setAssignmentYear] = useState(
+    new Date().getFullYear(),
+  );
   const [activeSchedule, setActiveSchedule] = useState<Assignment | null>(null);
 
   // Work schedule assignment modal
@@ -73,11 +115,11 @@ export default function CompanyStaffDetailPage() {
     workingDaysPerWeek: string[];
     description: string;
   }>({
-    startDate: new Date().toISOString().split('T')[0],
-    salaryAtTime: '',
-    additionalAllowance: '',
+    startDate: new Date().toISOString().split("T")[0],
+    salaryAtTime: "",
+    additionalAllowance: "",
     workingDaysPerWeek: [],
-    description: '',
+    description: "",
   });
 
   const loadEmployee = async () => {
@@ -95,7 +137,9 @@ export default function CompanyStaffDetailPage() {
       // Pre-fill work schedule form with employee salary and allowance
       setWorkScheduleForm((prev) => ({
         ...prev,
-        salaryAtTime: data.monthlySalary ? formatNumber(data.monthlySalary) : "",
+        salaryAtTime: data.monthlySalary
+          ? formatNumber(data.monthlySalary)
+          : "",
         additionalAllowance: data.allowance ? formatNumber(data.allowance) : "",
       }));
       // Load images
@@ -124,16 +168,20 @@ export default function CompanyStaffDetailPage() {
       setAssignmentTotalElements(response.totalElements || 0);
 
       // Tìm lịch làm việc active
-      const active = response.content?.find((a: Assignment) => 
-         a.assignmentType === 'FIXED_BY_COMPANY' && 
-         (a.status?.toUpperCase() === 'ACTIVE' || a.status?.toUpperCase() === 'IN_PROGRESS')
-       );
+      const active = response.content?.find(
+        (a: Assignment) =>
+          a.assignmentType === "FIXED_BY_COMPANY" &&
+          (a.status?.toUpperCase() === "ACTIVE" ||
+            a.status?.toUpperCase() === "IN_PROGRESS"),
+      );
       if (active) {
         setActiveSchedule(active);
       } else if (response.content?.length > 0) {
         // Falls back to checking if there is any fixed company if active not found in current page
         // it's a best-effort since we might not load everything
-        const anyFixed = response.content?.find((a: Assignment) => a.assignmentType === 'FIXED_BY_COMPANY');
+        const anyFixed = response.content?.find(
+          (a: Assignment) => a.assignmentType === "FIXED_BY_COMPANY",
+        );
         if (anyFixed && !activeSchedule) setActiveSchedule(anyFixed);
       }
     } catch (error: any) {
@@ -261,23 +309,34 @@ export default function CompanyStaffDetailPage() {
       password: (employee as any).password || "",
     });
 
+    const parsedLoc = parseLocationAddress(employee?.address);
+    setEditProvince(parsedLoc.provinceName);
+    setEditWard(parsedLoc.wardName);
+    setEditDetailAddress(parsedLoc.detailAddress);
+
+    setEditCccdFrontFile(null);
+    setEditCccdFrontPreview(employee?.cccdFrontImage ? buildCloudinaryUrl(employee.cccdFrontImage) : "");
+    setEditCccdBackFile(null);
+    setEditCccdBackPreview(employee?.cccdBackImage ? buildCloudinaryUrl(employee.cccdBackImage) : "");
+
     // Check time-based edit restriction for QLV role
     if (role === "QLV" && employee?.createdAt) {
       const createdAt = new Date(employee.createdAt);
       const now = new Date();
-      const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+      const hoursSinceCreation =
+        (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceCreation >= 1) {
         setIsEditingRestricted(true);
-        const formattedTime = createdAt.toLocaleString('vi-VN', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
+        const formattedTime = createdAt.toLocaleString("vi-VN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
         });
         setRestrictionMessage(
-          `Quá thời gian tạo 1 tiếng (${formattedTime}) nên không thể sửa thông tin ngoại trừ lương xin ứng`
+          `Quá thời gian tạo 1 tiếng (${formattedTime}) nên không thể sửa thông tin ngoại trừ lương xin ứng`,
         );
       } else {
         setIsEditingRestricted(false);
@@ -294,12 +353,49 @@ export default function CompanyStaffDetailPage() {
   const handleSaveEdit = async () => {
     if (!editForm) return;
 
+    if (!editForm.phone || editForm.phone.trim() === "") {
+      toast.error("Số điện thoại không được để trống");
+      return;
+    }
+    if (!editForm.name || editForm.name.trim() === "") {
+      toast.error("Họ và tên không được để trống");
+      return;
+    }
+    if (!editForm.idCard || editForm.idCard.trim() === "") {
+      toast.error("Số CCCD không được để trống");
+      return;
+    }
+
+    const locationAddress = formatLocationAddress(editWard, editProvince);
+    const fullAddress = editDetailAddress.trim()
+      ? `${editDetailAddress.trim()}, ${locationAddress}`
+      : locationAddress || editForm.address;
+
+    if (!fullAddress || fullAddress.trim() === "") {
+      toast.error(
+        "Vui lòng chọn Tỉnh/Thành phố và Phường/Xã cho chỗ ở hiện tại",
+      );
+      return;
+    }
+
+    const hasFront = Boolean(editCccdFrontFile || editCccdFrontPreview);
+    const hasBack = Boolean(editCccdBackFile || editCccdBackPreview);
+
+    if ((hasFront && !hasBack) || (!hasFront && hasBack)) {
+      toast.error(
+        "Hình ảnh CCCD yêu cầu phải có đủ cả mặt trước và mặt sau. Vui lòng tải lên đủ cả 2 mặt hoặc xóa cả 2 mặt.",
+      );
+      return;
+    }
+
     setSavingEmployee(true);
+    setEditErrorAlert("");
     try {
       // Parse formatted numbers if they are strings
-      const monthlyAdvanceLimit = typeof editForm.monthlyAdvanceLimit === 'string'
-        ? Number(parseFormattedNumber(editForm.monthlyAdvanceLimit))
-        : editForm.monthlyAdvanceLimit;
+      const monthlyAdvanceLimit =
+        typeof editForm.monthlyAdvanceLimit === "string"
+          ? Number(parseFormattedNumber(editForm.monthlyAdvanceLimit))
+          : editForm.monthlyAdvanceLimit;
 
       let response;
 
@@ -307,40 +403,65 @@ export default function CompanyStaffDetailPage() {
       if (isEditingRestricted) {
         response = await employeeService.updateAdvanceSalary(
           editForm.id,
-          monthlyAdvanceLimit || 0
+          monthlyAdvanceLimit || 0,
         );
       } else {
         // Normal update flow
-        const monthlySalary = typeof editForm.monthlySalary === 'string'
-          ? Number(parseFormattedNumber(editForm.monthlySalary))
-          : editForm.monthlySalary;
-        const allowance = typeof editForm.allowance === 'string'
-          ? Number(parseFormattedNumber(editForm.allowance))
-          : editForm.allowance;
-        const socialInsurance = typeof editForm.socialInsurance === 'string'
-          ? Number(parseFormattedNumber(editForm.socialInsurance))
-          : editForm.socialInsurance;
+        const monthlySalary =
+          typeof editForm.monthlySalary === "string"
+            ? Number(parseFormattedNumber(editForm.monthlySalary))
+            : editForm.monthlySalary;
+        const allowance =
+          typeof editForm.allowance === "string"
+            ? Number(parseFormattedNumber(editForm.allowance))
+            : editForm.allowance;
+        const socialInsurance =
+          typeof editForm.socialInsurance === "string"
+            ? Number(parseFormattedNumber(editForm.socialInsurance))
+            : editForm.socialInsurance;
 
         response = await employeeService.updateCompanyStaff(editForm.id, {
           ...editForm,
+          address: fullAddress,
+          username: editForm.username
+            ? editForm.username
+            : editForm.phone.trim(),
+          phone: editForm.phone.trim(),
           monthlySalary,
           allowance,
           socialInsurance,
           monthlyAdvanceLimit,
+          cccdFrontImage: hasFront ? (editCccdFrontPreview ? editForm.cccdFrontImage : "") : "",
+          cccdBackImage: hasBack ? (editCccdBackPreview ? editForm.cccdBackImage : "") : "",
         });
       }
 
       if (response.success) {
+        if (editCccdFrontFile || editCccdBackFile) {
+          try {
+            await employeeService.uploadCccdImages(
+              editForm.id,
+              editCccdFrontFile || undefined,
+              editCccdBackFile || undefined
+            );
+          } catch (imgErr) {
+            console.error("Error uploading updated CCCD images:", imgErr);
+          }
+        }
         toast.success("Đã cập nhật thông tin nhân viên thành công");
         setShowEditModal(false);
         // Reload employee data
         loadEmployee();
       } else {
-        toast.error(response.message || "Cập nhật thất bại");
+        const errMsg = response.message || "Cập nhật thất bại";
+        toast.error(errMsg);
+        setEditErrorAlert(errMsg);
       }
     } catch (error: any) {
       console.error("Error updating employee:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+      const errMsg = error.message || "Có lỗi xảy ra khi cập nhật";
+      toast.error(errMsg);
+      setEditErrorAlert(errMsg);
     } finally {
       setSavingEmployee(false);
     }
@@ -380,11 +501,11 @@ export default function CompanyStaffDetailPage() {
         setShowWorkScheduleModal(false);
         // Reset form
         setWorkScheduleForm({
-          startDate: new Date().toISOString().split('T')[0],
-          salaryAtTime: '',
-          additionalAllowance: '',
+          startDate: new Date().toISOString().split("T")[0],
+          salaryAtTime: "",
+          additionalAllowance: "",
           workingDaysPerWeek: [],
-          description: '',
+          description: "",
         });
         // Reload assignments
         loadAssignments();
@@ -446,7 +567,9 @@ export default function CompanyStaffDetailPage() {
     }
   };
 
-  const handleUploadEmployeeImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadEmployeeImage = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = e.target.files;
     if (!files || !id) return;
 
@@ -573,10 +696,11 @@ export default function CompanyStaffDetailPage() {
               <div className="flex-1">
                 <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
                 <span
-                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${employee.status === "ACTIVE"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                    }`}
+                  className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
+                    employee.status === "ACTIVE"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
                 >
                   {employee.status === "ACTIVE"
                     ? "Hoạt động"
@@ -628,52 +752,110 @@ export default function CompanyStaffDetailPage() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
                 <p className="text-sm text-gray-900">
-                  {
-                    employee.createdAt
-                      ? (employee.createdAt instanceof Date
-                        ? employee.createdAt.toLocaleString('vi-VN')
-                        : employee.createdAt)
-                      : "N/A"
-                  }
+                  {employee.createdAt
+                    ? employee.createdAt instanceof Date
+                      ? employee.createdAt.toLocaleString("vi-VN")
+                      : employee.createdAt
+                    : "N/A"}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
                 <p className="text-sm text-gray-900">
-                  {
-                    employee.updatedAt
-                      ? (employee.updatedAt instanceof Date
-                        ? employee.updatedAt.toLocaleDateString('vi-VN')
-                        : employee.updatedAt)
-                      : "N/A"
-                  }
+                  {employee.updatedAt
+                    ? employee.updatedAt instanceof Date
+                      ? employee.updatedAt.toLocaleDateString("vi-VN")
+                      : employee.updatedAt
+                    : "N/A"}
                 </p>
               </div>
             </div>
 
-            {activeSchedule?.workingDaysPerWeek && activeSchedule.workingDaysPerWeek.length > 0 && (
-              <div className="pt-2 border-t">
-                <p className="text-xs text-gray-500 mb-1">Lịch làm việc trong tuần</p>
-                <div className="flex gap-2 flex-wrap mt-1">
-                  {activeSchedule.workingDaysPerWeek.map(day => {
-                    const dayMap: Record<string, string> = {
-                      'MONDAY': 'T.Hai',
-                      'TUESDAY': 'T.Ba',
-                      'WEDNESDAY': 'T.Tư',
-                      'THURSDAY': 'T.Năm',
-                      'FRIDAY': 'T.Sáu',
-                      'SATURDAY': 'T.Bảy',
-                      'SUNDAY': 'C.Nhật'
-                    };
-                    return (
-                      <span key={day} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-100 shadow-sm">
-                        {dayMap[day] || day}
-                      </span>
-                    );
-                  })}
+            {/* Ảnh CCCD Mặt trước & Mặt sau */}
+            <div className="pt-3 border-t mt-3">
+              <p className="text-xs font-semibold text-gray-700 mb-2">
+                Hình ảnh Căn cước công dân (CCCD)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="border rounded-lg p-2 bg-gray-50 text-center">
+                  <p className="text-[11px] font-medium text-gray-500 mb-1.5">
+                    {" "}
+                    Mặt trước
+                  </p>
+                  {employee.cccdFrontImage ? (
+                    <a
+                      href={buildCloudinaryUrl(employee.cccdFrontImage)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block relative h-28 rounded overflow-hidden border hover:opacity-90 transition-opacity"
+                    >
+                      <img
+                        src={buildCloudinaryUrl(employee.cccdFrontImage)}
+                        alt="CCCD Mặt trước"
+                        className="w-full h-full object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <div className="h-28 bg-gray-200/60 rounded flex items-center justify-center text-xs text-gray-400">
+                      Chưa có ảnh
+                    </div>
+                  )}
+                </div>
+                <div className="border rounded-lg p-2 bg-gray-50 text-center">
+                  <p className="text-[11px] font-medium text-gray-500 mb-1.5">
+                    Mặt sau
+                  </p>
+                  {employee.cccdBackImage ? (
+                    <a
+                      href={buildCloudinaryUrl(employee.cccdBackImage)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block relative h-28 rounded overflow-hidden border hover:opacity-90 transition-opacity"
+                    >
+                      <img
+                        src={buildCloudinaryUrl(employee.cccdBackImage)}
+                        alt="CCCD Mặt sau"
+                        className="w-full h-full object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <div className="h-28 bg-gray-200/60 rounded flex items-center justify-center text-xs text-gray-400">
+                      Chưa có ảnh
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+
+            {activeSchedule?.workingDaysPerWeek &&
+              activeSchedule.workingDaysPerWeek.length > 0 && (
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-gray-500 mb-1">
+                    Lịch làm việc trong tuần
+                  </p>
+                  <div className="flex gap-2 flex-wrap mt-1">
+                    {activeSchedule.workingDaysPerWeek.map((day) => {
+                      const dayMap: Record<string, string> = {
+                        MONDAY: "T.Hai",
+                        TUESDAY: "T.Ba",
+                        WEDNESDAY: "T.Tư",
+                        THURSDAY: "T.Năm",
+                        FRIDAY: "T.Sáu",
+                        SATURDAY: "T.Bảy",
+                        SUNDAY: "C.Nhật",
+                      };
+                      return (
+                        <span
+                          key={day}
+                          className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-100 shadow-sm"
+                        >
+                          {dayMap[day] || day}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
             {employee.description && (
               <div className="pt-2 border-t">
@@ -697,19 +879,27 @@ export default function CompanyStaffDetailPage() {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Lương tháng</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {employee.monthlySalary ? formatCurrency(employee.monthlySalary) : "N/A"}
+                  {employee.monthlySalary
+                    ? formatCurrency(employee.monthlySalary)
+                    : "N/A"}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Phụ cấp</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {employee.allowance ? formatCurrency(employee.allowance) : "N/A"}
+                  {employee.allowance
+                    ? formatCurrency(employee.allowance)
+                    : "N/A"}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-1">Lương đóng bảo hiểm</p>
+                <p className="text-xs text-gray-500 mb-1">
+                  Lương đóng bảo hiểm
+                </p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {employee.socialInsurance ? formatCurrency(employee.socialInsurance) : "N/A"}
+                  {employee.socialInsurance
+                    ? formatCurrency(employee.socialInsurance)
+                    : "N/A"}
                 </p>
               </div>
 
@@ -762,12 +952,13 @@ export default function CompanyStaffDetailPage() {
             {employeeImages.length > 0 ? (
               <>
                 <div className="space-y-4 flex gap-3">
-
                   {/* Main Image - Fixed size container */}
                   <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
                     {employeeImages[selectedImageIndex] ? (
                       <img
-                        src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                        src={buildCloudinaryUrl(
+                          employeeImages[selectedImageIndex].cloudinaryPublicId,
+                        )}
                         alt={`Employee image ${selectedImageIndex + 1}`}
                         className="w-full h-full object-contain"
                       />
@@ -796,10 +987,11 @@ export default function CompanyStaffDetailPage() {
                       {employeeImages.map((image, index) => (
                         <div
                           key={image.id}
-                          className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === index
-                            ? "border-blue-500 ring-2 ring-blue-300"
-                            : "border-gray-300 hover:border-gray-400"
-                            }`}
+                          className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                            selectedImageIndex === index
+                              ? "border-blue-500 ring-2 ring-blue-300"
+                              : "border-gray-300 hover:border-gray-400"
+                          }`}
                           onClick={() => setSelectedImageIndex(index)}
                           onMouseEnter={() => setSelectedImageIndex(index)}
                         >
@@ -829,7 +1021,11 @@ export default function CompanyStaffDetailPage() {
                           day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
-                        }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                        }).format(
+                          new Date(
+                            employeeImages[selectedImageIndex].uploadedAt,
+                          ),
+                        )}
                       </p>
                     )}
                   </div>
@@ -847,7 +1043,9 @@ export default function CompanyStaffDetailPage() {
                 multiple={true}
               />
             ) : (
-              <div className="text-gray-400 italic text-center py-8">Chưa có hình ảnh</div>
+              <div className="text-gray-400 italic text-center py-8">
+                Chưa có hình ảnh
+              </div>
             )}
           </div>
         )}
@@ -887,12 +1085,13 @@ export default function CompanyStaffDetailPage() {
           {employeeImages.length > 0 ? (
             <>
               <div className="space-y-4 flex gap-3">
-
                 {/* Main Image - Fixed size container */}
                 <div className="w-9/12 h-96 bg-gray-100 rounded-lg py-3 overflow-hidden flex justify-center items-center">
                   {employeeImages[selectedImageIndex] ? (
                     <img
-                      src={buildCloudinaryUrl(employeeImages[selectedImageIndex].cloudinaryPublicId)}
+                      src={buildCloudinaryUrl(
+                        employeeImages[selectedImageIndex].cloudinaryPublicId,
+                      )}
                       alt={`Employee image ${selectedImageIndex + 1}`}
                       className="w-full h-full object-contain"
                     />
@@ -921,10 +1120,11 @@ export default function CompanyStaffDetailPage() {
                     {employeeImages.map((image, index) => (
                       <div
                         key={image.id}
-                        className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === index
-                          ? "border-blue-500 ring-2 ring-blue-300"
-                          : "border-gray-300 hover:border-gray-400"
-                          }`}
+                        className={`aspect-square cursor-pointer rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                          selectedImageIndex === index
+                            ? "border-blue-500 ring-2 ring-blue-300"
+                            : "border-gray-300 hover:border-gray-400"
+                        }`}
                         onClick={() => setSelectedImageIndex(index)}
                         onMouseEnter={() => setSelectedImageIndex(index)}
                       >
@@ -954,7 +1154,9 @@ export default function CompanyStaffDetailPage() {
                         day: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
-                      }).format(new Date(employeeImages[selectedImageIndex].uploadedAt))}
+                      }).format(
+                        new Date(employeeImages[selectedImageIndex].uploadedAt),
+                      )}
                     </p>
                   )}
                 </div>
@@ -977,8 +1179,8 @@ export default function CompanyStaffDetailPage() {
 
       {/* Lịch làm việc & Chấm dứt Văn phòng */}
       <div className="mt-6">
-        <EmployeeLeaveCalendar 
-          employeeId={employee.id} 
+        <EmployeeLeaveCalendar
+          employeeId={employee.id}
           onResignSuccess={() => {
             loadEmployee();
           }}
@@ -988,9 +1190,7 @@ export default function CompanyStaffDetailPage() {
       {/* Assignments */}
       <div className="mt-6">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-xl font-semibold">
-            Phân công
-          </h2>
+          <h2 className="text-xl font-semibold">Phân công</h2>
           <div className="flex gap-3 items-center">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Tháng:</label>
@@ -1019,7 +1219,10 @@ export default function CompanyStaffDetailPage() {
                 }}
                 className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                {Array.from(
+                  { length: 5 },
+                  (_, i) => new Date().getFullYear() - 2 + i,
+                ).map((y) => (
                   <option key={y} value={y}>
                     {y}
                   </option>
@@ -1046,7 +1249,8 @@ export default function CompanyStaffDetailPage() {
                   tabIndex={0}
                   onClick={() => router.push(`/admin/assignments/${a.id}`)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") router.push(`/admin/assignments/${a.id}`);
+                    if (e.key === "Enter")
+                      router.push(`/admin/assignments/${a.id}`);
                   }}
                   className="p-4 bg-white rounded shadow-sm border cursor-pointer hover:bg-gray-50"
                 >
@@ -1059,7 +1263,7 @@ export default function CompanyStaffDetailPage() {
                         {a.status && (
                           <span
                             className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getAssignmentStatusClass(
-                              a.status
+                              a.status,
                             )}`}
                           >
                             {getAssignmentStatusLabel(a.status)}
@@ -1067,11 +1271,17 @@ export default function CompanyStaffDetailPage() {
                         )}
                       </div>
                       <p className="text-sm text-gray-500">
-                        {(a as any).workSchedule || a.description || (a.workDays ? `${a.workDays} ngày` : "")}
+                        {(a as any).workSchedule ||
+                          a.description ||
+                          (a.workDays ? `${a.workDays} ngày` : "")}
                       </p>
                     </div>
                     <div className="text-sm text-gray-400">
-                      {a.startDate ? new Intl.DateTimeFormat("vi-VN").format(new Date(a.startDate)) : ""}
+                      {a.startDate
+                        ? new Intl.DateTimeFormat("vi-VN").format(
+                            new Date(a.startDate),
+                          )
+                        : ""}
                     </div>
                   </div>
                   {a.description && (
@@ -1089,18 +1299,25 @@ export default function CompanyStaffDetailPage() {
         {!loadingAssignments && assignmentTotalPages > 1 && (
           <div className="mt-4 flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng {assignmentTotalElements} phân công)
+              Trang {assignmentPage + 1} / {assignmentTotalPages} (Tổng{" "}
+              {assignmentTotalElements} phân công)
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => setAssignmentPage(Math.max(0, assignmentPage - 1))}
+                onClick={() =>
+                  setAssignmentPage(Math.max(0, assignmentPage - 1))
+                }
                 disabled={assignmentPage === 0}
                 className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 Trước
               </button>
               <button
-                onClick={() => setAssignmentPage(Math.min(assignmentTotalPages - 1, assignmentPage + 1))}
+                onClick={() =>
+                  setAssignmentPage(
+                    Math.min(assignmentTotalPages - 1, assignmentPage + 1),
+                  )
+                }
                 disabled={assignmentPage >= assignmentTotalPages - 1}
                 className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
@@ -1143,11 +1360,41 @@ export default function CompanyStaffDetailPage() {
             {isEditingRestricted && (
               <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
                 <div className="flex items-start">
-                  <span className="text-red-600 text-2xl mr-3 font-bold">*</span>
+                  <span className="text-red-600 text-2xl mr-3 font-bold">
+                    *
+                  </span>
                   <p className="text-sm text-red-700 font-medium">
                     {restrictionMessage}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Unique Fields Note */}
+            <div className="mb-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100 flex items-start gap-2.5 text-blue-900 text-xs shadow-2xs">
+              <FontAwesomeIcon icon={SolidIcons.faInfoCircle} className="text-blue-500 text-sm mt-0.5 shrink-0" />
+              <div className="leading-relaxed">
+                <span className="font-semibold text-blue-950">Thông tin không được trùng lặp:</span>{" "}
+                Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân hàng và Mã nhân viên.
+              </div>
+            </div>
+
+            {/* Error Alert Panel when duplicate or server error occurs */}
+            {editErrorAlert && (
+              <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-800 shadow-sm animate-fade-in">
+                <FontAwesomeIcon icon={SolidIcons.faExclamationTriangle} className="text-red-600 text-sm mt-0.5 shrink-0" />
+                <div className="flex-1 text-xs">
+                  <p className="font-semibold text-red-900 mb-0.5">Phát hiện trùng lặp hoặc lỗi dữ liệu!</p>
+                  <p className="text-red-700 leading-relaxed font-medium">{editErrorAlert}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditErrorAlert("")}
+                  className="text-red-400 hover:text-red-600 text-xs p-1 transition-colors"
+                  title="Đóng thông báo"
+                >
+                  <FontAwesomeIcon icon={SolidIcons.faTimes} />
+                </button>
               </div>
             )}
 
@@ -1163,7 +1410,6 @@ export default function CompanyStaffDetailPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Họ và tên *
@@ -1175,40 +1421,155 @@ export default function CompanyStaffDetailPage() {
                     setEditForm({ ...editForm, name: e.target.value })
                   }
                   disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số điện thoại *
+                  Số điện thoại (Tên đăng nhập){" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
-                  }
-                  disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                  disabled={true}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-500 font-medium"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CCCD *
+                  Số CCCD <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={editForm.idCard}
+                  value={editForm.idCard || ""}
                   onChange={(e) =>
                     setEditForm({ ...editForm, idCard: e.target.value })
                   }
                   disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                 />
               </div>
 
+              {/* Hình ảnh CCCD */}
+              <div className="col-span-2 border-t pt-3 mt-1">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Hình ảnh Căn cước công dân (CCCD)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Mặt trước */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Mặt trước CCCD
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-3 text-center bg-gray-50 hover:bg-gray-100/80 transition-colors">
+                      {editCccdFrontPreview ? (
+                        <div className="relative group rounded-lg overflow-hidden border border-gray-200">
+                          <img
+                            src={editCccdFrontPreview}
+                            alt="CCCD Mặt trước"
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                          {!isEditingRestricted && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label
+                                htmlFor="edit-staff-cccd-front-input"
+                                className="bg-white text-gray-700 text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-gray-100 cursor-pointer font-medium"
+                              >
+                                Thay đổi
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditCccdFrontFile(null);
+                                  setEditCccdFrontPreview("");
+                                  setEditForm((prev) => prev ? { ...prev, cccdFrontImage: "" } : null);
+                                }}
+                                className="bg-red-600 text-white text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-red-700 cursor-pointer font-medium"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="edit-staff-cccd-front-input"
+                          className={`flex flex-col items-center justify-center py-4 cursor-pointer ${isEditingRestricted ? "cursor-not-allowed opacity-50" : ""}`}
+                        >
+                          <FontAwesomeIcon icon={SolidIcons.faIdCard} className="text-2xl text-blue-500 mb-1" />
+                          <span className="text-xs font-medium text-blue-600">Tải ảnh mặt trước</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">PNG, JPG, WEBP (Tối đa 5MB)</span>
+                        </label>
+                      )}
+                      <input
+                        type="file"
+                        id="edit-staff-cccd-front-input"
+                        accept="image/*"
+                        disabled={isEditingRestricted}
+                        onChange={handleEditCccdFrontChange}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mặt sau */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Mặt sau CCCD
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-3 text-center bg-gray-50 hover:bg-gray-100/80 transition-colors">
+                      {editCccdBackPreview ? (
+                        <div className="relative group rounded-lg overflow-hidden border border-gray-200">
+                          <img
+                            src={editCccdBackPreview}
+                            alt="CCCD Mặt sau"
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                          {!isEditingRestricted && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label
+                                htmlFor="edit-staff-cccd-back-input"
+                                className="bg-white text-gray-700 text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-gray-100 cursor-pointer font-medium"
+                              >
+                                Thay đổi
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditCccdBackFile(null);
+                                  setEditCccdBackPreview("");
+                                  setEditForm((prev) => prev ? { ...prev, cccdBackImage: "" } : null);
+                                }}
+                                className="bg-red-600 text-white text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-red-700 cursor-pointer font-medium"
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="edit-staff-cccd-back-input"
+                          className={`flex flex-col items-center justify-center py-4 cursor-pointer ${isEditingRestricted ? "cursor-not-allowed opacity-50" : ""}`}
+                        >
+                          <FontAwesomeIcon icon={SolidIcons.faIdCard} className="text-2xl text-blue-500 mb-1" />
+                          <span className="text-xs font-medium text-blue-600">Tải ảnh mặt sau</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">PNG, JPG, WEBP (Tối đa 5MB)</span>
+                        </label>
+                      )}
+                      <input
+                        type="file"
+                        id="edit-staff-cccd-back-input"
+                        accept="image/*"
+                        disabled={isEditingRestricted}
+                        onChange={handleEditCccdBackChange}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Trạng thái
@@ -1219,80 +1580,139 @@ export default function CompanyStaffDetailPage() {
                     setEditForm({ ...editForm, status: e.target.value })
                   }
                   disabled={isEditingRestricted}
-                  className={`${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""} w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 >
                   <option value="ACTIVE">Hoạt động</option>
                   <option value="INACTIVE">Không hoạt động</option>
                 </select>
               </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ
+              <div className="col-span-2 border-t pt-3 mt-1">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Chỗ ở hiện tại <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={editForm.address}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, address: e.target.value })
-                  }
-                  disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
-                />
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Tỉnh / Thành phố <span className="text-red-500">*</span>
+                    </label>
+                    <SearchSelect
+                      options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                      value={editProvince}
+                      onChange={(val) => {
+                        setEditProvince(String(val));
+                        setEditWard("");
+                      }}
+                      disabled={isEditingRestricted}
+                      placeholder="-- Chọn Tỉnh / Thành phố --"
+                      searchPlaceholder="Tìm Tỉnh / Thành phố..."
+                    />
+                  </div>
 
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Phường / Xã / Quận <span className="text-red-500">*</span>
+                    </label>
+                    <SearchSelect
+                      options={
+                        editProvince
+                          ? (VIETNAM_PROVINCES.find((p) => p.name === editProvince)?.wards.map((w) => ({ id: w, label: w })) || [])
+                          : []
+                      }
+                      value={editWard}
+                      onChange={(val) => setEditWard(String(val))}
+                      disabled={!editProvince || isEditingRestricted}
+                      placeholder="-- Chọn Phường / Xã / Quận --"
+                      searchPlaceholder="Tìm Phường / Xã / Quận..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Địa chỉ chi tiết (Số nhà, tên đường... - Tùy chọn)
+                  </label>
+                  <input
+                    type="text"
+                    value={editDetailAddress}
+                    onChange={(e) => setEditDetailAddress(e.target.value)}
+                    disabled={isEditingRestricted}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                    placeholder="VD: Số 123 đường Nguyễn Huệ"
+                  />
+                </div>
+              </div>
               {/* Salary fields for COMPANY_STAFF */}
-              {role !== 'QLV' && (
+              {role !== "QLV" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Lương tháng *
                   </label>
                   <input
                     type="text"
-                    value={typeof editForm.monthlySalary === 'number' ? formatNumber(editForm.monthlySalary) : editForm.monthlySalary || ""}
+                    value={
+                      typeof editForm.monthlySalary === "number"
+                        ? formatNumber(editForm.monthlySalary)
+                        : editForm.monthlySalary || ""
+                    }
                     onChange={(e) => {
                       const rawValue = handleNumberInput(e.target.value);
                       setEditForm({
                         ...editForm,
-                        monthlySalary: rawValue ? formatNumber(rawValue) as any : "" as any
+                        monthlySalary: rawValue
+                          ? (formatNumber(rawValue) as any)
+                          : ("" as any),
                       });
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="VD: 10.000.000"
                   />
                 </div>
-              )} {role !== 'QLV' && (
+              )}{" "}
+              {role !== "QLV" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phụ cấp
                   </label>
                   <input
                     type="text"
-                    value={typeof editForm.allowance === 'number' ? formatNumber(editForm.allowance) : editForm.allowance || ""}
+                    value={
+                      typeof editForm.allowance === "number"
+                        ? formatNumber(editForm.allowance)
+                        : editForm.allowance || ""
+                    }
                     onChange={(e) => {
                       const rawValue = handleNumberInput(e.target.value);
                       setEditForm({
                         ...editForm,
-                        allowance: rawValue ? formatNumber(rawValue) as any : "" as any
+                        allowance: rawValue
+                          ? (formatNumber(rawValue) as any)
+                          : ("" as any),
                       });
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="VD: 1.000.000"
                   />
                 </div>
-              )} {role !== 'QLV' && (
+              )}{" "}
+              {role !== "QLV" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Lương đóng bảo hiểm *
                   </label>
                   <input
                     type="text"
-                    value={typeof editForm.socialInsurance === 'number' ? formatNumber(editForm.socialInsurance) : editForm.socialInsurance || ""}
+                    value={
+                      typeof editForm.socialInsurance === "number"
+                        ? formatNumber(editForm.socialInsurance)
+                        : editForm.socialInsurance || ""
+                    }
                     onChange={(e) => {
                       const rawValue = handleNumberInput(e.target.value);
                       setEditForm({
                         ...editForm,
-                        socialInsurance: rawValue ? formatNumber(rawValue) as any : "" as any
+                        socialInsurance: rawValue
+                          ? (formatNumber(rawValue) as any)
+                          : ("" as any),
                       });
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1311,10 +1731,9 @@ export default function CompanyStaffDetailPage() {
                     setEditForm({ ...editForm, bankAccount: e.target.value })
                   }
                   disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ngân hàng
@@ -1326,30 +1745,34 @@ export default function CompanyStaffDetailPage() {
                     setEditForm({ ...editForm, bankName: e.target.value })
                   }
                   disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                   placeholder="VD: VietBank"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tiền xin ứng hàng tháng (VND)
                 </label>
                 <input
                   type="text"
-                  value={typeof editForm.monthlyAdvanceLimit === 'number' ? formatNumber(editForm.monthlyAdvanceLimit) : editForm.monthlyAdvanceLimit || ""}
+                  value={
+                    typeof editForm.monthlyAdvanceLimit === "number"
+                      ? formatNumber(editForm.monthlyAdvanceLimit)
+                      : editForm.monthlyAdvanceLimit || ""
+                  }
                   onChange={(e) => {
                     const rawValue = handleNumberInput(e.target.value);
                     setEditForm({
                       ...editForm,
-                      monthlyAdvanceLimit: rawValue ? formatNumber(rawValue) as any : "" as any
+                      monthlyAdvanceLimit: rawValue
+                        ? (formatNumber(rawValue) as any)
+                        : ("" as any),
                     });
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="VD: 5.000.000"
                 />
               </div>
-
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả
@@ -1361,7 +1784,7 @@ export default function CompanyStaffDetailPage() {
                   }
                   rows={3}
                   disabled={isEditingRestricted}
-                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
                   placeholder="Ghi chú thêm về nhân viên..."
                 />
               </div>
@@ -1452,7 +1875,9 @@ export default function CompanyStaffDetailPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  <p className="text-sm font-medium text-gray-700">{isDeletingImage ? "Đang xóa..." : "Đang tải..."}</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    {isDeletingImage ? "Đang xóa..." : "Đang tải..."}
+                  </p>
                 </div>
               </div>
             )}
@@ -1486,7 +1911,8 @@ export default function CompanyStaffDetailPage() {
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-red-800">
-                    Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn tác.
+                    Bạn có chắc muốn xóa ảnh này? Hành động này không thể hoàn
+                    tác.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -1540,10 +1966,7 @@ export default function CompanyStaffDetailPage() {
               </label>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {employeeImages.map((image) => (
-                  <div
-                    key={image.id}
-                    className="relative aspect-square group"
-                  >
+                  <div key={image.id} className="relative aspect-square group">
                     <img
                       src={buildCloudinaryUrl(image.cloudinaryPublicId)}
                       alt={`Employee image ${image.id}`}
@@ -1608,7 +2031,9 @@ export default function CompanyStaffDetailPage() {
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             />
                           </svg>
-                          <p className="text-sm font-medium text-gray-700">{isDeletingImage ? "Đang xóa..." : "Đang tải..."}</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            {isDeletingImage ? "Đang xóa..." : "Đang tải..."}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1647,7 +2072,6 @@ export default function CompanyStaffDetailPage() {
           </div>
         </div>
       )}
-
 
       {/* Work Schedule Modal */}
       {showWorkScheduleModal && (
@@ -1702,13 +2126,13 @@ export default function CompanyStaffDetailPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: 'MONDAY', label: 'Thứ 2' },
-                    { value: 'TUESDAY', label: 'Thứ 3' },
-                    { value: 'WEDNESDAY', label: 'Thứ 4' },
-                    { value: 'THURSDAY', label: 'Thứ 5' },
-                    { value: 'FRIDAY', label: 'Thứ 6' },
-                    { value: 'SATURDAY', label: 'Thứ 7' },
-                    { value: 'SUNDAY', label: 'Chủ nhật' },
+                    { value: "MONDAY", label: "Thứ 2" },
+                    { value: "TUESDAY", label: "Thứ 3" },
+                    { value: "WEDNESDAY", label: "Thứ 4" },
+                    { value: "THURSDAY", label: "Thứ 5" },
+                    { value: "FRIDAY", label: "Thứ 6" },
+                    { value: "SATURDAY", label: "Thứ 7" },
+                    { value: "SUNDAY", label: "Chủ nhật" },
                   ].map((day) => (
                     <label
                       key={day.value}
@@ -1716,7 +2140,9 @@ export default function CompanyStaffDetailPage() {
                     >
                       <input
                         type="checkbox"
-                        checked={workScheduleForm.workingDaysPerWeek.includes(day.value)}
+                        checked={workScheduleForm.workingDaysPerWeek.includes(
+                          day.value,
+                        )}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setWorkScheduleForm({
@@ -1729,9 +2155,10 @@ export default function CompanyStaffDetailPage() {
                           } else {
                             setWorkScheduleForm({
                               ...workScheduleForm,
-                              workingDaysPerWeek: workScheduleForm.workingDaysPerWeek.filter(
-                                (d) => d !== day.value
-                              ),
+                              workingDaysPerWeek:
+                                workScheduleForm.workingDaysPerWeek.filter(
+                                  (d) => d !== day.value,
+                                ),
                             });
                           }
                         }}

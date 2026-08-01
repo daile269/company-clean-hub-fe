@@ -21,15 +21,19 @@ export default function CompanyStaffPage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // Khởi tạo state từ query trên URL (giúp quay lại vẫn giữ filter + page)
+  // Khởi tạo state từ query trên URL
   const initialSearch = searchParams.get("keyword") ?? "";
   const initialPage = Number(searchParams.get("page") ?? "0");
   const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
+  const initialTab = (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
+  const initialProvince = searchParams.get("province") ?? "";
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [searchKeyword, setSearchKeyword] = useState(initialSearch);
+  const [activeTab, setActiveTab] = useState<"new" | "unassigned" | "by_location">(initialTab);
+  const [filterProvince, setFilterProvince] = useState<string>(initialProvince);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
@@ -116,7 +120,7 @@ export default function CompanyStaffPage() {
 
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, pageSize, searchKeyword]);
+  }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince]);
 
   // (No URL-based initialization or persistence)
 
@@ -126,12 +130,14 @@ export default function CompanyStaffPage() {
     if (searchKeyword) params.set("keyword", searchKeyword);
     params.set("page", currentPage.toString());
     params.set("pageSize", pageSize.toString());
+    if (activeTab && activeTab !== "new") params.set("tab", activeTab);
+    if (filterProvince) params.set("province", filterProvince);
 
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
-  }, [searchKeyword, currentPage, pageSize, pathname, router]);
+  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, pathname, router]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -158,16 +164,13 @@ export default function CompanyStaffPage() {
     const ps = overrides?.pageSize ?? pageSize;
     try {
       setLoading(true);
-      console.debug("Loading employees with", {
-        keyword: searchKeyword,
-        page: p,
-        pageSize: ps,
-      });
       const response = await employeeService.getAll({
         keyword: searchKeyword,
         page: p,
         pageSize: ps,
         employmentType: "COMPANY_STAFF",
+        province: activeTab === "by_location" ? filterProvince || undefined : undefined,
+        unassigned: activeTab === "unassigned" ? true : undefined,
       });
       setEmployees(response.content);
       setTotalPages(response.totalPages);
@@ -437,6 +440,32 @@ export default function CompanyStaffPage() {
 
             {/* Filters */}
             <div className="bg-white rounded-lg shadow p-6 mb-6">
+              {/* Filter Tabs */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {([
+                  { key: "new", label: "👤 Nhân viên mới", icon: SolidIcons.faUserPlus },
+                  { key: "unassigned", label: "⚠️ Chưa phân công", icon: SolidIcons.faUserSlash },
+                  { key: "by_location", label: "📍 Theo chỗ ở", icon: SolidIcons.faMapMarkerAlt },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => {
+                      setActiveTab(tab.key);
+                      setCurrentPage(0);
+                      if (tab.key !== "by_location") setFilterProvince("");
+                    }}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      activeTab === tab.key
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={tab.icon} className="text-xs" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -451,29 +480,35 @@ export default function CompanyStaffPage() {
                   />
                 </div>
 
-                <div className="flex items-end md:justify-end">
-                  <button
-                    className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                    title="Xuất Excel"
-                    onClick={() => setShowExportModal(true)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                {activeTab === "by_location" ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tỉnh / Thành phố
+                    </label>
+                    <SearchSelect
+                      options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                      value={filterProvince}
+                      onChange={(val) => {
+                        setFilterProvince(String(val));
+                        setCurrentPage(0);
+                      }}
+                      placeholder="Chọn tỉnh / thành phố..."
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-end md:justify-end">
+                    <button
+                      className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                      title="Xuất Excel"
+                      onClick={() => setShowExportModal(true)}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
-                      />
-                    </svg>
-                    Xuất danh sách
-                  </button>
-                </div>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3" />
+                      </svg>
+                      Xuất danh sách
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -483,20 +518,14 @@ export default function CompanyStaffPage() {
                 <table className="w-full table-fixed divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="w-20 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Mã NV
+                      <th className="w-32 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        SĐT (Mã NV)
                       </th>
-                      <th className="w-40 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Họ và tên
                       </th>
-                      <th className="hidden sm:table-cell w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Số điện thoại
-                      </th>
-                      <th className="w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="w-28 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Lương cơ bản
-                      </th>
-                      <th className="hidden sm:table-cell w-24 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Trạng thái
                       </th>
                     </tr>
                   </thead>
@@ -509,45 +538,40 @@ export default function CompanyStaffPage() {
                           router.push(`/admin/company-staff/${employee.id}`)
                         }
                       >
-                        <td className="px-3 py-3 w-20 max-w-[6rem] text-sm font-medium text-gray-900 break-words">
-                          {employee.employeeCode}
+                        <td className="px-3 py-3 w-32">
+                          <div className="text-sm font-medium text-gray-900">{employee.phone}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">({employee.employeeCode})</div>
                         </td>
-                        <td className="px-3 py-3 w-40 max-w-[10rem] min-w-0">
+                        <td className="px-3 py-3 min-w-0">
                           <div className="flex items-center">
-                            <div className="hidden sm:flex h-10 w-10 flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold">
-                                {employee.name.charAt(0)}
-                              </div>
+                            <div className="hidden sm:flex h-9 w-9 flex-shrink-0 rounded-full bg-blue-100 items-center justify-center text-blue-700 font-semibold text-sm">
+                              {employee.name.charAt(0)}
                             </div>
-                            <div className="ml-0 sm:ml-4 min-w-0">
+                            <div className="ml-0 sm:ml-3 min-w-0">
                               <div className="text-sm font-medium text-gray-900 whitespace-normal break-words">
                                 {employee.name}
                               </div>
-                              <div className="text-sm text-gray-500 truncate">
-                                {employee.email}
-                              </div>
-                              {/* status removed */}
+                              <span
+                                className={`inline-flex mt-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                                  employee.status === "ACTIVE"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                              </span>
                             </div>
                           </div>
                         </td>
-                        <td className="hidden sm:table-cell px-3 py-3 w-24 max-w-[8rem] text-sm text-gray-500 break-words">
-                          {employee.phone}
-                        </td>
-                        <td className="px-3 py-3 w-24 max-w-[8rem] text-sm text-gray-900 break-words">
+                        <td className="px-3 py-3 w-28 text-sm text-gray-900 break-words">
                           {!canManageCost ? (
                             <div className="group relative flex items-center justify-center h-6 overflow-hidden cursor-help">
-                              {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
                               <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
-                                <FontAwesomeIcon
-                                  icon={SolidIcons.faEyeSlash}
-                                  className="text-blue-600"
-                                />
+                                <FontAwesomeIcon icon={SolidIcons.faEyeSlash} className="text-blue-600" />
                                 <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
                                   ********
                                 </span>
                               </div>
-
-                              {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
                               <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
                                 Bạn không có quyền xem
                               </span>
@@ -559,20 +583,6 @@ export default function CompanyStaffPage() {
                                 : "—"}
                             </span>
                           )}
-                        </td>
-
-                        <td className="px-3 py-3 hidden sm:table-cell">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              employee.status === "ACTIVE"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {employee.status === "ACTIVE"
-                              ? "Hoạt động"
-                              : "Không hoạt động"}
-                          </span>
                         </td>
                       </tr>
                     ))}

@@ -8,6 +8,8 @@ import { authService } from "@/services/authService";
 import { Customer } from "@/types";
 import CustomerContractExportModal from "@/components/CustomerContractExportModal";
 import { usePermission } from "@/hooks/usePermission";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -25,9 +27,11 @@ export default function CustomersPage() {
   const initialSearch = searchParams.get("keyword") ?? "";
   const initialPage = Number(searchParams.get("page") ?? "0");
   const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
+  const initialTab = (searchParams.get("tab") as "has_contract" | "no_contract" | "all") ?? "has_contract";
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [searchKeyword, setSearchKeyword] = useState(initialSearch); // Keyword được gửi đến API
+  const [activeTab, setActiveTab] = useState<"has_contract" | "no_contract" | "all">(initialTab);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
@@ -58,13 +62,11 @@ export default function CustomersPage() {
 
   // (No URL-based initialization — state starts with defaults)
 
-  // Load customers when page, keyword, pageSize or currentUser changes.
+  // Load customers when page, keyword, pageSize, activeTab or currentUser changes.
   useEffect(() => {
     if (!currentUser) return;
     loadCustomers();
-  }, [currentPage, searchKeyword, pageSize, currentUser]);
-
-  // (No URL persistence of page/pageSize/keyword)
+  }, [currentPage, searchKeyword, pageSize, activeTab, currentUser]);
 
   // Mảng dependencies để sync URL
   useEffect(() => {
@@ -72,12 +74,13 @@ export default function CustomersPage() {
     if (searchKeyword) params.set("keyword", searchKeyword);
     params.set("page", currentPage.toString());
     params.set("pageSize", pageSize.toString());
+    if (activeTab && activeTab !== "has_contract") params.set("tab", activeTab);
 
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
-  }, [searchKeyword, currentPage, pageSize, pathname, router]);
+  }, [searchKeyword, currentPage, pageSize, activeTab, pathname, router]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -117,30 +120,22 @@ export default function CustomersPage() {
     try {
       setLoading(true);
 
-      if (
-        currentUser.roleName === "QLT1" ||
-        currentUser.roleName === "ACCOUNTANT"
-      ) {
-        const response = await customerService.getAll({
-          keyword: kw,
-          page: p,
-          pageSize: ps,
-        });
-        setCustomers(response.content);
-        setTotalPages(response.totalPages);
-        setTotalElements(response.totalElements);
-      } else {
-        const response = await customerAssignmentService.getMyAssignedCustomers(
-          {
-            keyword: kw,
-            page: p,
-            pageSize: ps,
-          },
-        );
-        setCustomers(response.content);
-        setTotalPages(response.totalPages);
-        setTotalElements(response.totalElements);
-      }
+      const hasContractInMonth =
+        activeTab === "has_contract"
+          ? true
+          : activeTab === "no_contract"
+          ? false
+          : undefined;
+
+      const response = await customerService.getAll({
+        keyword: kw,
+        page: p,
+        pageSize: ps,
+        hasContractInMonth,
+      });
+      setCustomers(response.content);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
     } catch (error) {
       console.error("Error loading customers:", error);
       toast.error("Không thể tải danh sách khách hàng");
@@ -373,8 +368,33 @@ export default function CustomersPage() {
             </div>
           </div>
 
-          {/* Search */}
+          {/* Search & Filter */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {([
+                { key: "has_contract", label: "📄 Có hợp đồng tháng này", icon: SolidIcons.faFileContract },
+                { key: "no_contract", label: "🚫 Không có hợp đồng tháng này", icon: SolidIcons.faFileCircleXmark },
+                { key: "all", label: "🌐 Tất cả khách hàng", icon: SolidIcons.faUsers },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    setCurrentPage(0);
+                  }}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeTab === tab.key
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={tab.icon} className="text-xs" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">

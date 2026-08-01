@@ -64,8 +64,9 @@ const getStatusAssignment = (status: string | undefined) => {
 }
 const getAssignmentType = (type: string | undefined) => {
     if (type === undefined) return "Chưa cập nhật";
-    if (type === "FIXED_BY_CONTRACT") return "Phân công cố định theo hợp đồng";
-    if (type === "FIXED_BY_DAY") return "Phân công cố định theo ngày";
+    if (type === "FIXED_BY_CONTRACT") return "Phân công tính lương tháng";
+    if (type === "FIXED_BY_DAY") return "Phân công tính lương ngày";
+    if (type === "SUPPORT") return "Phân công hỗ trợ";
     if (type === "TEMPORARY") return "Phân công tạm thời";
     if (type === "FIXED_BY_COMPANY") return "Phân công làm việc ở công ty";
 }

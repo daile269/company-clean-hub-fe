@@ -476,15 +476,15 @@ export default function AssignmentsPage() {
                         {(() => {
                           switch (assignment.assignmentType) {
                             case "FIXED_BY_CONTRACT":
-                              return "Cố định theo hợp đồng";
+                              return "Phân công tính lương tháng";
                             case "FIXED_BY_DAY":
-                              return "Cố định theo ngày";
+                              return "Phân công tính lương ngày";
                             case "TEMPORARY":
                               return "Tạm thời";
                             case "FIXED_BY_COMPANY":
                               return "Làm việc tại công ty";
                             case "SUPPORT":
-                              return "Hỗ trợ";
+                              return "Phân công hỗ trợ";
                             default:
                               return assignment.assignmentType || "N/A";
                           }

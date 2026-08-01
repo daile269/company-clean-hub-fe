@@ -25,7 +25,8 @@ export default function EmployeesPage() {
   const initialSearch = searchParams.get("keyword") ?? "";
   const initialPage = Number(searchParams.get("page") ?? "0");
   const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
-  const initialFilterType = searchParams.get("filterType") ?? "all";
+  const initialTab = (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
+  const initialProvince = searchParams.get("province") ?? "";
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +36,9 @@ export default function EmployeesPage() {
   const canCreate = usePermission("EMPLOYEE_CREATE");
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [searchKeyword, setSearchKeyword] = useState(initialSearch); // Keyword được gửi đến API
-  const [filterType, setFilterType] = useState<string>(initialFilterType);
+  const [searchKeyword, setSearchKeyword] = useState(initialSearch);
+  const [activeTab, setActiveTab] = useState<"new" | "unassigned" | "by_location">(initialTab);
+  const [filterProvince, setFilterProvince] = useState<string>(initialProvince);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
@@ -89,24 +91,22 @@ export default function EmployeesPage() {
   // Load employees from API with pagination
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, pageSize, searchKeyword, filterType]);
+  }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince]);
 
-  const initializedRef = useRef(false);
-
-  // Mảng dependencies để sync URL
+  // Sync URL
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchKeyword) params.set("keyword", searchKeyword);
     params.set("page", currentPage.toString());
     params.set("pageSize", pageSize.toString());
-    if (filterType && filterType !== "all")
-      params.set("filterType", filterType);
+    if (activeTab && activeTab !== "new") params.set("tab", activeTab);
+    if (filterProvince) params.set("province", filterProvince);
 
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
-  }, [searchKeyword, currentPage, pageSize, filterType, pathname, router]);
+  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, pathname, router]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -132,16 +132,13 @@ export default function EmployeesPage() {
     const ps = overrides?.pageSize ?? pageSize;
     try {
       setLoading(true);
-      console.debug("Loading employees with", {
-        keyword: searchKeyword,
-        page: p,
-        pageSize: ps,
-      });
       const response = await employeeService.getAll({
         keyword: searchKeyword,
         page: p,
         pageSize: ps,
         employmentType: "CONTRACT_STAFF",
+        province: activeTab === "by_location" ? filterProvince || undefined : undefined,
+        unassigned: activeTab === "unassigned" ? true : undefined,
       });
       setEmployees(response.content);
       setTotalPages(response.totalPages);
@@ -154,11 +151,8 @@ export default function EmployeesPage() {
     }
   };
 
-  // Client-side filter by employee type only
-  const filteredEmployees =
-    filterType === "all"
-      ? employees
-      : employees.filter((emp) => emp.employeeType === filterType);
+  // Hiển thị toàn bộ nhân viên (filter đã xử lý phía BE)
+  const filteredEmployees = employees;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -410,6 +404,32 @@ export default function EmployeesPage() {
           </div>
           {/* Filters */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {([
+                { key: "new", label: "👤 Nhân viên mới", icon: SolidIcons.faUserPlus },
+                { key: "unassigned", label: "⚠️ Chưa phân công", icon: SolidIcons.faUserSlash },
+                { key: "by_location", label: "📍 Theo chỗ ở", icon: SolidIcons.faMapMarkerAlt },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setActiveTab(tab.key);
+                    setCurrentPage(0);
+                    if (tab.key !== "by_location") setFilterProvince("");
+                  }}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeTab === tab.key
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={tab.icon} className="text-xs" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -424,29 +444,35 @@ export default function EmployeesPage() {
                 />
               </div>
 
-              <div className="flex items-end md:justify-end">
-                <button
-                  className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                  title="Xuất Excel"
-                  onClick={() => setShowExportModal(true)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              {activeTab === "by_location" ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tỉnh / Thành phố
+                  </label>
+                  <SearchSelect
+                    options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                    value={filterProvince}
+                    onChange={(val) => {
+                      setFilterProvince(String(val));
+                      setCurrentPage(0);
+                    }}
+                    placeholder="Chọn tỉnh / thành phố..."
+                  />
+                </div>
+              ) : (
+                <div className="flex items-end md:justify-end">
+                  <button
+                    className="inline-flex items-center gap-2 px-3 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                    title="Xuất Excel"
+                    onClick={() => setShowExportModal(true)}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
-                    />
-                  </svg>
-                  Xuất danh sách nhân viên
-                </button>
-              </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3" />
+                    </svg>
+                    Xuất danh sách nhân viên
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -457,22 +483,13 @@ export default function EmployeesPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mã NV
+                      SĐT (Mã NV)
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Họ và tên
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số điện thoại
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CCCD
-                    </th>
-                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                    <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày cập nhật
+                      Khách hàng đang làm việc
                     </th>
                   </tr>
                 </thead>
@@ -485,51 +502,41 @@ export default function EmployeesPage() {
                         router.push(`/admin/employees/${employee.id}`)
                       }
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {employee.employeeCode}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{employee.phone}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">({employee.employeeCode})</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold">
-                              {employee.name.charAt(0)}
-                            </div>
+                          <div className="h-9 w-9 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
+                            {employee.name.charAt(0)}
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {employee.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {employee.email}
-                            </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                            <span
+                              className={`inline-flex mt-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                                employee.status === "ACTIVE"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.phone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.idCard}
-                      </td>
-                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            employee.status === "ACTIVE"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {employee.status === "ACTIVE"
-                            ? "Hoạt động"
-                            : "Không hoạt động"}
-                        </span>
-                      </td>
-                      <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {employee.updatedAt
-                          ? employee.updatedAt instanceof Date
-                            ? employee.updatedAt.toLocaleDateString("vi-VN")
-                            : employee.updatedAt
-                          : "N/A"}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {employee.currentCustomerName ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-blue-400" />
+                            {employee.currentCustomerName}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                            <FontAwesomeIcon icon={SolidIcons.faCircleExclamation} className="text-amber-400" />
+                            Chưa phân công
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

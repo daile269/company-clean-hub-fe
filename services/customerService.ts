@@ -6,6 +6,9 @@ export interface CustomerPaginationParams {
   keyword?: string;
   page?: number;
   pageSize?: number;
+  hasContractInMonth?: boolean;
+  month?: number;
+  year?: number;
 }
 
 export interface CustomerPaginationResponse {
@@ -61,6 +64,15 @@ class CustomerService {
     
     if (params?.keyword) {
       queryParams.append('keyword', params.keyword);
+    }
+    if (params?.hasContractInMonth !== undefined) {
+      queryParams.append('hasContractInMonth', params.hasContractInMonth.toString());
+    }
+    if (params?.month !== undefined) {
+      queryParams.append('month', params.month.toString());
+    }
+    if (params?.year !== undefined) {
+      queryParams.append('year', params.year.toString());
     }
     queryParams.append('page', (params?.page ?? 0).toString());
     queryParams.append('pageSize', (params?.pageSize ?? 10).toString());

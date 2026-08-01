@@ -8,6 +8,8 @@ export interface EmployeePaginationParams {
   page?: number;
   pageSize?: number;
   employmentType?: string;
+  province?: string;
+  unassigned?: boolean;
 }
 
 export interface EmployeePaginationResponse {
@@ -52,6 +54,7 @@ class EmployeeService {
       description: apiEmployee.description || undefined,
       cccdFrontImage: apiEmployee.cccdFrontImage || undefined,
       cccdBackImage: apiEmployee.cccdBackImage || undefined,
+      currentCustomerName: apiEmployee.currentCustomerName || undefined,
       joinDate: apiEmployee.createdAt
         ? new Date(apiEmployee.createdAt)
         : new Date(),
@@ -74,6 +77,12 @@ class EmployeeService {
     }
     if (params?.employmentType) {
       queryParams.append("employmentType", params.employmentType);
+    }
+    if (params?.province) {
+      queryParams.append("province", params.province);
+    }
+    if (params?.unassigned) {
+      queryParams.append("unassigned", "true");
     }
     queryParams.append("page", (params?.page ?? 0).toString());
     queryParams.append("pageSize", (params?.pageSize ?? 10).toString());

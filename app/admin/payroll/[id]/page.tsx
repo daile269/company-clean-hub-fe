@@ -206,11 +206,11 @@ export default function PayrollDetailPage() {
   const getAssignmentTypeLabel = (type: string | undefined): string => {
     if (!type) return "";
     const typeMap: Record<string, string> = {
-      "FIXED_BY_CONTRACT": "Phân công cố định (hợp đồng)",
-      "FIXED_BY_DAY": "Phân công cố định (theo ngày)",
+      "FIXED_BY_CONTRACT": "Phân công tính lương tháng",
+      "FIXED_BY_DAY": "Phân công tính lương ngày",
       "TEMPORARY": "Phân công tạm thời",
-      "FIXED_BY_COMPANY": "Phân công cố định (theo công ty)",
-      "SUPPORT": "Tăng ca"
+      "FIXED_BY_COMPANY": "Phân công làm việc ở công ty",
+      "SUPPORT": "Phân công hỗ trợ"
     };
     return typeMap[type] || type;
   };

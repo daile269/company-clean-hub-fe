@@ -2961,21 +2961,27 @@ export default function CustomerDetail() {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Chọn hợp đồng</option>
-                    {contracts.map((contract) => (
-                      <option key={contract.id} value={contract.id}>
-                        HĐ #{contract.id} -{" "}
-                        {contract.services?.map((s: any) => s.title).join(", ")}{" "}
-                        ({formatDate(contract.startDate)} -{" "}
-                        {formatDate(contract.endDate)}) - Hợp đồng{" "}
-                        {contract.contractType === "ONE_TIME"
-                          ? "Một lần"
-                          : contract.contractType === "MONTHLY_FIXED"
-                            ? "Hàng tháng (cố định)"
-                            : contract.contractType === "MONTHLY_ACTUAL"
-                              ? "Hàng tháng (thực tế)"
-                              : "N/A"}
-                      </option>
-                    ))}
+                    {contracts
+                      .filter((contract: any) => {
+                        if (!contract.endDate) return true;
+                        const todayStr = new Date().toISOString().split("T")[0];
+                        return contract.endDate >= todayStr;
+                      })
+                      .map((contract: any) => (
+                        <option key={contract.id} value={contract.id}>
+                          HĐ #{contract.id} -{" "}
+                          {contract.services?.map((s: any) => s.title).join(", ")}{" "}
+                          ({formatDate(contract.startDate)} -{" "}
+                          {formatDate(contract.endDate)}) - Hợp đồng{" "}
+                          {contract.contractType === "ONE_TIME"
+                            ? "Một lần"
+                            : contract.contractType === "MONTHLY_FIXED"
+                              ? "Hàng tháng (cố định)"
+                              : contract.contractType === "MONTHLY_ACTUAL"
+                                ? "Hàng tháng (thực tế)"
+                                : "N/A"}
+                        </option>
+                      ))}
                   </select>
                   {loadingContracts && (
                     <p className="text-xs text-gray-500 mt-1">

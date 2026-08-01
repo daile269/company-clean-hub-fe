@@ -140,3 +140,18 @@ body {
     animation: none;
   }
 }
+
+/* Prevent Mobile Auto-Zoom on Input Focus for iOS Safari and Android Chrome */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="search"],
+  input[type="tel"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

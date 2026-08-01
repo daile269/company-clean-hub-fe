@@ -141,6 +141,7 @@ export interface Employee {
   cccdFrontImage?: string;       // Ảnh CCCD mặt trước (Cloudinary public ID)
   cccdBackImage?: string;        // Ảnh CCCD mặt sau (Cloudinary public ID)
   currentCustomerName?: string;  // Tên KH đang làm việc (IN_PROGRESS assignment)
+  currentCustomerId?: number;    // ID KH đang làm việc (IN_PROGRESS assignment)
   joinDate: string | Date;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -173,6 +174,7 @@ export interface ApiEmployee {
   cccdFrontImage?: string;
   cccdBackImage?: string;
   currentCustomerName?: string;  // Tên KH đang làm việc, null nếu chưa phân công
+  currentCustomerId?: number;    // ID KH đang làm việc, null nếu chưa phân công
   description: string | null;
   createdAt: string | null;
   updatedAt: string | null;

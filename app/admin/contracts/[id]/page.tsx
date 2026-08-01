@@ -358,8 +358,9 @@ export default function ContractDetailPage() {
   const getAssignmentTypeLabel = (type?: string) => {
     if (!type) return "-";
     const map: Record<string, string> = {
-      FIXED_BY_CONTRACT: "Cố định theo hợp đồng",
-      FIXED_BY_DAY: "Cố định theo ngày",
+      FIXED_BY_CONTRACT: "Phân công tính lương tháng",
+      FIXED_BY_DAY: "Phân công tính lương ngày",
+      SUPPORT: "Phân công hỗ trợ",
       TEMPORARY: "Tạm thời",
       FIXED_BY_COMPANY: "Làm việc tại công ty",
     };

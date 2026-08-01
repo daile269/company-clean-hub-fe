@@ -823,13 +823,13 @@ export default function CustomerDetail() {
   const getAssignmentTypeLabel = (type: string) => {
     switch (type) {
       case "FIXED_BY_CONTRACT":
-        return "Cố định theo hợp đồng";
+        return "Phân công tính lương tháng";
       case "FIXED_BY_DAY":
-        return "Cố định theo ngày";
+        return "Phân công tính lương ngày";
       case "FIXED_BY_COMPANY":
         return "Làm việc tại công ty";
       case "SUPPORT":
-        return "Hỗ trợ";
+        return "Phân công hỗ trợ";
       case "TEMPORARY":
       default:
         return "Tạm thời";
@@ -1068,7 +1068,7 @@ export default function CustomerDetail() {
         await assignmentService.temporaryReassignment(reassignmentData);
 
       if (response.success) {
-        toast.success("Đã điều động nhân viên tạm thời thành công");
+        toast.success("Đã điều động nhân viên thay thế thành công");
         setShowReassignmentModal(false);
         // Reset form
         setReassignmentForm({
@@ -1304,7 +1304,7 @@ export default function CustomerDetail() {
                   d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                 />
               </svg>
-              Điều động tạm thời
+              Điều động thay thế
             </button>
           )}
           {canEdit && (
@@ -2832,12 +2832,14 @@ export default function CustomerDetail() {
                     }
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="FIXED_BY_CONTRACT">Phân công cố định</option>
+                    <option value="FIXED_BY_CONTRACT">
+                      Phân công tính lương tháng
+                    </option>
                     <option value="FIXED_BY_DAY">
-                      Phân công cố định theo ngày
+                      Phân công tính lương ngày
                     </option>
                     <option value="SUPPORT">
-                      Phân công hỗ trợ (chọn ngày)
+                      Phân công hỗ trợ
                     </option>
                     {/* <option value="TEMPORARY">Tạm thời</option> */}
                   </select>
@@ -3586,7 +3588,7 @@ export default function CustomerDetail() {
           <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Điều động nhân viên tạm thời
+                Điều động nhân viên thay thế
               </h2>
               <button
                 onClick={() => setShowReassignmentModal(false)}

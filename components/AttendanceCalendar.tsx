@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { toast } from "react-hot-toast";
 import { authService } from "@/services/authService";
+import { useRouter } from "next/navigation";
 
 interface AttendanceCalendarProps {
     attendances: Attendance[];
@@ -128,6 +129,7 @@ export default function AttendanceCalendar({
     onAsyncEnd,
     onSuccess,
 }: AttendanceCalendarProps) {
+    const router = useRouter();
     const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
     // Mỗi lịch tương ứng 1 assignment
     const [assignmentsById, setAssignmentsById] = useState<Map<number, Assignment | null>>(new Map());
@@ -274,9 +276,23 @@ export default function AttendanceCalendar({
                         <div key={assignmentId} className="flex gap-4 bg-white rounded-lg shadow p-4">
                             {/* Sidebar - Customer Info + Assignment allowance */}
                             <div className="w-32 flex-shrink-0">
-                                <h3 className="text-sm font-semibold text-gray-900 break-words">
-                                    {customerName} (#{assignmentId})
-                                </h3>
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-semibold text-gray-900 break-words">
+                                        {customerName} (#{assignmentId})
+                                    </h3>
+                                    {assignment?.contractId && (
+                                        <button
+                                            type="button"
+                                            onClick={() => router.push(`/admin/contracts/${assignment.contractId}`)}
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                                            title="Xem chi tiết Hợp đồng"
+                                        >
+                                            <FontAwesomeIcon icon={SolidIcons.faFileContract} className="text-blue-500 text-[10px]" />
+                                            <span>Xem HĐ</span>
+                                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[8px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                                        </button>
+                                    )}
+                                </div>
 
                                 {/* Thông tin Assignment (mỗi lịch 1 assignment) */}
                                 <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">

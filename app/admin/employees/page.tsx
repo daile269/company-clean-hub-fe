@@ -527,10 +527,21 @@ export default function EmployeesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {employee.currentCustomerName ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-blue-400" />
-                            {employee.currentCustomerName}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (employee.currentCustomerId) {
+                                router.push(`/admin/customers/${employee.currentCustomerId}`);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Bấm để chuyển tới trang chi tiết Khách hàng"
+                          >
+                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-blue-500" />
+                            <span>{employee.currentCustomerName}</span>
+                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          </button>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
                             <FontAwesomeIcon icon={SolidIcons.faCircleExclamation} className="text-amber-400" />

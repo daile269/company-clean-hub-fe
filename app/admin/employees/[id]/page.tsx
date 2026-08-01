@@ -1171,7 +1171,7 @@ export default function EmployeeDetail() {
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium">
                           {customer?.name || a.customerId}
                         </p>
@@ -1183,6 +1183,21 @@ export default function EmployeeDetail() {
                           >
                             {getAssignmentStatusLabel(a.status)}
                           </span>
+                        )}
+                        {a.contractId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/admin/contracts/${a.contractId}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Xem chi tiết Hợp đồng"
+                          >
+                            <FontAwesomeIcon icon={SolidIcons.faFileContract} className="text-blue-500" />
+                            <span>Xem HĐ #{a.contractId}</span>
+                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          </button>
                         )}
                       </div>
                       <p className="text-sm text-gray-500">

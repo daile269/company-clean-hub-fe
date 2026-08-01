@@ -14,6 +14,8 @@ import attendanceService, {
 } from "@/services/attendanceService";
 import contractService from "@/services/contractService";
 import { usePermission } from "@/hooks/usePermission";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 
 export default function AssignmentDetail() {
   const params = useParams();
@@ -657,9 +659,23 @@ export default function AssignmentDetail() {
 
               <div>
                 <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {assignment.customerName || `ID: ${assignment.customerId}`}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {assignment.customerName || `ID: ${assignment.customerId}`}
+                  </p>
+                  {assignment.contractId && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/admin/contracts/${assignment.contractId}`)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                      title="Xem chi tiết Hợp đồng"
+                    >
+                      <FontAwesomeIcon icon={SolidIcons.faFileContract} className="text-blue-500" />
+                      <span>Xem HĐ #{assignment.contractId}</span>
+                      <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <div>

@@ -55,6 +55,7 @@ class EmployeeService {
       cccdFrontImage: apiEmployee.cccdFrontImage || undefined,
       cccdBackImage: apiEmployee.cccdBackImage || undefined,
       currentCustomerName: apiEmployee.currentCustomerName || undefined,
+      currentCustomerId: apiEmployee.currentCustomerId || undefined,
       joinDate: apiEmployee.createdAt
         ? new Date(apiEmployee.createdAt)
         : new Date(),

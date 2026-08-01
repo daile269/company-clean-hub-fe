@@ -218,6 +218,28 @@ export default function CustomerDetail() {
   const [historyPageSize, setHistoryPageSize] = useState<number>(15);
   const [historyTotalPages, setHistoryTotalPages] = useState<number>(0);
 
+  // Global Month/Year sync state for the entire page
+  const [globalMonth, setGlobalMonth] = useState<number>(
+    new Date().getMonth() + 1,
+  );
+  const [globalYear, setGlobalYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+
+  // Auto-sync all section filters whenever globalMonth / globalYear changes
+  useEffect(() => {
+    setFilterMonth(globalMonth);
+    setFilterYear(globalYear);
+    setContractFilterMonth(globalMonth);
+    setContractFilterYear(globalYear);
+    setHistoryFilterMonth(globalMonth);
+    setHistoryFilterYear(globalYear);
+    setAssignmentModalMonth(globalMonth);
+    setAssignmentModalYear(globalYear);
+    setAssignedEmployeesMonth(globalMonth);
+    setAssignedEmployeesYear(globalYear);
+  }, [globalMonth, globalYear]);
+
   // Filter states for Card 1
   const [assignmentContractFilter, setAssignmentContractFilter] =
     useState<string>("");
@@ -1351,6 +1373,65 @@ export default function CustomerDetail() {
               Xóa
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Global Month-Year Sync Bar */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 mb-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
+            <FontAwesomeIcon icon={SolidIcons.faCalendarDays} className="text-base" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">BỘ LỌC THỜI GIAN ĐỒNG BỘ TOÀN TRANG</h3>
+            <p className="text-xs text-gray-500">Tự động nạp lại thông tin Nhân viên, Hợp đồng & Lịch sử theo tháng/năm đã chọn</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-2xs">
+            <span className="text-xs font-semibold text-gray-600">Tháng:</span>
+            <select
+              value={globalMonth}
+              onChange={(e) => setGlobalMonth(Number(e.target.value))}
+              className="text-sm font-bold text-blue-700 bg-transparent focus:outline-hidden cursor-pointer"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  Tháng {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-2xs">
+            <span className="text-xs font-semibold text-gray-600">Năm:</span>
+            <select
+              value={globalYear}
+              onChange={(e) => setGlobalYear(Number(e.target.value))}
+              className="text-sm font-bold text-blue-700 bg-transparent focus:outline-hidden cursor-pointer"
+            >
+              {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                <option key={y} value={y}>
+                  Năm {y}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              setGlobalMonth(now.getMonth() + 1);
+              setGlobalYear(now.getFullYear());
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            title="Quay về Tháng/Năm hiện tại"
+          >
+            <FontAwesomeIcon icon={SolidIcons.faRotate} className="text-xs" />
+            Tháng hiện tại
+          </button>
         </div>
       </div>
 

@@ -1,6 +1,61 @@
 import { apiService } from './api';
 import { Contract } from '@/types';
 
+// SalaryNote types
+export type SalaryNoteCategory = 'MONTHLY_ASSIGNMENT' | 'DAILY_ASSIGNMENT';
+export type SalaryNoteType = 'FIXED' | 'TEMPORARY';
+
+export interface SalaryNote {
+  id: number;
+  contractId: number;
+  contractDescription: string | null;
+  category: SalaryNoteCategory;
+  salaryType: SalaryNoteType;
+  amount: number;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalaryNoteRequest {
+  category: SalaryNoteCategory;
+  salaryType: SalaryNoteType;
+  amount: number;
+  description?: string;
+}
+
+// WorkLocation types
+export interface WorkLocation {
+  id: number;
+  contractId: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkLocationRequest {
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  isActive?: boolean;
+}
+
+// Labels for display
+export const SalaryNoteCategoryLabels: Record<SalaryNoteCategory, string> = {
+  MONTHLY_ASSIGNMENT: 'Phân công tính lương tháng',
+  DAILY_ASSIGNMENT: 'Phân công tính lương ngày',
+};
+
+export const SalaryNoteTypeLabels: Record<SalaryNoteType, string> = {
+  FIXED: 'Cố định',
+  TEMPORARY: 'Tạm thời',
+};
+
 // Interface cho query params phân trang
 export interface ContractPaginationParams {
   keyword?: string;
@@ -388,6 +443,110 @@ const contractService = {
   update,
   delete: delete_,
   addServiceToContract,
+
+  // Salary Note CRUD
+  getSalaryNotes: async (contractId: string | number): Promise<SalaryNote[]> => {
+    try {
+      const response = await apiService.get<any>(`/contracts/${contractId}/salary-notes`);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch salary notes');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching salary notes:', error);
+      throw error;
+    }
+  },
+
+  createSalaryNote: async (contractId: string | number, data: SalaryNoteRequest): Promise<SalaryNote> => {
+    try {
+      const response = await apiService.post<any>(`/contracts/${contractId}/salary-notes`, data);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to create salary note');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error creating salary note:', error);
+      throw error;
+    }
+  },
+
+  updateSalaryNote: async (contractId: string | number, id: number, data: SalaryNoteRequest): Promise<SalaryNote> => {
+    try {
+      const response = await apiService.put<any>(`/contracts/${contractId}/salary-notes/${id}`, data);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update salary note');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error updating salary note:', error);
+      throw error;
+    }
+  },
+
+  deleteSalaryNote: async (contractId: string | number, id: number): Promise<void> => {
+    try {
+      const response = await apiService.delete<any>(`/contracts/${contractId}/salary-notes/${id}`);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to delete salary note');
+      }
+    } catch (error) {
+      console.error('Error deleting salary note:', error);
+      throw error;
+    }
+  },
+
+  // Work Location CRUD
+  getWorkLocations: async (contractId: string | number): Promise<WorkLocation[]> => {
+    try {
+      const response = await apiService.get<any>(`/contracts/${contractId}/work-locations`);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch work locations');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching work locations:', error);
+      throw error;
+    }
+  },
+
+  createWorkLocation: async (contractId: string | number, data: WorkLocationRequest): Promise<WorkLocation> => {
+    try {
+      const response = await apiService.post<any>(`/contracts/${contractId}/work-locations`, data);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to create work location');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error creating work location:', error);
+      throw error;
+    }
+  },
+
+  updateWorkLocation: async (contractId: string | number, id: number, data: WorkLocationRequest): Promise<WorkLocation> => {
+    try {
+      const response = await apiService.put<any>(`/contracts/${contractId}/work-locations/${id}`, data);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to update work location');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error updating work location:', error);
+      throw error;
+    }
+  },
+
+  deleteWorkLocation: async (contractId: string | number, id: number): Promise<void> => {
+    try {
+      const response = await apiService.delete<any>(`/contracts/${contractId}/work-locations/${id}`);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to delete work location');
+      }
+    } catch (error) {
+      console.error('Error deleting work location:', error);
+      throw error;
+    }
+  },
 };
 
 export default contractService;

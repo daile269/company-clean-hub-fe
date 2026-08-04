@@ -6,18 +6,25 @@ import {
   notificationService,
   NotificationResponse,
   GetNotificationParams,
+  NotificationTypeEnum,
+  NotificationTypeMeta,
+  NotificationTypeLabels,
+  NotificationFilterType,
 } from "@/services/notificationService";
 import { permissionService } from "@/services/permissionService";
 import { authService } from "@/services/authService";
 
-type FilterType = "ALL" | "WORK_TIME_CONFLICT" | "NEW_EMPLOYEE_CREATED";
+type FilterType = NotificationFilterType;
 type FilterRead = "ALL" | "UNREAD" | "READ";
 
-interface TypeCount {
-  ALL: number;
-  WORK_TIME_CONFLICT: number;
-  NEW_EMPLOYEE_CREATED: number;
-}
+// All 8 notification types
+const ALL_TYPES: NotificationTypeEnum[] = [
+  'WORK_TIME_CONFLICT', 'NEW_EMPLOYEE_CREATED', 'MISSING_VERIFICATION_PHOTO',
+  'INSUFFICIENT_STAFF', 'CONTRACT_EXPIRING', 'ASSIGNMENT_OVER_BUDGET',
+  'TEMPORARY_OVER_5_DAYS', 'CHECKIN_OUTSIDE_RADIUS',
+];
+
+type TypeCount = Record<FilterType, number>;
 
 export default function NotificationBell() {
   const router = useRouter();
@@ -26,10 +33,10 @@ export default function NotificationBell() {
   const [hasPermission, setHasPermission] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [badgeCount, setBadgeCount] = useState(0);
-  const [typeCounts, setTypeCounts] = useState<TypeCount>({
-    ALL: 0,
-    WORK_TIME_CONFLICT: 0,
-    NEW_EMPLOYEE_CREATED: 0,
+  const [typeCounts, setTypeCounts] = useState<TypeCount>(() => {
+    const init: any = { ALL: 0 };
+    ALL_TYPES.forEach(t => { init[t] = 0; });
+    return init as TypeCount;
   });
   const [notifications, setNotifications] = useState<NotificationResponse[]>(
     [],
@@ -62,14 +69,9 @@ export default function NotificationBell() {
   // ── Tính typeCounts từ data đã fetch (không cần gọi thêm API) ────────────
   const recomputeTypeCounts = useCallback((data: NotificationResponse[]) => {
     const unread = data.filter((n) => !n.isRead);
-    setTypeCounts({
-      ALL: unread.length,
-      WORK_TIME_CONFLICT: unread.filter((n) => n.type === "WORK_TIME_CONFLICT")
-        .length,
-      NEW_EMPLOYEE_CREATED: unread.filter(
-        (n) => n.type === "NEW_EMPLOYEE_CREATED",
-      ).length,
-    });
+    const counts: any = { ALL: unread.length };
+    ALL_TYPES.forEach(t => { counts[t] = unread.filter((n) => n.type === t).length; });
+    setTypeCounts(counts as TypeCount);
   }, []);
 
   // ── SSE realtime connection ───────────────────────────────────────────────
@@ -80,14 +82,13 @@ export default function NotificationBell() {
     setTypeCounts((prev) => ({
       ...prev,
       ALL: prev.ALL + 1,
-      [notif.type]: (prev[notif.type as keyof TypeCount] ?? 0) + 1,
+      [notif.type]: (prev[notif.type] ?? 0) + 1,
     }));
+    const meta = NotificationTypeMeta[notif.type];
     toast(
       (t) => (
         <div className="flex gap-3 items-start max-w-xs">
-          <span className="text-xl">
-            {notif.type === "WORK_TIME_CONFLICT" ? "⚠️" : "👤"}
-          </span>
+          <span className="text-xl">{meta?.icon ?? '🔔'}</span>
           <div>
             <p className="font-semibold text-sm text-gray-900 leading-tight">
               {notif.title}
@@ -107,9 +108,8 @@ export default function NotificationBell() {
       {
         duration: 6000,
         style: {
-          background:
-            notif.type === "WORK_TIME_CONFLICT" ? "#FFF7ED" : "#F0FDF4",
-          border: `1px solid ${notif.type === "WORK_TIME_CONFLICT" ? "#FDBA74" : "#86EFAC"}`,
+          background: meta?.bg ?? '#F0FDF4',
+          border: `1px solid ${meta?.border ?? '#86EFAC'}`,
           borderRadius: "10px",
           padding: "12px",
         },
@@ -191,9 +191,13 @@ export default function NotificationBell() {
         ),
       }));
     }
-    // Navigate
+    // Navigate based on ref fields (priority: employee > contract > assignment)
     if (notif.refEmployeeId) {
       router.push(`/admin/employees/${notif.refEmployeeId}`);
+    } else if (notif.refContractId) {
+      router.push(`/admin/contracts/${notif.refContractId}`);
+    } else if (notif.refAssignmentId) {
+      router.push(`/admin/assignments/${notif.refAssignmentId}`);
     }
     setIsOpen(false);
   };
@@ -203,7 +207,8 @@ export default function NotificationBell() {
     await notificationService.markAllAsRead();
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setBadgeCount(0);
-    setTypeCounts({ ALL: 0, WORK_TIME_CONFLICT: 0, NEW_EMPLOYEE_CREATED: 0 });
+    const zero: any = {}; ALL_TYPES.forEach(t => { zero[t] = 0; }); zero.ALL = 0;
+    setTypeCounts(zero as TypeCount);
   };
 
   // ── Filter (now server-side; client state just tracks UI) ─────────────────
@@ -283,15 +288,14 @@ export default function NotificationBell() {
           {/* Filters */}
           <div className="px-4 py-2 border-b border-gray-100 space-y-2">
             {/* Type filter */}
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1 flex-wrap max-h-[80px] overflow-y-auto">
               {(
                 [
-                  { val: "ALL", label: "Tất cả" },
-                  { val: "WORK_TIME_CONFLICT", label: "⚠️ Trùng giờ" },
-                  { val: "NEW_EMPLOYEE_CREATED", label: "👤 NV mới" },
-                ] as { val: FilterType; label: string }[]
-              ).map(({ val, label }) => {
-                const unread = typeCounts[val as keyof TypeCount] ?? 0;
+                  { val: 'ALL' as FilterType, label: 'Tất cả', icon: '📋' },
+                  ...ALL_TYPES.map(t => ({ val: t as FilterType, label: NotificationTypeLabels[t], icon: NotificationTypeMeta[t].icon })),
+                ]
+              ).map(({ val, label, icon }) => {
+                const unread = typeCounts[val] ?? 0;
                 return (
                   <button
                     key={val}
@@ -302,7 +306,8 @@ export default function NotificationBell() {
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    {label}
+                    <span>{icon}</span>
+                    <span className="max-w-[120px] truncate">{label}</span>
                     {unread > 0 && (
                       <span
                         className={`inline-flex items-center justify-center min-w-[16px] h-4 text-[10px] font-bold rounded-full px-1 leading-none ${
@@ -391,13 +396,10 @@ export default function NotificationBell() {
 
                   {/* Icon */}
                   <div
-                    className={`text-xl shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      notif.type === "WORK_TIME_CONFLICT"
-                        ? "bg-orange-100"
-                        : "bg-green-100"
-                    }`}
+                    className="text-xl shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: (NotificationTypeMeta[notif.type]?.bg ?? '#F3F4F6') }}
                   >
-                    {notif.type === "WORK_TIME_CONFLICT" ? "⚠️" : "👤"}
+                    {NotificationTypeMeta[notif.type]?.icon ?? '🔔'}
                   </div>
 
                   {/* Content */}

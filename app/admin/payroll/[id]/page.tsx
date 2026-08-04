@@ -43,8 +43,9 @@ export default function PayrollDetailPage() {
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   // State for editing advance note
-  const [advanceNote, setAdvanceNote] = useState(0);
-  const [isEditingAdvance, setIsEditingAdvance] = useState(false);
+  // [DEPRECATED] advanceTotal replaced by advanceNoteSummary from Assignment.advanceNote
+  // const [advanceNote, setAdvanceNote] = useState(0);
+  // const [isEditingAdvance, setIsEditingAdvance] = useState(false);
 
   const showOverlay = (message?: string) => {
     setOverlayMessage(message || "Đang xử lý...");
@@ -75,7 +76,7 @@ export default function PayrollDetailPage() {
       const data = await payrollService.getPayrollById(Number(id));
       console.log("Loaded payroll:", data);
       setPayroll(data);
-      setAdvanceNote(data.advanceTotal || 0); // Initialize advance note
+      // [DEPRECATED] setAdvanceNote(data.advanceTotal || 0); // Initialize advance note
       loadPaymentHistory(); // Auto-load payment history
       // load attendances for this employee/month
       if (data && data.employeeId) {
@@ -168,28 +169,26 @@ export default function PayrollDetailPage() {
     }
   };
 
-  const handleSaveAdvanceNote = async () => {
-    if (!payroll) return;
-
-    try {
-      setIsEditingAdvance(true);
-      showOverlay("Đang cập nhật xin ứng lương...");
-
-      await payrollService.recalculatePayroll(payroll.id, {
-        advanceTotal: advanceNote,
-      });
-
-      await loadPayroll({ showOverlay: false });
-      hideOverlay();
-      toast.success("Đã cập nhật xin ứng lương thành công!");
-    } catch (error) {
-      console.error("Failed to update advance note:", error);
-      hideOverlay();
-      toast.error("Không thể cập nhật xin ứng lương");
-    } finally {
-      setIsEditingAdvance(false);
-    }
-  };
+  // [DEPRECATED] advanceTotal replaced by advanceNoteSummary from Assignment.advanceNote
+  // const handleSaveAdvanceNote = async () => {
+  //   if (!payroll) return;
+  //   try {
+  //     setIsEditingAdvance(true);
+  //     showOverlay("Đang cập nhật xin ứng lương...");
+  //     await payrollService.recalculatePayroll(payroll.id, {
+  //       advanceTotal: advanceNote,
+  //     });
+  //     await loadPayroll({ showOverlay: false });
+  //     hideOverlay();
+  //     toast.success("Đã cập nhật xin ứng lương thành công!");
+  //   } catch (error) {
+  //     console.error("Failed to update advance note:", error);
+  //     hideOverlay();
+  //     toast.error("Không thể cập nhật xin ứng lương");
+  //   } finally {
+  //     setIsEditingAdvance(false);
+  //   }
+  // };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -585,7 +584,7 @@ export default function PayrollDetailPage() {
                     </p>
                   </div>
 
-                  {/* 5. Advance Note - Below Remaining Amount - EDITABLE */}
+                  {/* [DEPRECATED] 5. Advance Note - replaced by advanceNoteSummary below
                   <div className="bg-yellow-50 rounded-lg p-3 sm:p-4 border border-yellow-200">
                     <div className="flex items-center gap-2 mb-2 sm:mb-3">
                       <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -595,37 +594,35 @@ export default function PayrollDetailPage() {
                         Xin ứng lương (Ghi chú)
                       </label>
                     </div>
-
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <input
-                        type="text"
-                        value={advanceNote.toLocaleString('vi-VN')}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '');
-                          setAdvanceNote(value ? Number(value) : 0);
-                        }}
-                        className="flex-1 px-3 py-2 text-sm sm:text-lg font-semibold border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
-                        disabled={!canEdit || isEditingAdvance}
-                        placeholder="0"
-                      />
+                      <input type="text" value={advanceNote.toLocaleString('vi-VN')} onChange={(e) => { const value = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, ''); setAdvanceNote(value ? Number(value) : 0); }} className="flex-1 px-3 py-2 text-sm sm:text-lg font-semibold border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white" disabled={!canEdit || isEditingAdvance} placeholder="0" />
                       {canEdit && (
-                        <button
-                          onClick={handleSaveAdvanceNote}
-                          disabled={isEditingAdvance || advanceNote === (payroll?.advanceTotal || 0)}
-                          className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-base font-medium"
-                        >
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                        <button onClick={handleSaveAdvanceNote} disabled={isEditingAdvance || advanceNote === (payroll?.advanceTotal || 0)} className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-base font-medium">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                           <span>{isEditingAdvance ? "Lưu" : "Lưu"}</span>
                         </button>
                       )}
                     </div>
-
-                    <p className="text-[9px] sm:text-xs text-gray-500 mt-2 sm:mt-3">
-                      ⓘ Ghi chú tiền ứng, không ảnh hưởng tính lương
-                    </p>
+                    <p className="text-[9px] sm:text-xs text-gray-500 mt-2 sm:mt-3">ⓘ Ghi chú tiền ứng, không ảnh hưởng tính lương</p>
                   </div>
+                  */}
+
+                  {/* Tổng tiền ứng lương từ các phân công (Task 15 - advanceNoteSummary) */}
+                  {payroll.advanceNoteSummary != null && payroll.advanceNoteSummary > 0 && (
+                    <div className="bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <label className="text-[10px] sm:text-xs font-semibold text-gray-600 uppercase">
+                          Tổng ứng lương phân công (Ghi chú)
+                        </label>
+                      </div>
+                      <p className="text-lg sm:text-xl font-bold text-purple-700">
+                        {formatCurrency(payroll.advanceNoteSummary)}
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -750,7 +747,7 @@ export default function PayrollDetailPage() {
             payrollId={payroll.id}
             currentValues={{
               insuranceTotal: payroll.insuranceTotal,
-              advanceTotal: payroll.advanceTotal,
+              // [DEPRECATED] advanceTotal: payroll.advanceTotal,
             }}
             onShowToast={(msg, type) => showToast(msg, type)}
           />

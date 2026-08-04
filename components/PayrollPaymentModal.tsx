@@ -1,11 +1,25 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Payroll } from "@/services/payrollService";
+import { Payroll, PaymentRequest } from "@/services/payrollService";
 import { QRPay } from "vietnam-qr-pay";
 import QRCode from 'qrcode';
 import { employeeService } from "@/services/employeeService";
 import { ApiEmployee, Employee } from "@/types";
 import banksData from "@/utils/binBank.json";
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+    }).format(amount);
+};
+
+const parseCurrency = (value: string): number => {
+    const cleaned = value.replace(/[^\d,.-]/g, '').replace(',', '.');
+    const parsed = parseFloat(cleaned) || 0;
+    return Math.round(parsed * 100) / 100;
+};
+
 interface PayrollPaymentModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -25,6 +39,9 @@ export default function PayrollPaymentModal({
     const [employee, setEmployee] = useState<Employee | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
     const [transferContent, setTransferContent] = useState<string>("");
+    const [warning, setWarning] = useState<string>("");
+    const [showOverpayConfirm, setShowOverpayConfirm] = useState(false);
+    const [pendingAmount, setPendingAmount] = useState(0);
 
     useEffect(() => {
         if (isOpen && payroll) {
@@ -32,9 +49,29 @@ export default function PayrollPaymentModal({
             setPaidAmount("");
             fetchEmployee();
             setError("");
+            setWarning("");
             setTransferContent(`Tra luong ${payroll.employeeName} ${payroll.month}/${payroll.year}`);
         }
     }, [isOpen, payroll]);
+
+    // Fetch payment warning when amount changes
+    useEffect(() => {
+        const amount = parseCurrency(paidAmount);
+        if (amount > 0 && payroll) {
+            const fetchWarning = async () => {
+                try {
+                    const payrollService = (await import("@/services/payrollService")).default;
+                    const warningMsg = await payrollService.getPaymentWarning(payroll.id, amount);
+                    setWarning(warningMsg || "");
+                } catch {
+                    setWarning("");
+                }
+            };
+            fetchWarning();
+        } else {
+            setWarning("");
+        }
+    }, [paidAmount, payroll]);
 
     // Generate QR code when amount or transfer content changes
     useEffect(() => {
@@ -57,12 +94,6 @@ export default function PayrollPaymentModal({
 
     if (!isOpen || !payroll) return null;
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-        }).format(amount);
-    };
     const buildStringQr = (paidAmount: number, employee: Employee | null, content: string): string => {
         if (!employee) return "";
         console.log("tiền chuyển (number):", paidAmount)
@@ -81,13 +112,6 @@ export default function PayrollPaymentModal({
         });
         return qrPay.build();
     }
-    const parseCurrency = (value: string): number => {
-        // Remove all non-digit and non-decimal characters except comma/dot
-        const cleaned = value.replace(/[^\d,.-]/g, '').replace(',', '.');
-        const parsed = parseFloat(cleaned) || 0;
-        // Round to 2 decimal places to avoid floating-point precision issues
-        return Math.round(parsed * 100) / 100;
-    };
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -120,22 +144,28 @@ export default function PayrollPaymentModal({
             return;
         }
 
-        // Use small epsilon for comparison to handle floating-point precision
+        // If overpaying, show confirmation dialog instead of blocking
         if (amount > maxAmount + 0.01) {
-            setError(`Số tiền không được vượt quá số tiền còn lại (${formatCurrency(maxAmount)})`);
+            setPendingAmount(amount);
+            setShowOverpayConfirm(true);
             return;
         }
 
+        await processPaymentSubmit(amount);
+    };
+
+    const processPaymentSubmit = async (amount: number) => {
         try {
             setLoading(true);
             setError("");
 
             const payrollService = (await import("@/services/payrollService")).default;
 
-            // Calculate total paid amount
-            const totalPaid = payroll.paidAmount + amount;
+            const paymentRequest: PaymentRequest = {
+                amount: amount,
+            };
 
-            await payrollService.updatePaymentStatus(payroll.id, totalPaid);
+            await payrollService.processPayment(payroll.id, paymentRequest);
 
             onSuccess();
             onClose();
@@ -261,6 +291,16 @@ export default function PayrollPaymentModal({
                                 )}
                             </div>
 
+                            {/* Payment Warning */}
+                            {warning && (
+                                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
+                                    <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    <p className="text-sm text-yellow-700">{warning}</p>
+                                </div>
+                            )}
+
                             {/* Error Message */}
                             {error && (
                                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
@@ -277,7 +317,7 @@ export default function PayrollPaymentModal({
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
                                 <p className="text-xs text-yellow-700">
-                                    Bạn có thể thanh toán một phần hoặc toàn bộ số tiền còn lại. Trạng thái sẽ tự động cập nhật sau khi thanh toán.
+                                    Bạn có thể thanh toán một phần hoặc toàn bộ số tiền còn lại. Có thể chuyển dư (sẽ có xác nhận). Trạng thái sẽ tự động cập nhật sau khi thanh toán.
                                 </p>
                             </div>
                         </div>
@@ -356,6 +396,69 @@ export default function PayrollPaymentModal({
                     </div>
                 </form>
             </div>
+
+            {/* Overpayment Confirmation Dialog */}
+            {showOverpayConfirm && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-[rgb(0,0,0,0.4)]"
+                        onClick={() => {
+                            setShowOverpayConfirm(false);
+                            setPendingAmount(0);
+                        }}
+                    />
+                    <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Xác nhận chuyển dư</h3>
+                                <p className="text-sm text-gray-600">
+                                    Số tiền thanh toán ({formatCurrency(pendingAmount)}) vượt quá số tiền còn lại ({formatCurrency(Math.round(payroll.remainingAmount * 100) / 100)}).
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Bạn đang chuyển dư: <span className="font-semibold text-orange-600">{formatCurrency(pendingAmount - Math.round(payroll.remainingAmount * 100) / 100)}</span>
+                                </p>
+                                <p className="text-sm text-gray-500 mt-2">Bạn có chắc muốn tiếp tục?</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowOverpayConfirm(false);
+                                    setPendingAmount(0);
+                                }}
+                                disabled={loading}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    setShowOverpayConfirm(false);
+                                    await processPaymentSubmit(pendingAmount);
+                                }}
+                                disabled={loading}
+                                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Đang xử lý...
+                                    </>
+                                ) : (
+                                    "Xác nhận chuyển dư"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

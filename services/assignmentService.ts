@@ -12,6 +12,8 @@ export interface AssignmentCreateRequest {
   assignmentType?: string;
   plannedDays?: number;
   additionalAllowance?: number;
+  monthlySupport?: number;   // Tiền hỗ trợ cố định hàng tháng, không chia theo ngày công
+  advanceNote?: number;      // Tiền ứng lương (số, cộng dồn vào advanceNoteSummary)
   dates?: string[];
   workingDaysPerWeek?: string[];  // Required for COMPANY scope
   description?: string;
@@ -33,6 +35,8 @@ export interface Assignment {
   plannedDays?: number;
   workingDaysPerWeek?: string[];
   additionalAllowance?: number;
+  monthlySupport?: number;   // Tiền hỗ trợ cố định hàng tháng, không chia theo ngày công
+  advanceNote?: number;      // Tiền ứng lương (số)
   description?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -173,6 +177,8 @@ class AssignmentService {
       dates: data.dates,
       workingDaysPerWeek: data.workingDaysPerWeek,
       description: data.description || "",
+      monthlySupport: data.monthlySupport,
+      advanceNote: data.advanceNote,
     };
 
     return await apiService.post<Assignment>("/assignments", payload);
@@ -565,6 +571,13 @@ class AssignmentService {
   ): Promise<ApiResponse<Assignment>> {
     // Wrap in object to prevent empty body when allowance = 0
     return await apiService.put<Assignment>(`/assignments/${id}/allowance`, { allowance });
+  }
+
+  async updateAdvanceNote(
+    id: number,
+    advanceNote: number
+  ): Promise<ApiResponse<Assignment>> {
+    return await apiService.put<Assignment>(`/assignments/${id}/advance`, { advanceNote });
   }
 
   async delete(id: number): Promise<ApiResponse<void>> {

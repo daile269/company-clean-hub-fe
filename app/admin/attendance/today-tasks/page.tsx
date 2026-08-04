@@ -12,7 +12,7 @@ export default function TodayTasksPage() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user && user.roleName === "EMPLOYEE") {
+    if (user && user.roleName !== "CUSTOMER") {
       loadTodayTasks();
     } else if (user) {
       setLoading(false);
@@ -37,11 +37,11 @@ export default function TodayTasksPage() {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
 
-  if (!user || user.roleName !== "EMPLOYEE") {
+  if (!user || user.roleName === "CUSTOMER") {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-lg text-gray-600">Trang này dành cho Nhân viên</p>
+          <p className="text-lg text-gray-600">Trang này không dành cho khách hàng</p>
         </div>
       </div>
     );

@@ -3,7 +3,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Contract, ContractDocument } from "@/types";
-import contractService from "@/services/contractService";
+import contractService, { SalaryNoteCategoryLabels, SalaryNoteTypeLabels } from "@/services/contractService";
+import type { WorkLocation, WorkLocationRequest } from "@/services/contractService";
 import contractDocumentService from "@/services/contractDocumentService";
 import serviceService from "@/services/serviceService";
 import { authService } from "@/services/authService";
@@ -16,6 +17,7 @@ import attendanceService from "@/services/attendanceService";
 import { assignmentService } from "@/services/assignmentService";
 import { reviewService } from "@/services/reviewService";
 import ContractDocuments from "@/components/ContractDocuments";
+import MapPicker from "@/components/MapPicker";
 import toast, { Toaster } from "react-hot-toast";
 import { usePermission } from "@/hooks/usePermission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -123,6 +125,43 @@ export default function ContractDetailPage() {
   const [savingReview, setSavingReview] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Salary Notes state
+  const [salaryNotes, setSalaryNotes] = useState<import("@/services/contractService").SalaryNote[]>([]);
+  const [salaryNotesLoading, setSalaryNotesLoading] = useState(false);
+  const [salaryNoteForm, setSalaryNoteForm] = useState<{
+    category: import("@/services/contractService").SalaryNoteCategory;
+    salaryType: import("@/services/contractService").SalaryNoteType;
+    amount: string;
+    description: string;
+  }>({
+    category: 'MONTHLY_ASSIGNMENT',
+    salaryType: 'FIXED',
+    amount: '',
+    description: '',
+  });
+  const [editingSalaryNoteId, setEditingSalaryNoteId] = useState<number | null>(null);
+  const [savingSalaryNote, setSavingSalaryNote] = useState(false);
+  const canManageSalaryNotes = role === 'QLT1' || role === 'QLT2' || role === 'QLV';
+  const canManageWorkLocations = role === 'QLT1' || role === 'QLT2' || role === 'QLV';
+
+  // Work Locations state
+  const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
+  const [workLocationsLoading, setWorkLocationsLoading] = useState(false);
+  const [showWorkLocationForm, setShowWorkLocationForm] = useState(false);
+  const [editingWorkLocationId, setEditingWorkLocationId] = useState<number | null>(null);
+  const [savingWorkLocation, setSavingWorkLocation] = useState(false);
+  const [workLocationForm, setWorkLocationForm] = useState<{
+    name: string;
+    latitude: number | null;
+    longitude: number | null;
+    radiusMeters: string;
+  }>({
+    name: '',
+    latitude: null,
+    longitude: null,
+    radiusMeters: '100',
+  });
 
   // Load employees who are assigned to this contract and use them as select options
   useEffect(() => {
@@ -247,6 +286,167 @@ export default function ContractDetailPage() {
   const canCreateService = usePermission("SERVICE_CREATE");
   const canEditService = usePermission("SERVICE_EDIT");
   const canInvoiceView = usePermission("INVOICE_VIEW");
+
+  // Salary Note functions
+  const loadSalaryNotes = async () => {
+    try {
+      setSalaryNotesLoading(true);
+      const notes = await contractService.getSalaryNotes(contractId);
+      setSalaryNotes(notes);
+    } catch (error) {
+      console.error("Error loading salary notes:", error);
+      toast.error("Không thể tải ghi chú tiền lương");
+    } finally {
+      setSalaryNotesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contractId) loadSalaryNotes();
+  }, [contractId]);
+
+  const resetSalaryNoteForm = () => {
+    setSalaryNoteForm({ category: 'MONTHLY_ASSIGNMENT', salaryType: 'FIXED', amount: '', description: '' });
+    setEditingSalaryNoteId(null);
+  };
+
+  const handleSaveSalaryNote = async () => {
+    const amount = parseFloat(salaryNoteForm.amount.replace(/\./g, '').replace(/,/g, '.'));
+    if (!amount || amount <= 0) {
+      toast.error("Vui lòng nhập số tiền hợp lệ");
+      return;
+    }
+    try {
+      setSavingSalaryNote(true);
+      const data = {
+        category: salaryNoteForm.category,
+        salaryType: salaryNoteForm.salaryType,
+        amount,
+        description: salaryNoteForm.description || undefined,
+      };
+      if (editingSalaryNoteId) {
+        await contractService.updateSalaryNote(contractId, editingSalaryNoteId, data);
+        toast.success("Đã cập nhật ghi chú tiền lương");
+      } else {
+        await contractService.createSalaryNote(contractId, data);
+        toast.success("Đã thêm ghi chú tiền lương");
+      }
+      resetSalaryNoteForm();
+      await loadSalaryNotes();
+    } catch (error) {
+      console.error("Error saving salary note:", error);
+      toast.error("Không thể lưu ghi chú tiền lương");
+    } finally {
+      setSavingSalaryNote(false);
+    }
+  };
+
+  const handleEditSalaryNote = (note: import("@/services/contractService").SalaryNote) => {
+    setSalaryNoteForm({
+      category: note.category,
+      salaryType: note.salaryType,
+      amount: note.amount.toLocaleString('vi-VN'),
+      description: note.description || '',
+    });
+    setEditingSalaryNoteId(note.id);
+  };
+
+  const handleDeleteSalaryNote = async (id: number) => {
+    if (!confirm("Bạn có chắc muốn xóa ghi chú này?")) return;
+    try {
+      await contractService.deleteSalaryNote(contractId, id);
+      toast.success("Đã xóa ghi chú tiền lương");
+      await loadSalaryNotes();
+    } catch (error) {
+      console.error("Error deleting salary note:", error);
+      toast.error("Không thể xóa ghi chú tiền lương");
+    }
+  };
+
+  // Work Location functions
+  const loadWorkLocations = async () => {
+    try {
+      setWorkLocationsLoading(true);
+      const locations = await contractService.getWorkLocations(contractId);
+      setWorkLocations(locations);
+    } catch (error) {
+      console.error("Error loading work locations:", error);
+    } finally {
+      setWorkLocationsLoading(false);
+    }
+  };
+
+  const resetWorkLocationForm = () => {
+    setWorkLocationForm({ name: '', latitude: null, longitude: null, radiusMeters: '100' });
+    setEditingWorkLocationId(null);
+    setShowWorkLocationForm(false);
+  };
+
+  const handleSaveWorkLocation = async () => {
+    if (!workLocationForm.name.trim()) { toast.error("Vui lòng nhập tên vị trí"); return; }
+    if (workLocationForm.latitude == null || workLocationForm.longitude == null) {
+      toast.error("Vui lòng chọn vị trí trên bản đồ"); return;
+    }
+    const radius = parseInt(workLocationForm.radiusMeters, 10);
+    if (!radius || radius <= 0) { toast.error("Bán kính phải lớn hơn 0"); return; }
+
+    try {
+      setSavingWorkLocation(true);
+      const data: WorkLocationRequest = {
+        name: workLocationForm.name.trim(),
+        latitude: workLocationForm.latitude,
+        longitude: workLocationForm.longitude,
+        radiusMeters: radius,
+        isActive: true,
+      };
+      if (editingWorkLocationId) {
+        await contractService.updateWorkLocation(contractId, editingWorkLocationId, data);
+        toast.success("Đã cập nhật vị trí làm việc");
+      } else {
+        await contractService.createWorkLocation(contractId, data);
+        toast.success("Đã thêm vị trí làm việc");
+      }
+      resetWorkLocationForm();
+      await loadWorkLocations();
+    } catch (error) {
+      console.error("Error saving work location:", error);
+      toast.error("Không thể lưu vị trí làm việc");
+    } finally {
+      setSavingWorkLocation(false);
+    }
+  };
+
+  const handleEditWorkLocation = (loc: WorkLocation) => {
+    setWorkLocationForm({
+      name: loc.name,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      radiusMeters: String(loc.radiusMeters),
+    });
+    setEditingWorkLocationId(loc.id);
+    setShowWorkLocationForm(true);
+  };
+
+  const handleDeleteWorkLocation = async (id: number) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa vị trí làm việc này?")) return;
+    try {
+      await contractService.deleteWorkLocation(contractId, id);
+      toast.success("Đã xóa vị trí làm việc");
+      await loadWorkLocations();
+    } catch (error) {
+      console.error("Error deleting work location:", error);
+      toast.error("Không thể xóa vị trí làm việc");
+    }
+  };
+
+  // Load work locations on mount
+  useEffect(() => {
+    if (contractId && canManageWorkLocations) {
+      loadWorkLocations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId]);
+
   // Load contract details
   useEffect(() => {
     const loadContract = async () => {
@@ -2502,6 +2702,319 @@ export default function ContractDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Salary Notes Section — only for QLT1/QLT2/QLV */}
+      {canManageSalaryNotes && (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Ghi chú tiền lương
+            </h3>
+          </div>
+
+          {/* Form */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">
+              {editingSalaryNoteId ? "Sửa ghi chú" : "Thêm ghi chú mới"}
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Category dropdown */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Loại phân công</label>
+                <select
+                  value={salaryNoteForm.category}
+                  onChange={(e) => setSalaryNoteForm({ ...salaryNoteForm, category: e.target.value as any })}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(SalaryNoteCategoryLabels).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Type radio */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Loại lương</label>
+                <div className="flex gap-4 pt-2">
+                  {Object.entries(SalaryNoteTypeLabels).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name="salaryType"
+                        value={key}
+                        checked={salaryNoteForm.salaryType === key}
+                        onChange={(e) => setSalaryNoteForm({ ...salaryNoteForm, salaryType: e.target.value as any })}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Số tiền (VNĐ)</label>
+                <input
+                  type="text"
+                  value={salaryNoteForm.amount}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^\d]/g, '');
+                    const formatted = raw ? Number(raw).toLocaleString('vi-VN') : '';
+                    setSalaryNoteForm({ ...salaryNoteForm, amount: formatted });
+                  }}
+                  placeholder="VD: 500.000"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-end gap-2">
+                <button
+                  onClick={handleSaveSalaryNote}
+                  disabled={savingSalaryNote}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {savingSalaryNote ? "Đang lưu..." : editingSalaryNoteId ? "Cập nhật" : "Thêm"}
+                </button>
+                {editingSalaryNoteId && (
+                  <button
+                    onClick={resetSalaryNoteForm}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300"
+                  >
+                    Hủy
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Mô tả</label>
+              <input
+                type="text"
+                value={salaryNoteForm.description}
+                onChange={(e) => setSalaryNoteForm({ ...salaryNoteForm, description: e.target.value })}
+                placeholder="Ghi chú thêm (tối đa 500 ký tự)"
+                maxLength={500}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* List */}
+          {salaryNotesLoading ? (
+            <div className="py-6 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : salaryNotes.length === 0 ? (
+            <div className="py-4 text-gray-500 text-sm">Chưa có ghi chú tiền lương nào</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Loại phân công</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Loại lương</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Số tiền</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase"></th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {salaryNotes.map((note, idx) => (
+                    <tr key={note.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">{idx + 1}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {SalaryNoteCategoryLabels[note.category] || note.category}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          note.salaryType === 'FIXED' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {SalaryNoteTypeLabels[note.salaryType] || note.salaryType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold text-blue-600">
+                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(note.amount)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 max-w-[200px] truncate">
+                        {note.description || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {new Intl.DateTimeFormat("vi-VN").format(new Date(note.createdAt))}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditSalaryNote(note)}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSalaryNote(note.id)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Work Locations Section — only for QLT1/QLT2/QLV */}
+      {canManageWorkLocations && (
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              📍 Vị trí làm việc
+            </h3>
+            {!showWorkLocationForm && (
+              <button
+                onClick={() => setShowWorkLocationForm(true)}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                + Thêm vị trí
+              </button>
+            )}
+          </div>
+
+          {/* Form */}
+          {showWorkLocationForm && (
+            <div className="mb-6 p-4 border border-blue-200 bg-blue-50/30 rounded-lg space-y-4">
+              <h4 className="text-sm font-semibold text-blue-800">
+                {editingWorkLocationId ? "Sửa vị trí làm việc" : "Thêm vị trí làm việc mới"}
+              </h4>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên vị trí *</label>
+                <input
+                  type="text"
+                  value={workLocationForm.name}
+                  onChange={(e) => setWorkLocationForm({ ...workLocationForm, name: e.target.value })}
+                  placeholder="VD: Cổng chính, Tầng 3, Khu vực A..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chọn vị trí trên bản đồ *
+                </label>
+                <MapPicker
+                  value={
+                    workLocationForm.latitude != null && workLocationForm.longitude != null
+                      ? { latitude: workLocationForm.latitude, longitude: workLocationForm.longitude }
+                      : null
+                  }
+                  onChange={(val) =>
+                    setWorkLocationForm({ ...workLocationForm, latitude: val.latitude, longitude: val.longitude })
+                  }
+                  height="300px"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Bán kính (mét) *
+                </label>
+                <input
+                  type="number"
+                  value={workLocationForm.radiusMeters}
+                  onChange={(e) => setWorkLocationForm({ ...workLocationForm, radiusMeters: e.target.value })}
+                  placeholder="100"
+                  min={1}
+                  className="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Bán kính cho phép check-in từ vị trí này</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveWorkLocation}
+                  disabled={savingWorkLocation}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {savingWorkLocation ? "Đang lưu..." : editingWorkLocationId ? "Cập nhật" : "Lưu"}
+                </button>
+                <button
+                  onClick={resetWorkLocationForm}
+                  className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* List */}
+          {workLocationsLoading ? (
+            <div className="py-6 flex items-center justify-center">
+              <svg className="animate-spin w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          ) : workLocations.length === 0 ? (
+            <div className="py-4 text-gray-500 text-sm">Chưa có vị trí làm việc nào</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {workLocations.map((loc) => (
+                <div key={loc.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div style={{ height: "150px" }}>
+                    <MapPicker
+                      value={{ latitude: loc.latitude, longitude: loc.longitude }}
+                      readonly
+                      height="150px"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-medium text-gray-900 text-sm">{loc.name}</h4>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          loc.isActive
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {loc.isActive ? "Đang hoạt động" : "Không hoạt động"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-0.5">
+                      <p>📍 {loc.latitude}, {loc.longitude}</p>
+                      <p>🔘 Bán kính: {loc.radiusMeters}m</p>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => handleEditWorkLocation(loc)}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWorkLocation(loc.id)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Documents Section */}
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">

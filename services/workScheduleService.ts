@@ -165,6 +165,15 @@ const workScheduleService = {
     );
     return response.data;
   },
+
+  hasPendingSchedules: async (employeeId: number): Promise<boolean> => {
+    try {
+      const response = await apiService.get<boolean>(`/work-schedules/employee/${employeeId}/has-pending`);
+      return response.data ?? false;
+    } catch {
+      return false;
+    }
+  },
 };
 
 export default workScheduleService;

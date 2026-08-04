@@ -15,11 +15,12 @@ import {
   AssignmentHistory,
 } from "@/services/assignmentService";
 import serviceService, { ServiceRequest } from "@/services/serviceService";
-import contractService from "@/services/contractService";
+import contractService, { SalaryNoteCategoryLabels, SalaryNoteTypeLabels } from "@/services/contractService";
 import { Customer, Employee } from "@/types";
 import { usePermission } from "@/hooks/usePermission";
 import { authService } from "@/services/authService";
 import { reviewService } from "@/services/reviewService";
+import payrollService from "@/services/payrollService";
 
 export default function CustomerDetail() {
   const params = useParams();
@@ -48,6 +49,7 @@ export default function CustomerDetail() {
   const canAddContract = usePermission("CONTRACT_CREATE");
   const canViewEmployee = usePermission("EMPLOYEE_VIEW");
   const canEditEmployee = usePermission("EMPLOYEE_EDIT");
+
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -89,6 +91,47 @@ export default function CustomerDetail() {
   const [notAssignedEmployees, setNotAssignedEmployees] = useState<Employee[]>(
     [],
   );
+
+  // Salary notes per contract (for display in assignment table)
+  const [salaryNotesByContract, setSalaryNotesByContract] = useState<Record<number, import("@/services/contractService").SalaryNote[]>>({});
+  const [salaryNotesLoading, setSalaryNotesLoading] = useState(false);
+
+  // Load salary notes when assigned employees change
+  useEffect(() => {
+    const loadSalaryNotes = async () => {
+      const contractIds = assignedEmployees
+        .map((g: any) => g.contractId)
+        .filter((id: any) => id != null);
+      if (contractIds.length === 0) {
+        setSalaryNotesByContract({});
+        return;
+      }
+      try {
+        setSalaryNotesLoading(true);
+        const results = await Promise.all(
+          contractIds.map(async (contractId: number) => {
+            try {
+              const notes = await contractService.getSalaryNotes(contractId);
+              return { contractId, notes };
+            } catch {
+              return { contractId, notes: [] };
+            }
+          })
+        );
+        const map: Record<number, import("@/services/contractService").SalaryNote[]> = {};
+        results.forEach(({ contractId, notes }) => {
+          map[contractId] = notes;
+        });
+        setSalaryNotesByContract(map);
+      } catch (error) {
+        console.error("Error loading salary notes:", error);
+      } finally {
+        setSalaryNotesLoading(false);
+      }
+    };
+    loadSalaryNotes();
+  }, [assignedEmployees]);
+
   const [notAssignedPage, setNotAssignedPage] = useState<any>({
     content: [],
     totalElements: 0,
@@ -110,10 +153,28 @@ export default function CustomerDetail() {
     useState<string>("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [savingReassignment, setSavingReassignment] = useState(false);
+  const [autoFilledAssignmentFields, setAutoFilledAssignmentFields] = useState<string[]>([]);
+
+  // Inline advance note editing (QLV/QLT only)
+  const [editingAdvanceId, setEditingAdvanceId] = useState<number | null>(null);
+  const [editingAdvanceValue, setEditingAdvanceValue] = useState("");
+  const [savingAdvance, setSavingAdvance] = useState(false);
 
   // Contract states
   const [showAddContractModal, setShowAddContractModal] = useState(false);
   const [savingContract, setSavingContract] = useState(false);
+  const [contractSalaryNotes, setContractSalaryNotes] = useState<{
+    category: import("@/services/contractService").SalaryNoteCategory;
+    salaryType: import("@/services/contractService").SalaryNoteType;
+    amount: string;
+    description: string;
+  }[]>([]);
+  const [newSalaryNoteForm, setNewSalaryNoteForm] = useState<{
+    category: import("@/services/contractService").SalaryNoteCategory;
+    salaryType: import("@/services/contractService").SalaryNoteType;
+    amount: string;
+    description: string;
+  }>({ category: 'MONTHLY_ASSIGNMENT', salaryType: 'FIXED', amount: '', description: '' });
   const [contracts, setContracts] = useState<any[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
   const [contractForm, setContractForm] = useState({
@@ -165,24 +226,33 @@ export default function CustomerDetail() {
     contractId: number | null;
     assignmentType: string;
     allowance: number | string;
+    monthlySupport: number | string;
+    advanceNote: number | string;
     startDate: string;
     salaryAtTime: number | string;
     description: string;
     dates: string[];
+    insuranceAmount: number | string;
+    // [DEPRECATED] advanceSalary merged into advanceNote (now BigDecimal)
   }>({
     employeeId: null,
     contractId: null,
     assignmentType: "FIXED_BY_CONTRACT",
     allowance: "",
+    monthlySupport: "",
+    advanceNote: "",
     startDate: new Date().toISOString().split("T")[0],
     salaryAtTime: "",
     description: "",
     dates: [],
+    insuranceAmount: "",
+    // [DEPRECATED] advanceSalary: "",
   });
   const [reassignmentForm, setReassignmentForm] = useState<{
     replacementEmployeeId: number | null;
     replacedEmployeeId: number | null;
     replacedAssignmentId: number | null;
+    replacedContractId: number | null;
     fromDate: string;
     toDate: string;
     selectedDates: string[];
@@ -192,6 +262,7 @@ export default function CustomerDetail() {
     replacementEmployeeId: null,
     replacedEmployeeId: null,
     replacedAssignmentId: null,
+    replacedContractId: null,
     fromDate: new Date().toISOString().split("T")[0],
     toDate: new Date().toISOString().split("T")[0],
     selectedDates: [],
@@ -422,6 +493,33 @@ export default function CustomerDetail() {
     }
   };
 
+  // Load salary notes for selected contract in assignment modal
+  useEffect(() => {
+    if (!showAssignmentModal || !assignmentForm.contractId) return;
+    if (salaryNotesByContract[assignmentForm.contractId]) return; // already loaded
+    const load = async () => {
+      try {
+        const notes = await contractService.getSalaryNotes(assignmentForm.contractId!);
+        setSalaryNotesByContract(prev => ({ ...prev, [assignmentForm.contractId!]: notes }));
+      } catch { /* contract might not have salary notes */ }
+    };
+    load();
+  }, [showAssignmentModal, assignmentForm.contractId]);
+
+  // Load salary notes for reassignment modal when replaced assignment selected
+  useEffect(() => {
+    const contractId = reassignmentForm.replacedContractId;
+    if (!showReassignmentModal || !contractId) return;
+    if (salaryNotesByContract[contractId]) return; // already loaded
+    const load = async () => {
+      try {
+        const notes = await contractService.getSalaryNotes(contractId);
+        setSalaryNotesByContract(prev => ({ ...prev, [contractId]: notes }));
+      } catch { /* ignore */ }
+    };
+    load();
+  }, [showReassignmentModal, reassignmentForm.replacedContractId]);
+
   // reload not-assigned list when modal shown or month/year change
   useEffect(() => {
     if (showAssignmentModal) {
@@ -434,6 +532,55 @@ export default function CustomerDetail() {
     assignmentModalYear,
     notAssignedEmploymentType,
   ]);
+
+  const handleSelectAssignmentEmployee = (
+    employee: any,
+    selected: boolean,
+  ) => {
+    console.log("[ASSIGNMENT][EMPLOYEE_PICK][LIST]", {
+      id: employee.id,
+      name: employee.name,
+      employeeType: employee.employeeType,
+      monthlySalary: employee.monthlySalary,
+      monthlySupport: employee.monthlySupport,
+      selected,
+    });
+
+    const isCompanyStaff = employee.employeeType === "COMPANY_STAFF";
+    const autoFilledFields: string[] = [];
+
+    if (selected && isCompanyStaff && employee.monthlySalary != null) {
+      autoFilledFields.push("Lương theo phân công");
+    }
+    if (selected && isCompanyStaff && employee.monthlySupport != null) {
+      autoFilledFields.push("Hỗ trợ hàng tháng");
+    }
+
+    setAssignmentForm((prev) => ({
+      ...prev,
+      employeeId: selected ? Number(employee.id) : null,
+      salaryAtTime:
+        selected && isCompanyStaff && employee.monthlySalary != null
+          ? formatNumber(String(employee.monthlySalary))
+          : selected
+            ? prev.salaryAtTime
+            : "",
+      monthlySupport:
+        selected && isCompanyStaff
+          ? employee.monthlySupport != null
+            ? formatNumber(String(employee.monthlySupport))
+            : ""
+          : "",
+    }));
+
+    setAutoFilledAssignmentFields(autoFilledFields);
+    if (autoFilledFields.length > 0) {
+      toast.success(`Đã tự điền: ${autoFilledFields.join(" và ")}`, {
+        duration: 4000,
+      });
+      window.setTimeout(() => setAutoFilledAssignmentFields([]), 4000);
+    }
+  };
 
   const loadCustomer = async () => {
     try {
@@ -858,6 +1005,47 @@ export default function CustomerDetail() {
     }
   };
 
+  /**
+   * Lọc salary notes theo loại phân công (assignment type).
+   * - FIXED_BY_CONTRACT (tính lương tháng) → MONTHLY_ASSIGNMENT
+   * - FIXED_BY_DAY (tính lương ngày) → DAILY_ASSIGNMENT
+   * - TEMPORARY (tạm thời) → salaryType = TEMPORARY (ưu tiên), fallback: tất cả
+   * - SUPPORT / FIXED_BY_COMPANY → hiển thị tất cả
+   */
+  const getFilteredSalaryNotes = (
+    notes: import("@/services/contractService").SalaryNote[],
+    assignmentType: string,
+    context?: 'modal' | 'table' | 'reassignment'
+  ): { filtered: import("@/services/contractService").SalaryNote[]; unmatched: import("@/services/contractService").SalaryNote[] } => {
+    if (!notes || notes.length === 0) return { filtered: [], unmatched: [] };
+
+    switch (assignmentType) {
+      case "FIXED_BY_CONTRACT":
+        // Phân công tính lương tháng → MONTHLY_ASSIGNMENT
+        return {
+          filtered: notes.filter(n => n.category === 'MONTHLY_ASSIGNMENT'),
+          unmatched: notes.filter(n => n.category !== 'MONTHLY_ASSIGNMENT'),
+        };
+      case "FIXED_BY_DAY":
+        // Phân công tính lương ngày → DAILY_ASSIGNMENT
+        return {
+          filtered: notes.filter(n => n.category === 'DAILY_ASSIGNMENT'),
+          unmatched: notes.filter(n => n.category !== 'DAILY_ASSIGNMENT'),
+        };
+      case "TEMPORARY":
+        // Phân công tạm thời → TEMPORARY salary type
+        return {
+          filtered: notes.filter(n => n.salaryType === 'TEMPORARY'),
+          unmatched: notes.filter(n => n.salaryType !== 'TEMPORARY'),
+        };
+      case "SUPPORT":
+      case "FIXED_BY_COMPANY":
+      default:
+        // Hỗ trợ / làm việc tại cty → hiển thị tất cả
+        return { filtered: notes, unmatched: [] };
+    }
+  };
+
   const handleEdit = () => {
     if (!canEdit) return;
     // Use customer data as editForm; username is derived from code on save
@@ -991,7 +1179,9 @@ export default function CustomerDetail() {
       const allowanceRaw = assignmentForm.allowance
         ? Number(parseFormattedNumber(String(assignmentForm.allowance)))
         : undefined;
-
+      const monthlySupportRaw = assignmentForm.monthlySupport
+        ? Number(parseFormattedNumber(String(assignmentForm.monthlySupport)))
+        : undefined;
       const assignmentData: AssignmentCreateRequest = {
         employeeId: assignmentForm.employeeId,
         contractId: assignmentForm.contractId,
@@ -1001,6 +1191,10 @@ export default function CustomerDetail() {
         assignmentType: assignmentForm.assignmentType,
         salaryAtTime: salaryRaw,
         additionalAllowance: allowanceRaw,
+        monthlySupport: monthlySupportRaw,
+        advanceNote: assignmentForm.advanceNote
+          ? Number(parseFormattedNumber(String(assignmentForm.advanceNote)))
+          : undefined,
         description: assignmentForm.description,
         dates:
           assignmentForm.assignmentType === "SUPPORT"
@@ -1012,6 +1206,72 @@ export default function CustomerDetail() {
 
       if (response.success) {
         toast.success("Đã phân công nhân viên thành công");
+
+        // Nếu có tiền bảo hiểm hoặc ứng lương → cập nhật employee + payroll
+        const insuranceRaw = assignmentForm.insuranceAmount
+          ? Number(parseFormattedNumber(String(assignmentForm.insuranceAmount)))
+          : 0;
+        // [DEPRECATED] advanceSalary replaced by advanceNoteSummary from Assignment.advanceNote
+        // const advanceSalaryRaw = assignmentForm.advanceSalary
+        //   ? Number(parseFormattedNumber(String(assignmentForm.advanceSalary)))
+        //   : 0;
+
+        // [DEPRECATED] Changed from: if (insuranceRaw > 0 || advanceSalaryRaw > 0)
+        if (insuranceRaw > 0) {
+          // [DEPRECATED] Step 1: Cập nhật employee.monthlyAdvanceLimit
+          // if (advanceSalaryRaw > 0) {
+          //   try {
+          //     await employeeService.updateAdvanceSalary(
+          //       String(assignmentForm.employeeId!),
+          //       advanceSalaryRaw
+          //     );
+          //   } catch (err: any) {
+          //     console.error("Error updating employee advance limit:", err);
+          //     toast.error("Chưa cập nhật được hạn mức ứng lương trên nhân viên: " + (err.message || ""));
+          //   }
+          // }
+
+          // Step 2: Tạo/cập nhật payroll tháng hiện tại (lưu insuranceTotal để tháng sau fallback)
+          try {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+
+            // Kiểm tra payroll đã tồn tại chưa
+            const payrolls = await payrollService.getPayrolls({
+              month,
+              year,
+              page: 0,
+              pageSize: 100,
+            });
+            const existingPayroll = payrolls.content?.find(
+              (p) => Number(p.employeeId) === assignmentForm.employeeId
+            );
+
+            if (existingPayroll) {
+              // Payroll đã có → recalculate
+              await payrollService.recalculatePayroll(existingPayroll.id, {
+                insuranceTotal: insuranceRaw > 0 ? insuranceRaw : undefined,
+                // [DEPRECATED] advanceTotal: advanceSalaryRaw > 0 ? advanceSalaryRaw : undefined,
+              });
+            } else {
+              // Chưa có payroll → tạo mới
+              await payrollService.calculatePayroll({
+                employeeId: assignmentForm.employeeId!,
+                month,
+                year,
+                insuranceAmount: insuranceRaw > 0 ? insuranceRaw : undefined,
+                // [DEPRECATED] advanceSalary: advanceSalaryRaw > 0 ? advanceSalaryRaw : undefined,
+              });
+            }
+            toast.success("Đã cập nhật bảo hiểm/ứng lương");
+          } catch (err: any) {
+            console.error("Error updating payroll insurance/advance:", err);
+            // Không block flow — employee đã được update, payroll có thể tính lại sau
+            toast.error("Lưu ý: chưa đồng bộ được vào bảng lương tháng này (" + (err.message || "") + ")");
+          }
+        }
+
         setShowAssignmentModal(false);
         // Reset form
         setAssignmentForm({
@@ -1019,10 +1279,14 @@ export default function CustomerDetail() {
           contractId: null,
           assignmentType: "FIXED_BY_CONTRACT",
           allowance: "",
+          monthlySupport: "",
+          advanceNote: "",
           startDate: new Date().toISOString().split("T")[0],
           salaryAtTime: "",
           description: "",
           dates: [],
+          insuranceAmount: "",
+          // [DEPRECATED] advanceSalary: "",
         });
         // Reload assigned employees list and histories
         await Promise.all([
@@ -1038,6 +1302,31 @@ export default function CustomerDetail() {
       toast.error(error.message || "Có lỗi xảy ra khi phân công");
     } finally {
       setSavingAssignment(false);
+    }
+  };
+
+  const handleSaveAdvanceNote = async (assignmentId: number) => {
+    const advanceValue = parseFloat(editingAdvanceValue.replace(/[^\d.-]/g, ''));
+    if (!advanceValue || advanceValue <= 0) {
+      setEditingAdvanceId(null);
+      return;
+    }
+    setSavingAdvance(true);
+    try {
+      const response = await assignmentService.updateAdvanceNote(assignmentId, advanceValue);
+      if (response.success) {
+        toast.success("Đã cập nhật ghi chú ứng lương");
+        setEditingAdvanceId(null);
+        // Refresh the assigned employees list to show updated value
+        await loadAssignedEmployees();
+      } else {
+        toast.error(response.message || "Cập nhật thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error updating advance note:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+    } finally {
+      setSavingAdvance(false);
     }
   };
 
@@ -1097,6 +1386,7 @@ export default function CustomerDetail() {
           replacementEmployeeId: null,
           replacedEmployeeId: null,
           replacedAssignmentId: null,
+          replacedContractId: null,
           fromDate: new Date().toISOString().split("T")[0],
           toDate: new Date().toISOString().split("T")[0],
           selectedDates: [],
@@ -1187,10 +1477,30 @@ export default function CustomerDetail() {
         workEndTime: contractForm.workEndTime || null,
       };
 
-      await contractService.create(contractData);
+      const createdContract = await contractService.create(contractData);
+
+      // Save salary notes if any
+      if (contractSalaryNotes.length > 0 && createdContract?.id) {
+        for (const note of contractSalaryNotes) {
+          const amount = parseFloat(note.amount.replace(/\./g, '').replace(/,/g, '.'));
+          if (amount > 0) {
+            try {
+              await contractService.createSalaryNote(createdContract.id, {
+                category: note.category,
+                salaryType: note.salaryType,
+                amount,
+                description: note.description || undefined,
+              });
+            } catch (e) {
+              console.error("Error saving salary note:", e);
+            }
+          }
+        }
+      }
 
       toast.success("Đã thêm hợp đồng mới thành công");
       setShowAddContractModal(false);
+      setContractSalaryNotes([]);
       loadContracts(); // Reload contracts list
 
       // Reset form
@@ -2340,6 +2650,16 @@ export default function CustomerDetail() {
                               Lương
                             </th>
                           )}
+                          {canViewEmployee && (
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                              Xin ứng
+                            </th>
+                          )}
+                          {canViewEmployee && (
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                              Ghi chú lương
+                            </th>
+                          )}
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
                             Ngày công
                           </th>
@@ -2439,18 +2759,13 @@ export default function CustomerDetail() {
                                 <td className="px-4 py-3 text-right">
                                   {role === "CUSTOMER" ? (
                                     <div className="group relative flex items-center justify-center h-6  cursor-help">
-                                      {/* Trạng thái 1: Dấu hoa thị (Mặc định hiện) */}
-                                      <div className="flex items-center space-x-2 transition-all duration-300 ease-in-out group-hover:opacity-0 group-hover:scale-95">
-                                        <FontAwesomeIcon
-                                          icon={SolidIcons.faEyeSlash}
-                                          className="text-blue-600"
-                                        />
-                                        <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
-                                          ********
-                                        </span>
-                                      </div>
-
-                                      {/* Trạng thái 2: Dòng chữ thông báo (Hiện khi hover) */}
+                                      <FontAwesomeIcon
+                                        icon={SolidIcons.faEyeSlash}
+                                        className="text-blue-600"
+                                      />
+                                      <span className="text-lg font-bold text-blue-600 leading-none tracking-widest">
+                                        ********
+                                      </span>
                                       <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-red-500 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none">
                                         Bạn không có quyền xem
                                       </span>
@@ -2460,6 +2775,125 @@ export default function CustomerDetail() {
                                       {formatCurrency(assignment.salaryAtTime)}
                                     </span>
                                   )}
+                                </td>
+                              )}
+                              {canViewEmployee && (
+                                <td className="px-4 py-3 text-center">
+                                  {role === "CUSTOMER" ? (
+                                    <span className="text-sm text-gray-400">***</span>
+                                  ) : editingAdvanceId === assignment.id ? (
+                                    <div className="flex items-center gap-1 justify-center">
+                                      <input
+                                        type="text"
+                                        value={editingAdvanceValue}
+                                        onChange={(e) => setEditingAdvanceValue(e.target.value)}
+                                        maxLength={500}
+                                        className="w-32 px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") handleSaveAdvanceNote(assignment.id);
+                                          if (e.key === "Escape") setEditingAdvanceId(null);
+                                        }}
+                                        disabled={savingAdvance}
+                                      />
+                                      <button
+                                        onClick={() => handleSaveAdvanceNote(assignment.id)}
+                                        disabled={savingAdvance}
+                                        className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                                        title="Lưu"
+                                      >
+                                        {savingAdvance ? (
+                                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                          </svg>
+                                        ) : (
+                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                          </svg>
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingAdvanceId(null)}
+                                        disabled={savingAdvance}
+                                        className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                                        title="Hủy"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  ) : (role === "QLV" || role === "QLT1" || role === "QLT2") ? (
+                                    <button
+                                      onClick={() => {
+                                        setEditingAdvanceId(assignment.id);
+                                        setEditingAdvanceValue(assignment.advanceNote != null ? String(assignment.advanceNote) : "");
+                                      }}
+                                      className="text-sm text-gray-700 hover:text-blue-600 hover:underline cursor-pointer group flex items-center gap-1 justify-center"
+                                      title="Nhấn để sửa ghi chú ứng lương"
+                                    >
+                                      <span>{assignment.advanceNote != null ? formatCurrency(assignment.advanceNote) : "-"}</span>
+                                      <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-gray-700">
+                                      {assignment.advanceNote != null ? formatCurrency(assignment.advanceNote) : "-"}
+                                    </span>
+                                  )}
+                                </td>
+                              )}
+                              {canViewEmployee && (
+                                <td className="px-4 py-3 text-center">
+                                  {(role === "CUSTOMER" || role === "EMPLOYEE") ? (
+                                    <span className="text-sm text-gray-400">***</span>
+                                  ) : (() => {
+                                    const allNotes = salaryNotesByContract[assignment.contractId] || [];
+                                    if (allNotes.length === 0) return <span className="text-sm text-gray-400">-</span>;
+                                    const { filtered, unmatched } = getFilteredSalaryNotes(allNotes, assignment.assignmentType || "", 'table');
+                                    // Nếu có note khớp thì hiển thị note khớp; nếu không có note nào khớp thì hiển thị tất cả
+                                    const displayNotes = filtered.length > 0 ? filtered : allNotes;
+                                    const hasUnmatched = filtered.length > 0 && unmatched.length > 0;
+                                    const totalAmount = displayNotes.reduce((sum, n) => sum + (n.amount || 0), 0);
+                                    return (
+                                      <div className="relative group inline-block">
+                                        <span className={`text-sm font-medium cursor-help ${filtered.length > 0 ? 'text-purple-600' : 'text-gray-500'}`}>
+                                          {displayNotes.length} ghi chú ({new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalAmount)})
+                                          {hasUnmatched && <span className="text-xs text-gray-400 ml-0.5">(+{unmatched.length})</span>}
+                                        </span>
+                                        {/* Tooltip on hover */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                                          <div className="bg-gray-800 text-white text-xs rounded-lg py-2 px-3 min-w-[250px] shadow-lg">
+                                            {displayNotes.map((n, i) => (
+                                              <div key={n.id} className={i > 0 ? "mt-2 pt-2 border-t border-gray-600" : ""}>
+                                                <div className="flex justify-between gap-2">
+                                                  <span className="font-medium">
+                                                    {n.category === 'MONTHLY_ASSIGNMENT' ? 'Tháng' : 'Ngày'}
+                                                    {" / "}
+                                                    {n.salaryType === 'FIXED' ? 'Cố định' : 'Tạm thời'}
+                                                  </span>
+                                                  <span className="text-green-300">
+                                                    {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n.amount)}
+                                                  </span>
+                                                </div>
+                                                {n.description && (
+                                                  <div className="text-gray-300 mt-1 truncate max-w-[230px]">{n.description}</div>
+                                                )}
+                                              </div>
+                                            ))}
+                                            {hasUnmatched && (
+                                              <div className="mt-2 pt-2 border-t border-gray-500 text-gray-400 italic text-center">
+                                                +{unmatched.length} ghi chú không khớp loại phân công
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45 -mt-1"></div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                               )}
                               <td className="px-4 py-3 text-center">
@@ -2964,8 +3398,13 @@ export default function CustomerDetail() {
                     {contracts
                       .filter((contract: any) => {
                         if (!contract.endDate) return true;
-                        const todayStr = new Date().toISOString().split("T")[0];
-                        return contract.endDate >= todayStr;
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const endDate = contract.endDate instanceof Date
+                          ? contract.endDate
+                          : new Date(contract.endDate);
+                        endDate.setHours(0, 0, 0, 0);
+                        return endDate >= today;
                       })
                       .map((contract: any) => (
                         <option key={contract.id} value={contract.id}>
@@ -3192,7 +3631,11 @@ export default function CustomerDetail() {
                         salaryAtTime: rawValue ? formatNumber(rawValue) : "",
                       });
                     }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                      autoFilledAssignmentFields.includes("Lương theo phân công")
+                        ? "border-green-500 bg-green-50 ring-2 ring-green-200"
+                        : "border-gray-300"
+                    }`}
                     placeholder="Nhập lương theo phân công (VD: 5.000.000)"
                   />
                 </div>
@@ -3214,6 +3657,109 @@ export default function CustomerDetail() {
                     placeholder="0"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Hỗ trợ hàng tháng (VND)
+                  </label>
+                  <input
+                    type="text"
+                    value={assignmentForm.monthlySupport}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        monthlySupport: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-400 mt-0.5">Cố định hàng tháng, không chia theo ngày công</p>
+                </div>
+                {/* Bảo hiểm & Ứng lương */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Tiền bảo hiểm (VND)
+                  </label>
+                  <input
+                    type="text"
+                    value={assignmentForm.insuranceAmount}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        insuranceAmount: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-400 mt-0.5">Sẽ tạo/cập nhật bảng lương tháng hiện tại</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Tiền ứng lương (VND)
+                  </label>
+                  <input
+                    type="text"
+                    value={assignmentForm.advanceNote}
+                    onChange={(e) => {
+                      const rawValue = handleNumberInput(e.target.value);
+                      setAssignmentForm({
+                        ...assignmentForm,
+                        advanceNote: rawValue ? formatNumber(rawValue) : "",
+                      });
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-400 mt-0.5">Tiền ứng lương từ phân công, không ảnh hưởng tính lương</p>
+                </div>
+
+                {/* Salary Notes từ HĐ — hiển thị mức lương tham chiếu (đã lọc theo loại phân công) */}
+                {assignmentForm.contractId && (role === 'QLT1' || role === 'QLT2' || role === 'QLV') && (() => {
+                  const allNotes = salaryNotesByContract[assignmentForm.contractId] || [];
+                  if (allNotes.length === 0) return null;
+                  const { filtered, unmatched } = getFilteredSalaryNotes(allNotes, assignmentForm.assignmentType, 'modal');
+                  // Nếu không có note nào khớp, hiển thị tất cả kèm cảnh báo
+                  const displayNotes = filtered.length > 0 ? filtered : allNotes;
+                  const isExactMatch = filtered.length > 0;
+                  const typeLabel = getAssignmentTypeLabel(assignmentForm.assignmentType);
+                  return (
+                    <div className={`col-span-1 sm:col-span-2 p-3 rounded-lg border ${isExactMatch ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-300'}`}>
+                      <h4 className={`text-xs font-semibold mb-2 ${isExactMatch ? 'text-amber-700' : 'text-gray-600'}`}>
+                        Mức lương tham chiếu (HĐ #{assignmentForm.contractId}) — {typeLabel}
+                        {!isExactMatch && (
+                          <span className="text-red-500 ml-1">⚠ Không có ghi chú lương nào khớp với loại phân công này</span>
+                        )}
+                      </h4>
+                      <div className="space-y-1">
+                        {displayNotes.map((note: any) => {
+                          const catLabel = note.category === 'MONTHLY_ASSIGNMENT'
+                            ? 'Tính lương tháng' : 'Tính lương ngày';
+                          const typeLabel2 = note.salaryType === 'FIXED' ? 'Cố định' : 'Tạm thời';
+                          const isMatched = isExactMatch && filtered.some((f: any) => f.id === note.id);
+                          return (
+                            <div key={note.id} className={`flex items-center justify-between text-sm ${isExactMatch && !isMatched ? 'opacity-40' : ''}`}>
+                              <span className="text-gray-600">{catLabel} / {typeLabel2}</span>
+                              <span className={`font-semibold ${isMatched || !isExactMatch ? 'text-amber-800' : 'text-gray-400'}`}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(note.amount || 0)}
+                                <span className="text-xs text-gray-500 ml-1 font-normal">
+                                  /{note.category === 'MONTHLY_ASSIGNMENT' ? 'tháng' : 'ngày'}
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {isExactMatch && unmatched.length > 0 && (
+                        <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-amber-200">
+                          Đã ẩn {unmatched.length} ghi chú không khớp với loại phân công "{typeLabel}"
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -3325,7 +3871,24 @@ export default function CustomerDetail() {
                     notAssignedPage.content.map((employee: any) => (
                       <div
                         key={employee.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
+                          void handleSelectAssignmentEmployee(
+                            employee,
+                            assignmentForm.employeeId !== Number(employee.id),
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            void handleSelectAssignmentEmployee(
+                              employee,
+                              assignmentForm.employeeId !== Number(employee.id),
+                            );
+                          }
+                        }}
+                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-4">
                           <input
@@ -3333,14 +3896,13 @@ export default function CustomerDetail() {
                             checked={
                               assignmentForm.employeeId === Number(employee.id)
                             }
-                            onChange={(e) => {
-                              setAssignmentForm({
-                                ...assignmentForm,
-                                employeeId: e.target.checked
-                                  ? Number(employee.id)
-                                  : null,
-                              });
-                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              void handleSelectAssignmentEmployee(
+                                employee,
+                                e.target.checked,
+                              )
+                            }
                             className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
@@ -3357,7 +3919,7 @@ export default function CustomerDetail() {
                             </p>
 
                             <p className="text-xs text-gray-400">
-                              {employee.employmentType === "COMPANY_STAFF"
+                              {employee.employeeType === "COMPANY_STAFF"
                                 ? "Nhân viên văn phòng / công ty"
                                 : "Nhân viên làm theo hợp đồng khách hàng"}
                             </p>
@@ -3856,6 +4418,66 @@ export default function CustomerDetail() {
                     placeholder="VD: Nhân viên A nghỉ ốm, B thay thế..."
                   />
                 </div>
+
+                {/* Salary Notes — hiển thị ghi chú tiền lương từ HĐ của NV bị thay (đã lọc: ưu tiên TEMPORARY) */}
+                {reassignmentForm.replacedContractId && (role === 'QLV' || role === 'QLT1' || role === 'QLT2') && (() => {
+                  const contractId = reassignmentForm.replacedContractId;
+                  const allNotes = salaryNotesByContract[contractId] || [];
+                  if (!allNotes || allNotes.length === 0) return null;
+                  // Điều động tạm thời → ưu tiên hiển thị TEMPORARY salary notes
+                  const { filtered, unmatched } = getFilteredSalaryNotes(allNotes, 'TEMPORARY', 'reassignment');
+                  // TEMPORARY notes được highlight; nếu không có thì hiển thị tất cả kèm cảnh báo
+                  const displayNotes = filtered.length > 0 ? [...filtered, ...unmatched] : allNotes;
+                  const hasFiltered = filtered.length > 0;
+                  return (
+                    <div className="col-span-2 mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <h3 className="text-xs font-semibold text-purple-700 mb-2">
+                        Ghi chú tiền lương (HĐ #{contractId}) — Điều động tạm thời
+                        {!hasFiltered && (
+                          <span className="text-red-500 ml-1 text-xs font-normal">⚠ Không có ghi chú lương tạm thời</span>
+                        )}
+                      </h3>
+                      <div className="space-y-1">
+                        {displayNotes.map((note: any) => {
+                          const isTemporary = note.salaryType === 'TEMPORARY';
+                          const categoryLabel = note.category === 'MONTHLY_ASSIGNMENT'
+                            ? 'Phân công tính lương tháng' : 'Phân công tính lương ngày';
+                          const typeLabel = note.salaryType === 'FIXED' ? 'Cố định' : 'Tạm thời';
+                          return (
+                            <div key={note.id} className={`flex items-center justify-between text-sm ${hasFiltered && !isTemporary ? 'opacity-40' : ''}`}>
+                              <span className="text-gray-600">
+                                {categoryLabel} / {typeLabel}
+                                {isTemporary && hasFiltered && (
+                                  <span className="ml-1 inline-block px-1.5 py-0.5 bg-purple-200 text-purple-700 rounded text-xs font-medium">Phù hợp</span>
+                                )}
+                              </span>
+                              <span className={`font-medium ${isTemporary && hasFiltered ? 'text-purple-700 font-semibold' : 'text-purple-700'}`}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(note.amount || 0)}
+                                <span className="text-xs text-gray-400 ml-1">
+                                  /{note.category === 'MONTHLY_ASSIGNMENT' ? 'tháng' : 'ngày'}
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {hasFiltered && unmatched.length > 0 && (
+                        <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-purple-200">
+                          Có {filtered.length} ghi chú tạm thời phù hợp — {unmatched.length} ghi chú còn lại mờ đi để tham khảo
+                        </p>
+                      )}
+                      {displayNotes.some((n: any) => n.description) && (
+                        <div className="mt-2 pt-2 border-t border-purple-200">
+                          {displayNotes.filter((n: any) => n.description).map((n: any) => (
+                            <p key={n.id} className={`text-xs ${hasFiltered && n.salaryType !== 'TEMPORARY' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              • {n.description}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -4002,6 +4624,9 @@ export default function CustomerDetail() {
                                             : null,
                                           replacedAssignmentId: e.target.checked
                                             ? assignment.id
+                                            : null,
+                                          replacedContractId: e.target.checked
+                                            ? contractGroup.contractId
                                             : null,
                                         });
                                       }}
@@ -4660,9 +5285,116 @@ export default function CustomerDetail() {
                 />
               </div>
             </div>
+
+            {/* Salary Notes — chỉ hiển thị cho QLT/QLV */}
+            {(role === 'QLT1' || role === 'QLT2' || role === 'QLV') && (
+              <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <h4 className="text-sm font-semibold text-purple-700 mb-3">
+                  Ghi chú tiền lương (cho quản lý)
+                </h4>
+
+                {/* Danh sách ghi chú đã thêm */}
+                {contractSalaryNotes.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {contractSalaryNotes.map((note, idx) => {
+                      const catLabel = note.category === 'MONTHLY_ASSIGNMENT'
+                        ? 'Phân công tính lương tháng' : 'Phân công tính lương ngày';
+                      const typeLabel = note.salaryType === 'FIXED' ? 'Cố định' : 'Tạm thời';
+                      return (
+                        <div key={idx} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-purple-200">
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">{catLabel}</span>
+                            <span className="mx-2">/</span>
+                            <span>{typeLabel}</span>
+                            <span className="ml-3 text-purple-700 font-semibold">
+                              {note.amount ? new Intl.NumberFormat("vi-VN").format(Number(note.amount.replace(/\./g, ''))) : '0'} ₫
+                              <span className="text-xs text-gray-400 ml-1">
+                                /{note.category === 'MONTHLY_ASSIGNMENT' ? 'tháng' : 'ngày'}
+                              </span>
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setContractSalaryNotes(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Form thêm ghi chú nhanh */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Loại phân công</label>
+                    <select
+                      value={newSalaryNoteForm.category}
+                      onChange={(e) => setNewSalaryNoteForm({ ...newSalaryNoteForm, category: e.target.value as any })}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                    >
+                      {Object.entries(SalaryNoteCategoryLabels).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Loại lương</label>
+                    <div className="flex gap-3 pt-2">
+                      {Object.entries(SalaryNoteTypeLabels).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-1 text-sm cursor-pointer">
+                          <input
+                            type="radio"
+                            name="contractSalaryType"
+                            value={key}
+                            checked={newSalaryNoteForm.salaryType === key}
+                            onChange={(e) => setNewSalaryNoteForm({ ...newSalaryNoteForm, salaryType: e.target.value as any })}
+                            className="text-purple-600 focus:ring-purple-500"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Số tiền</label>
+                    <input
+                      type="text"
+                      value={newSalaryNoteForm.amount}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, '');
+                        setNewSalaryNoteForm({
+                          ...newSalaryNoteForm,
+                          amount: raw ? new Intl.NumberFormat("vi-VN").format(Number(raw)) : '',
+                        });
+                      }}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amt = parseFloat(newSalaryNoteForm.amount.replace(/\./g, '').replace(/,/g, '.'));
+                        if (!amt || amt <= 0) { toast.error("Vui lòng nhập số tiền"); return; }
+                        setContractSalaryNotes(prev => [...prev, { ...newSalaryNoteForm }]);
+                        setNewSalaryNoteForm({ category: 'MONTHLY_ASSIGNMENT', salaryType: 'FIXED', amount: '', description: '' });
+                      }}
+                      className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
+                    >
+                      Thêm
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setShowAddContractModal(false)}
+                onClick={() => { setShowAddContractModal(false); setContractSalaryNotes([]); }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Hủy

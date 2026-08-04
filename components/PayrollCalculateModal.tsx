@@ -23,7 +23,7 @@ export default function PayrollCalculateModal({
     month: number;
     year: number;
     insuranceAmount?: number;
-    advanceSalary?: number;
+    // [DEPRECATED] advanceSalary?: number;
   }>({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
@@ -100,14 +100,14 @@ export default function PayrollCalculateModal({
         setFormData(prev => ({
           ...prev,
           insuranceAmount: existingPayroll.insuranceTotal || undefined,
-          advanceSalary: existingPayroll.advanceTotal || undefined,
+          // [DEPRECATED] advanceSalary: existingPayroll.advanceTotal || undefined,
         }));
       } else {
         // No existing, clear fields
         setFormData(prev => ({
           ...prev,
           insuranceAmount: undefined,
-          advanceSalary: undefined,
+          // [DEPRECATED] advanceSalary: undefined,
         }));
       }
     } catch (error) {
@@ -367,6 +367,7 @@ export default function PayrollCalculateModal({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tiền ứng lương
                     </label>
+{/* [DEPRECATED] advanceSalary input - replaced by advanceNoteSummary
                     <input
                       type="number"
                       placeholder="Nhập tiền ứng"
@@ -379,6 +380,7 @@ export default function PayrollCalculateModal({
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+*/}
                   </div>
                 </div>
               )}

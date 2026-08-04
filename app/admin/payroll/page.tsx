@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import payrollService, { Payroll, PayrollStatus, PayrollOverview } from "@/services/payrollService";
+import payrollService, { PayrollSummaryItem, PayrollOverview } from "@/services/payrollService";
 import PayrollCalculateModal from "@/components/PayrollCalculateModal";
 import PayrollExportModal from "@/components/PayrollExportModal";
+import PayrollPaymentModal from "@/components/PayrollPaymentModal";
 import { usePermission } from '@/hooks/usePermission';
 import toast, { Toaster } from "react-hot-toast";
 
@@ -11,10 +12,14 @@ export default function PayrollPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const [payrolls, setPayrolls] = useState<Payroll[]>([]);
+  const [payrolls, setPayrolls] = useState<PayrollSummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [navigatingToId, setNavigatingToId] = useState<number | null>(null);
   const [scrollToId, setScrollToId] = useState<number | null>(null);
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPayrollForPayment, setSelectedPayrollForPayment] = useState<PayrollSummaryItem | null>(null);
 
 
   const payrollRefs = useRef<{ [key: number]: HTMLTableRowElement | HTMLDivElement | null }>({});
@@ -25,10 +30,8 @@ export default function PayrollPage() {
     const scrollToIdParam = searchParams.get('scrollToId');
     if (scrollToIdParam && !hasScrolled.current) {
       const id = Number(scrollToIdParam);
-      console.log("Setting scrollToId from URL:", id);
       setScrollToId(id);
     } else if (!scrollToIdParam) {
-      // Reset scroll flag when no scrollToId in URL
       hasScrolled.current = false;
     }
   }, [searchParams]);
@@ -36,21 +39,11 @@ export default function PayrollPage() {
   // Perform scroll after data is loaded and refs are set
   useEffect(() => {
     if (scrollToId !== null && !loading && payrolls.length > 0 && !hasScrolled.current) {
-      console.log("=== SCROLL DEBUG ===");
-      console.log("Attempting to scroll to ID:", scrollToId);
-      console.log("Available payrolls:", payrolls.map(p => p.id));
-      console.log("Payrolls count:", payrolls.length);
-
-      // Check if the target payroll is in the current page
-      const targetPayroll = payrolls.find(p => p.id === scrollToId);
+      const targetPayroll = payrolls.find(p => p.payrollId === scrollToId);
 
       if (!targetPayroll) {
-        console.warn("⚠️ Target payroll NOT in current page. ID:", scrollToId);
-        // The item might be on a different page - reset and clear
         hasScrolled.current = true;
         setScrollToId(null);
-
-        // Remove scrollToId from URL
         const params = new URLSearchParams(window.location.search);
         params.delete('scrollToId');
         const queryString = params.toString();
@@ -58,39 +51,19 @@ export default function PayrollPage() {
         return;
       }
 
-      console.log("✓ Target payroll found in data:", targetPayroll.employeeName);
-
-      // Define scroll function
       const performScroll = (attempt = 1) => {
-        console.log(`Scroll attempt #${attempt}`);
         const element = payrollRefs.current[scrollToId];
-        console.log("Element in refs:", !!element);
-        console.log("All ref keys:", Object.keys(payrollRefs.current).map(Number));
 
         if (element) {
-          console.log("✓ Element found! Scrolling...");
           hasScrolled.current = true;
-
-          // Scroll into view
-          element.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-            inline: "nearest"
-          });
-
-          // Highlight the row
+          element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
           element.style.backgroundColor = "#dbeafe";
           element.style.transition = "background-color 0.3s";
           element.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.3)";
-
           setTimeout(() => {
             element.style.backgroundColor = "";
             element.style.boxShadow = "";
           }, 2500);
-
-          console.log("✓ Scroll completed!");
-
-          // Clean up URL after a delay
           setTimeout(() => {
             const params = new URLSearchParams(window.location.search);
             params.delete('scrollToId');
@@ -98,33 +71,23 @@ export default function PayrollPage() {
             router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
             setScrollToId(null);
           }, 1000);
-
           return true;
-        } else {
-          console.warn(`✗ Element not found in refs (attempt ${attempt})`);
-          return false;
         }
+        return false;
       };
 
-      // Try scrolling with multiple attempts
-      const maxAttempts = 3;
       let currentAttempt = 0;
-
+      const maxAttempts = 3;
       const tryScroll = () => {
         currentAttempt++;
         const success = performScroll(currentAttempt);
-
         if (!success && currentAttempt < maxAttempts) {
-          console.log(`Retrying in ${200 * currentAttempt}ms...`);
           setTimeout(tryScroll, 200 * currentAttempt);
         } else if (!success) {
-          console.error("Failed to scroll after", maxAttempts, "attempts");
           hasScrolled.current = true;
           setScrollToId(null);
         }
       };
-
-      // Start first attempt after a small delay
       setTimeout(tryScroll, 100);
     }
   }, [scrollToId, loading, payrolls, pathname, router]);
@@ -136,14 +99,6 @@ export default function PayrollPage() {
   const initialYear =
     searchParams.get("year") ?? new Date().getFullYear().toString();
   const initialPage = Number(searchParams.get("page") ?? "0");
-  const initialSortBy =
-    (searchParams.get("sortBy") as
-      | "employeeName"
-      | "employeeCode"
-      | "createdAt"
-      | null) ?? "createdAt";
-  const initialSortDirection =
-    (searchParams.get("sortDirection") as "asc" | "desc" | null) ?? "desc";
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [filterMonth, setFilterMonth] =
@@ -152,20 +107,10 @@ export default function PayrollPage() {
   const [showCalculateModal, setShowCalculateModal] = useState(false);
   const [overview, setOverview] = useState<PayrollOverview | null>(null);
 
-  // Pagination state
+  // Pagination (FE-side since summary API returns full list)
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [pageSize, setPageSize] = useState<number>(15);
-
-  // Sort state
-  const [sortField, setSortField] = useState<
-    "employeeName" | "employeeCode" | "createdAt"
-  >(initialSortBy);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(
-    initialSortDirection
-  );
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Available years from database
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -174,6 +119,7 @@ export default function PayrollPage() {
   const canView = usePermission('PAYROLL_VIEW');
   const canCreate = usePermission('PAYROLL_CREATE');
   const canExport = usePermission(['PAYROLL_VIEW', 'PAYROLL_EXPORT'], true);
+  const canMarkPaid = usePermission('PAYROLL_MARK_PAID');
 
   const loadPayrolls = async () => {
     try {
@@ -181,16 +127,8 @@ export default function PayrollPage() {
       const monthFilter = filterMonth !== "all" ? Number(filterMonth) : undefined;
       const yearFilter = filterYear !== "all" ? Number(filterYear) : undefined;
 
-      const [response, overviewData] = await Promise.all([
-        payrollService.getPayrolls({
-          keyword: searchTerm,
-          month: monthFilter,
-          year: yearFilter,
-          sortBy: sortField,
-          sortDirection,
-          page: currentPage,
-          pageSize,
-        }),
+      const [summaryData, overviewData] = await Promise.all([
+        payrollService.getPayrollSummary(monthFilter, yearFilter),
         payrollService.getPayrollOverview({
           keyword: searchTerm,
           month: monthFilter,
@@ -198,17 +136,17 @@ export default function PayrollPage() {
         }),
       ]);
 
-      console.log("API Response:", response);
-      if (response && response.content) {
-        setPayrolls(response.content);
-        setTotalPages(response.totalPages);
-        setTotalElements(response.totalElements);
-      } else {
-        setPayrolls([]);
-        setTotalPages(0);
-        setTotalElements(0);
+      // Apply FE-side keyword search (summary API doesn't support keyword)
+      let filteredData = summaryData || [];
+      if (searchTerm) {
+        const keyword = searchTerm.toLowerCase();
+        filteredData = filteredData.filter(
+          (p) =>
+            p.employeeCode?.toLowerCase().includes(keyword) ||
+            p.employeeName?.toLowerCase().includes(keyword)
+        );
       }
-
+      setPayrolls(filteredData);
       setOverview(overviewData);
     } catch (error) {
       console.error("Failed to load payrolls:", error);
@@ -236,41 +174,34 @@ export default function PayrollPage() {
   // Load data on mount and when filters change
   useEffect(() => {
     loadPayrolls();
-  }, [currentPage, filterMonth, filterYear, sortField, sortDirection, pageSize]);
+  }, [filterMonth, filterYear]);
 
   // Debounce search
   const searchEffectFirstRunRef = useRef(true);
   useEffect(() => {
-    // Bỏ qua lần chạy đầu tiên (khi khởi tạo từ URL) để không reset page về 0
     if (searchEffectFirstRunRef.current) {
       searchEffectFirstRunRef.current = false;
       return;
     }
 
     const timer = setTimeout(() => {
-      if (currentPage === 0) {
-        loadPayrolls();
-      } else {
-        setCurrentPage(0);
-      }
+      loadPayrolls();
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Đồng bộ state (filter + sort + page) -> URL query
+  // Đồng bộ state (filter) -> URL query
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchTerm) params.set("keyword", searchTerm);
     if (filterMonth) params.set("month", filterMonth);
     if (filterYear) params.set("year", filterYear);
     params.set("page", currentPage.toString());
-    if (sortField) params.set("sortBy", sortField);
-    if (sortDirection) params.set("sortDirection", sortDirection);
 
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }, [searchTerm, filterMonth, filterYear, currentPage, sortField, sortDirection, pathname, router]);
+  }, [searchTerm, filterMonth, filterYear, currentPage, pathname, router]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -279,38 +210,47 @@ export default function PayrollPage() {
     }).format(amount);
   };
 
-  const totalPayroll = overview ? overview.totalFinalSalary : payrolls.reduce((sum, p) => sum + p.remainingAmount, 0);
-  const paidPayrolls = overview ? overview.paidPayrolls : payrolls.filter((p) => p.status === 'PAID').length;
-  const unpaidPayrolls = overview
-    ? overview.unpaidPayrolls + overview.partialPaidPayrolls
-    : payrolls.filter((p) => p.status === 'UNPAID' || p.status === 'PARTIAL_PAID').length;
+  const totalElements = payrolls.length;
+  const totalPages = Math.ceil(totalElements / pageSize);
+  const totalRemaining = payrolls.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
+  const paidCount = payrolls.filter(p => (p.remainingAmount || 0) <= 0).length;
+  const unpaidCount = totalElements - paidCount;
 
-  const toggleSort = (field: 'employeeName' | 'employeeCode') => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
+  // FE-side pagination
+  const paginatedPayrolls = payrolls.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize
+  );
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    return new Intl.DateTimeFormat("vi-VN").format(new Date(dateString));
   };
 
-  const getStatusLabel = (status: PayrollStatus): string => {
-    switch (status) {
-      case 'UNPAID': return 'Chưa trả';
-      case 'PARTIAL_PAID': return 'Đã trả một phần';
-      case 'PAID': return 'Đã trả đủ';
-      default: return '';
-    }
-  };
-
-  const getStatusColor = (status: PayrollStatus): string => {
-    switch (status) {
-      case 'UNPAID': return 'bg-red-100 text-red-800';
-      case 'PARTIAL_PAID': return 'bg-orange-100 text-orange-800';
-      case 'PAID': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Map PayrollSummaryItem to Payroll shape for the payment modal
+  const mapToPayroll = (item: PayrollSummaryItem) => ({
+    id: item.payrollId,
+    employeeId: item.employeeId,
+    employeeName: item.employeeName,
+    employeeCode: item.employeeCode,
+    month: item.month,
+    year: item.year,
+    totalDays: 0,
+    bonusTotal: 0,
+    penaltyTotal: 0,
+    // [DEPRECATED] advanceTotal: 0,
+    allowanceTotal: 0,
+    insuranceTotal: 0,
+    finalSalary: item.totalSalary || 0,
+    status: ((item.remainingAmount || 0) <= 0 ? 'PAID' : ((item.paidAmount || 0) > 0 ? 'PARTIAL_PAID' : 'UNPAID')) as "UNPAID" | "PARTIAL_PAID" | "PAID",
+    paidAmount: item.paidAmount || 0,
+    remainingAmount: item.remainingAmount || 0,
+    paymentDate: null,
+    accountantId: null,
+    accountantName: null,
+    createdAt: "",
+    updatedAt: "",
+  });
 
   if (!canView) {
     return (
@@ -330,34 +270,6 @@ export default function PayrollPage() {
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quản lý bảng lương</h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => toggleSort('employeeCode')}
-              className={`px-3 py-2 rounded-lg border text-xs sm:text-sm flex items-center gap-1 ${sortField === 'employeeCode'
-                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-            >
-              <span>Sắp xếp mã NV</span>
-              {sortField === 'employeeCode' && (
-                <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleSort('employeeName')}
-              className={`px-3 py-2 rounded-lg border text-xs sm:text-sm flex items-center gap-1 ${sortField === 'employeeName'
-                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-            >
-              <span>Sắp xếp tên</span>
-              {sortField === 'employeeName' && (
-                <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
-              )}
-            </button>
-          </div>
           {canCreate && (
             <button
               onClick={() => setShowCalculateModal(true)}
@@ -428,7 +340,7 @@ export default function PayrollPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-600">Đã thanh toán</p>
               <p className="text-lg sm:text-2xl font-bold text-green-600">
-                {paidPayrolls}
+                {paidCount}
               </p>
             </div>
             <div className="bg-green-100 p-2 sm:p-3 rounded-full">
@@ -454,7 +366,7 @@ export default function PayrollPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-600">Chưa thanh toán</p>
               <p className="text-lg sm:text-2xl font-bold text-red-600">
-                {unpaidPayrolls}
+                {unpaidCount}
               </p>
             </div>
             <div className="bg-red-100 p-2 sm:p-3 rounded-full">
@@ -480,7 +392,7 @@ export default function PayrollPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-600">Tổng chi lương</p>
               <p className="text-base sm:text-xl font-bold text-purple-600">
-                {formatCurrency(totalPayroll)}
+                {formatCurrency(totalRemaining)}
               </p>
             </div>
             <div className="bg-purple-100 p-2 sm:p-3 rounded-full">
@@ -598,40 +510,40 @@ export default function PayrollPage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên nhân viên</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tháng/Năm</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày cập nhật</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Lương công</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng phải trả</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã NV</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tháng/Năm</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ngày cập nhật</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Xin ứng</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tổng lương tháng</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Đã TT</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Còn lại</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {payrolls.map((payroll) => {
-                    const isNavigating = navigatingToId === payroll.id;
+                  {paginatedPayrolls.map((payroll) => {
+                    const isNavigating = navigatingToId === payroll.payrollId;
+                    const isFullyPaid = (payroll.remainingAmount || 0) <= 0;
                     return (
                       <tr
-                        key={payroll.id}
-                        ref={(el) => { payrollRefs.current[payroll.id] = el; }}
+                        key={payroll.payrollId}
+                        ref={(el) => { payrollRefs.current[payroll.payrollId] = el; }}
                         className={`cursor-pointer transition-all ${isNavigating
                           ? "bg-blue-50 opacity-60"
                           : "hover:bg-gray-50"
                           }`}
                         onClick={() => {
-                          setNavigatingToId(payroll.id);
-                          // Build returnUrl with scrollToId
+                          setNavigatingToId(payroll.payrollId);
                           const currentParams = new URLSearchParams(window.location.search);
-                          currentParams.set('scrollToId', payroll.id.toString());
+                          currentParams.set('scrollToId', payroll.payrollId.toString());
                           const returnUrl = `${pathname}?${currentParams.toString()}`;
-                          console.log("Navigating with returnUrl:", returnUrl);
                           setTimeout(() => {
-                            router.push(`/admin/payroll/${payroll.id}?returnUrl=${encodeURIComponent(returnUrl)}`);
+                            router.push(`/admin/payroll/${payroll.payrollId}?returnUrl=${encodeURIComponent(returnUrl)}`);
                           }, 100);
                         }}
                       >
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        <td className="px-4 py-4 text-sm font-medium text-gray-900">
                           {isNavigating ? (
                             <div className="flex items-center gap-2">
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -641,28 +553,37 @@ export default function PayrollPage() {
                             payroll.employeeCode
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{payroll.employeeName}</td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-700">
-                          Tháng {payroll.month}/{payroll.year}
+                        <td className="px-4 py-4 text-sm text-gray-900">{payroll.employeeName}</td>
+                        <td className="px-4 py-4 text-sm text-center text-gray-700">
+                          {payroll.month}/{payroll.year}
                         </td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-700">
-                          {new Date(payroll.createdAt).toLocaleDateString('vi-VN')}
+                        <td className="px-4 py-4 text-sm text-center text-gray-700">
+                          {formatDate(payroll.updatedAt)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-700">
-                          {payroll.updatedAt ? new Date(payroll.updatedAt).toLocaleDateString('vi-VN') : '-'}
+                        <td className="px-4 py-4 text-sm text-right text-yellow-700 font-medium">
+                          {payroll.advanceNote != null ? formatCurrency(payroll.advanceNote) : "-"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-right font-semibold text-purple-600">
-                          {formatCurrency(payroll.baseSalary || 0)}
+                        <td className="px-4 py-4 text-sm text-right font-semibold text-blue-600">
+                          {formatCurrency(payroll.totalSalary || 0)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
-                          {formatCurrency(payroll.remainingAmount)}
+                        <td className="px-4 py-4 text-sm text-right font-semibold text-green-600">
+                          {formatCurrency(payroll.paidAmount || 0)}
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payroll.status)}`}
-                          >
-                            {getStatusLabel(payroll.status)}
-                          </span>
+                        <td className="px-4 py-4 text-sm text-right font-bold text-red-600">
+                          {formatCurrency(payroll.remainingAmount || 0)}
+                        </td>
+                        <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          {!isFullyPaid && canMarkPaid && (
+                            <button
+                              onClick={() => {
+                                setSelectedPayrollForPayment(payroll);
+                                setShowPaymentModal(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
+                            >
+                              TT
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -673,21 +594,21 @@ export default function PayrollPage() {
 
             {/* Card layout for mobile screens */}
             <div className="sm:hidden divide-y divide-gray-200">
-              {payrolls.map((payroll) => {
-                const isNavigating = navigatingToId === payroll.id;
+              {paginatedPayrolls.map((payroll) => {
+                const isNavigating = navigatingToId === payroll.payrollId;
+                const isFullyPaid = (payroll.remainingAmount || 0) <= 0;
                 return (
                   <div
-                    key={payroll.id}
-                    ref={(el) => { payrollRefs.current[payroll.id] = el; }}
+                    key={payroll.payrollId}
+                    ref={(el) => { payrollRefs.current[payroll.payrollId] = el; }}
                     className={`p-4 active:bg-gray-100 transition-all ${isNavigating ? "bg-blue-50 opacity-60" : ""}`}
                     onClick={() => {
-                      setNavigatingToId(payroll.id);
-                      // Build returnUrl with scrollToId
+                      setNavigatingToId(payroll.payrollId);
                       const currentParams = new URLSearchParams(window.location.search);
-                      currentParams.set('scrollToId', payroll.id.toString());
+                      currentParams.set('scrollToId', payroll.payrollId.toString());
                       const returnUrl = `${pathname}?${currentParams.toString()}`;
                       setTimeout(() => {
-                        router.push(`/admin/payroll/${payroll.id}?returnUrl=${encodeURIComponent(returnUrl)}`);
+                        router.push(`/admin/payroll/${payroll.payrollId}?returnUrl=${encodeURIComponent(returnUrl)}`);
                       }, 100);
                     }}
                   >
@@ -699,27 +620,36 @@ export default function PayrollPage() {
                         </span>
                         <span className="text-sm font-bold text-gray-900">{payroll.employeeName}</span>
                       </div>
-                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${getStatusColor(payroll.status)}`}>
-                        {getStatusLabel(payroll.status)}
-                      </span>
+                      {!isFullyPaid && canMarkPaid && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPayrollForPayment(payroll);
+                            setShowPaymentModal(true);
+                          }}
+                          className="px-2 py-0.5 text-[10px] font-medium text-white bg-green-600 rounded hover:bg-green-700"
+                        >
+                          TT
+                        </button>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 mt-3">
                       <div>
                         <p className="text-[10px] text-gray-500 uppercase font-medium">Kỳ lương</p>
-                        <p className="text-xs text-gray-700 font-semibold">T{payroll.month}/{payroll.year}</p>
+                        <p className="text-xs text-gray-700 font-semibold">{payroll.month}/{payroll.year}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-gray-500 uppercase font-medium">Tổng phải trả</p>
-                        <p className="text-sm text-blue-600 font-bold">{formatCurrency(payroll.remainingAmount)}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Còn lại</p>
+                        <p className="text-sm text-red-600 font-bold">{formatCurrency(payroll.remainingAmount || 0)}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] text-gray-500 uppercase font-medium">Lương công</p>
-                        <p className="text-xs text-purple-600 font-semibold">{formatCurrency(payroll.baseSalary || 0)}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Tổng lương</p>
+                        <p className="text-xs text-blue-600 font-semibold">{formatCurrency(payroll.totalSalary || 0)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-gray-500 uppercase font-medium">Ngày tạo</p>
-                        <p className="text-[10px] text-gray-600">{new Date(payroll.createdAt).toLocaleDateString('vi-VN')}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Xin ứng</p>
+                        <p className="text-xs text-yellow-600 font-semibold">{payroll.advanceNote != null ? formatCurrency(payroll.advanceNote) : "-"}</p>
                       </div>
                     </div>
                   </div>
@@ -831,6 +761,24 @@ export default function PayrollPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Payment Modal */}
+      {canMarkPaid && selectedPayrollForPayment && (
+        <PayrollPaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedPayrollForPayment(null);
+          }}
+          payroll={mapToPayroll(selectedPayrollForPayment)}
+          onSuccess={() => {
+            toast.success("Thanh toán thành công!");
+            setShowPaymentModal(false);
+            setSelectedPayrollForPayment(null);
+            loadPayrolls();
+          }}
+        />
       )}
     </div>
   );

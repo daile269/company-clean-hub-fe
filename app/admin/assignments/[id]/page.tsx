@@ -253,6 +253,12 @@ export default function AssignmentDetail() {
             editForm.additionalAllowance !== null
             ? Number(parseFormattedNumber(String(editForm.additionalAllowance)))
             : undefined,
+        monthlySupport:
+          (editForm as any).monthlySupport !== undefined &&
+            (editForm as any).monthlySupport !== null &&
+            String((editForm as any).monthlySupport) !== ""
+            ? Number(parseFormattedNumber(String((editForm as any).monthlySupport)))
+            : undefined,
         workingDaysPerWeek:
           (editForm as any).workingDaysPerWeek ??
           (assignment as any).workingDaysPerWeek,
@@ -787,6 +793,18 @@ export default function AssignmentDetail() {
             )}
 
             <div className="pt-3 border-t">
+              <p className="text-xs text-gray-500 mb-1">Hỗ trợ (VNĐ/tháng)</p>
+              <p className="text-sm text-gray-700">
+                Cố định hàng tháng, không chia theo ngày công
+              </p>
+              <p className="text-xl font-bold text-purple-600 mt-1">
+                {formatCurrency(
+                  ((assignment as any).monthlySupport ?? 0) as number
+                )}
+              </p>
+            </div>
+
+            <div className="pt-3 border-t">
               {contractName ? (
                 <>
                   <p className="text-xs font-semibold text-gray-900 mb-1">
@@ -1150,6 +1168,25 @@ export default function AssignmentDetail() {
                   />
                 </div>
               )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hỗ trợ (VNĐ/tháng)
+                </label>
+                <p className="text-xs text-gray-400 -mt-1 mb-1">Cố định hàng tháng, không chia theo ngày công</p>
+                <input
+                  type="text"
+                  value={String((editForm as any).monthlySupport ?? "")}
+                  onChange={(e) => {
+                    const raw = handleNumberInput(e.target.value);
+                    setEditForm({
+                      ...editForm,
+                      monthlySupport: raw ? (formatNumber(raw) as any) : ("" as any),
+                    } as any);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="VD: 500.000"
+                />
+              </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Thông tin thêm

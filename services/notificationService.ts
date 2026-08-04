@@ -1,8 +1,43 @@
 import { apiService } from './api';
 
+// All 8 notification types from BE NotificationType enum
+export type NotificationTypeEnum =
+  | 'WORK_TIME_CONFLICT'
+  | 'NEW_EMPLOYEE_CREATED'
+  | 'MISSING_VERIFICATION_PHOTO'
+  | 'INSUFFICIENT_STAFF'
+  | 'CONTRACT_EXPIRING'
+  | 'ASSIGNMENT_OVER_BUDGET'
+  | 'TEMPORARY_OVER_5_DAYS'
+  | 'CHECKIN_OUTSIDE_RADIUS';
+
+// Icon + color mapping for each notification type
+export const NotificationTypeMeta: Record<NotificationTypeEnum, { icon: string; color: string; bg: string; border: string }> = {
+  WORK_TIME_CONFLICT:          { icon: '⚠️', color: '#D97706', bg: '#FFFBEB', border: '#FCD34D' },
+  NEW_EMPLOYEE_CREATED:        { icon: '👤', color: '#059669', bg: '#ECFDF5', border: '#6EE7B7' },
+  MISSING_VERIFICATION_PHOTO:  { icon: '📸', color: '#D97706', bg: '#FFFBEB', border: '#FCD34D' }, // 🟡
+  INSUFFICIENT_STAFF:          { icon: '⚠️', color: '#DC2626', bg: '#FEF2F2', border: '#FCA5A5' }, // 🔴
+  CONTRACT_EXPIRING:           { icon: '📋', color: '#EA580C', bg: '#FFF7ED', border: '#FDBA74' }, // 🟠
+  ASSIGNMENT_OVER_BUDGET:      { icon: '💰', color: '#DC2626', bg: '#FEF2F2', border: '#FCA5A5' }, // 🔴
+  TEMPORARY_OVER_5_DAYS:       { icon: '⏰', color: '#D97706', bg: '#FFFBEB', border: '#FCD34D' }, // 🟡
+  CHECKIN_OUTSIDE_RADIUS:      { icon: '📍', color: '#DC2626', bg: '#FEF2F2', border: '#FCA5A5' }, // 🔴
+};
+
+// Vietnamese labels for notification types
+export const NotificationTypeLabels: Record<NotificationTypeEnum, string> = {
+  WORK_TIME_CONFLICT:          'Trùng giờ làm việc',
+  NEW_EMPLOYEE_CREATED:        'Nhân viên mới',
+  MISSING_VERIFICATION_PHOTO:  'Quên chụp hình xác minh',
+  INSUFFICIENT_STAFF:          'Thiếu nhân viên',
+  CONTRACT_EXPIRING:           'Hợp đồng sắp hết hạn',
+  ASSIGNMENT_OVER_BUDGET:      'Vượt ngân sách',
+  TEMPORARY_OVER_5_DAYS:       'Điều động quá 5 ngày',
+  CHECKIN_OUTSIDE_RADIUS:      'Check-in ngoài bán kính',
+};
+
 export interface NotificationResponse {
   id: number;
-  type: 'WORK_TIME_CONFLICT' | 'NEW_EMPLOYEE_CREATED';
+  type: NotificationTypeEnum;
   typeDescription: string;
   title: string;
   message: string;
@@ -19,8 +54,10 @@ export interface UnreadCountResponse {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://opticlean.com.vn/api';
 
+export type NotificationFilterType = 'ALL' | NotificationTypeEnum;
+
 export interface GetNotificationParams {
-  type?: 'ALL' | 'WORK_TIME_CONFLICT' | 'NEW_EMPLOYEE_CREATED';
+  type?: NotificationFilterType;
   isRead?: boolean;
   page?: number;      // 0-indexed
   pageSize?: number;
@@ -142,14 +179,86 @@ class NotificationService {
   }
 
   /**
-   * Kết nối SSE realtime — DISABLED vì EventSource không hỗ trợ JWT token trong header.
-   * TODO: Implement custom SSE client với fetch/XMLHttpRequest nếu cần realtime notification.
-   * Hiện tại dùng polling thông thường qua getAll() hoặc getUnreadCount().
+   * Kết nối SSE realtime dùng fetch streaming (EventSource không hỗ trợ JWT header).
+   * Trả về cleanup function để đóng kết nối khi unmount.
    */
   connectSSE(onNotification: (n: NotificationResponse) => void): () => void {
-    console.log('[SSE] SSE connection disabled - using polling instead');
-    // Return empty cleanup function
-    return () => {};
+    const token = apiService.getToken();
+    if (!token) {
+      console.warn('[SSE] No token available, skipping SSE connection');
+      return () => {};
+    }
+
+    const url = `${API_BASE_URL}/notifications/subscribe`;
+    const controller = new AbortController();
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let shouldReconnect = true;
+
+    const connect = () => {
+      fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream',
+        },
+        signal: controller.signal,
+      }).then(async (response) => {
+        if (!response.ok || !response.body) {
+          console.warn('[SSE] Connection failed, will retry in 30s');
+          scheduleReconnect();
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data:')) {
+              const jsonStr = trimmed.slice(5).trim();
+              if (!jsonStr) continue;
+              try {
+                const data = JSON.parse(jsonStr);
+                onNotification(data as NotificationResponse);
+              } catch {
+                // skip unparseable events
+              }
+            }
+          }
+        }
+        // Stream ended — reconnect
+        scheduleReconnect();
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('[SSE] Connection error:', err);
+          scheduleReconnect();
+        }
+      });
+    };
+
+    const scheduleReconnect = () => {
+      if (!shouldReconnect) return;
+      reconnectTimer = setTimeout(() => {
+        console.log('[SSE] Reconnecting...');
+        connect();
+      }, 30000); // reconnect after 30s
+    };
+
+    connect();
+
+    return () => {
+      shouldReconnect = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      controller.abort();
+    };
   }
 }
 

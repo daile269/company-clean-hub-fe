@@ -10,7 +10,7 @@ interface PayrollUpdateModalProps {
   payrollId: number;
   currentValues: {
     insuranceTotal: number;
-    advanceTotal: number;
+    // [DEPRECATED] advanceTotal: number;
   };
   onShowToast?: (msg: string, type?: "success" | "error" | "info") => void;
 }
@@ -25,7 +25,7 @@ export default function PayrollUpdateModal({
 }: PayrollUpdateModalProps) {
   const [formData, setFormData] = useState<PayrollUpdateRequest>({
     insuranceTotal: currentValues.insuranceTotal || 0,
-    advanceTotal: currentValues.advanceTotal || 0,
+    // [DEPRECATED] advanceTotal: currentValues.advanceTotal || 0,
   });
   const [loading, setLoading] = useState(false);
   const updatePayroll = async () => {
@@ -90,6 +90,7 @@ export default function PayrollUpdateModal({
             </p>
           </div>
 
+          {/* [DEPRECATED] advanceTotal replaced by advanceNoteSummary from Assignment.advanceNote
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Xin ứng lương - Ghi chú (VNĐ)
@@ -114,6 +115,7 @@ export default function PayrollUpdateModal({
               ⓘ Chỉ là ghi chú, không ảnh hưởng đến tính lương
             </p>
           </div>
+          */}
 
           <div className="bg-blue-50 rounded-lg p-4">
             <p className="text-xs text-gray-600">

@@ -590,7 +590,7 @@ export default function EmployeeDetail() {
       if (employeePayroll) {
         setPayrollId(employeePayroll.id);
         setInsuranceAmount(employeePayroll.insuranceTotal || 0);
-        setAdvanceAmount(employeePayroll.advanceTotal || 0);
+        // [DEPRECATED] setAdvanceAmount(employeePayroll.advanceTotal || 0);
       } else {
         setPayrollId(null);
         setAdvanceAmount(employee?.monthlyAdvanceLimit || 0);
@@ -719,7 +719,7 @@ export default function EmployeeDetail() {
           // Payroll đã tồn tại — chỉ gửi field nào user đã chỉnh
           await payrollService.recalculatePayroll(payrollId, {
             insuranceTotal: insuranceUserEdited ? insuranceAmount : undefined,
-            advanceTotal: advanceUserEdited ? advanceAmount : undefined,
+            // [DEPRECATED] advanceTotal: advanceUserEdited ? advanceAmount : undefined,
           });
           payrollUpdateSuccess = true;
           toast.success("Đã cập nhật bảo hiểm và tiền ứng thành công", {
@@ -735,10 +735,10 @@ export default function EmployeeDetail() {
               insuranceUserEdited && insuranceAmount > 0
                 ? insuranceAmount
                 : undefined,
-            advanceSalary:
-              advanceUserEdited && advanceAmount > 0
-                ? advanceAmount
-                : undefined,
+            // [DEPRECATED] advanceSalary:
+            //   advanceUserEdited && advanceAmount > 0
+            //     ? advanceAmount
+            //     : undefined,
           };
           await payrollService.calculatePayroll(createData);
           payrollUpdateSuccess = true;
@@ -2570,7 +2570,8 @@ export default function EmployeeDetail() {
                 />
               </div>
 
-              {/* Payroll Insurance Section */}
+              {/* Payroll Insurance Section — chỉ hiện cho COMPANY_STAFF */}
+              {editForm.employeeType !== "CONTRACT_STAFF" && (
               <div className="col-span-2 border-t pt-4 mt-2">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">
                   Bảo hiểm và lương xin ứng{" "}
@@ -2681,6 +2682,7 @@ export default function EmployeeDetail() {
                 </div>
               </div>
 
+              )}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mô tả

@@ -67,7 +67,10 @@ export const getVerificationByAssignment = async (
     }
 };
 
-// Chụp ảnh xác minh - gọi POST /api/verifications/capture
+// ⚠️ DEPRECATED — BE endpoint này đã bị vô hiệu hóa từ tháng 4/2026.
+// BE trả lỗi: "Please use /api/work-schedules/capture endpoint for photo capture".
+// → Dùng workScheduleService.capturePhoto({ workScheduleId, imageBase64, ... }) thay thế.
+// → Luồng đúng xem tại: app/admin/attendance/capture/[id]/page.tsx (line 452)
 export const captureVerificationImage = async (
     payload: VerificationCapturePayload
 ): Promise<VerificationImageResponse> => {
@@ -107,7 +110,10 @@ export const getVerificationImages = async (
     }
 };
 
-// Kiểm tra có thể chụp ảnh không
+// ⚠️ DEPRECATED — BE endpoint luôn return false từ tháng 4/2026.
+// BE ghi chú: "This is deprecated with work_schedule. Use WorkScheduleService.canCapturePhoto() instead".
+// → Dùng field `canCapture` từ response của getVerificationByAssignment(assignmentId) thay thế.
+// → Luồng đúng xem tại: app/admin/attendance/capture/[id]/page.tsx (line 110)
 export const canCaptureImage = async (verificationId: number): Promise<boolean> => {
     try {
         const response = await apiService.get<boolean>(

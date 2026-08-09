@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { authService, AuthUser } from '@/services/authService';
 
 interface AuthContextType {
@@ -20,14 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const router = useRouter();
 
+  const pathname = usePathname();
+
   useEffect(() => {
-    // Check if user is logged in
+    // Đọc user từ localStorage mỗi khi route/pathname thay đổi
     const currentUser = authService.getCurrentUser();
-    if (currentUser !== user) {
-      setUser(currentUser);
-    }
+    setUser(currentUser);
     setIsLoading(false);
-  }, [user]);
+  }, [pathname]);
 
   const logout = () => {
     authService.logout();

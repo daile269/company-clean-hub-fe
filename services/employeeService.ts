@@ -9,6 +9,7 @@ export interface EmployeePaginationParams {
   pageSize?: number;
   employmentType?: string;
   province?: string;
+  ward?: string;
   unassigned?: boolean;
 }
 
@@ -82,6 +83,9 @@ class EmployeeService {
     }
     if (params?.province) {
       queryParams.append("province", params.province);
+    }
+    if (params?.ward) {
+      queryParams.append("ward", params.ward);
     }
     if (params?.unassigned) {
       queryParams.append("unassigned", "true");

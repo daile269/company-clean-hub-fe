@@ -136,6 +136,7 @@ export default function AttendanceCalendar({
     const [assignmentsLoading, setAssignmentsLoading] = useState(false);
     const [assignmentAllowanceInputs, setAssignmentAllowanceInputs] = useState<Record<number, number>>({});
     const [savingAssignmentMap, setSavingAssignmentMap] = useState<Record<number, boolean>>({});
+    const [focusedAssignmentAllowanceId, setFocusedAssignmentAllowanceId] = useState<number | null>(null);
     // Track selected day for mobile tap interaction
     const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
     // Detect if device supports touch
@@ -310,6 +311,11 @@ export default function AttendanceCalendar({
                                                 currency: "VND",
                                                 maximumFractionDigits: 0,
                                             }).format(assignment.salaryAtTime || 0)}</p>
+                                            <p className="text-gray-600">Hỗ trợ tháng (không chia ngày công): <span className="font-semibold text-green-600">{new Intl.NumberFormat("vi-VN", {
+                                                style: "currency",
+                                                currency: "VND",
+                                                maximumFractionDigits: 0,
+                                            }).format(assignment.monthlySupport || 0)}</span></p>
                                             <p className="text-gray-600">Loại phân công: <span className="font-semibold">{getAssignmentType(assignment.assignmentType)}</span></p>
                                             <p className="text-gray-600">Ngày DK: {assignment.plannedDays || 0}</p>
                                             <p className="text-gray-600">Ngày TT: {realWorkDays}</p>
@@ -335,13 +341,19 @@ export default function AttendanceCalendar({
                                         </p>
                                         <input
                                             disabled={isCancelled}
-                                            type="number"
+                                            type="text"
+                                            inputMode="numeric"
                                             className="w-full px-2 py-1 border border-purple-200 rounded text-xs focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                                            value={allowanceValue}
-                                            min={0}
-                                            step={1000}
+                                            value={
+                                                focusedAssignmentAllowanceId === assignmentId
+                                                    ? allowanceValue.toString()
+                                                    : allowanceValue.toLocaleString('vi-VN')
+                                            }
+                                            onFocus={() => setFocusedAssignmentAllowanceId(assignmentId)}
+                                            onBlur={() => setFocusedAssignmentAllowanceId(null)}
                                             onChange={(e) => {
-                                                const val = Number(e.target.value) || 0;
+                                                const raw = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '');
+                                                const val = Number(raw) || 0;
                                                 setAssignmentAllowanceInputs((prev) => ({
                                                     ...prev,
                                                     [assignmentId]: val,

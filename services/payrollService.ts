@@ -13,11 +13,14 @@ export interface Payroll {
   salaryBase?: number;
   bonusTotal: number;
   penaltyTotal: number;
-  advanceTotal: number;
+  // [DEPRECATED] Replaced by advanceNoteSummary (compiled from Assignment.advanceNote)
+  // advanceTotal: number;
   allowanceTotal: number;
   insuranceTotal: number;
   finalSalary: number;
   baseSalary?: number;
+  monthlySupportTotal?: number; // Task 12: Tổng hỗ trợ hàng tháng
+  advanceNoteSummary?: number; // Task 15: Tổng tiền ứng lương từ các assignment
   status: PayrollStatus;  // Changed from isPaid
   paidAmount: number;     // New field
   remainingAmount: number; // New field
@@ -34,12 +37,14 @@ export interface PayrollCalculateRequest {
   month: number;
   year: number;
   insuranceAmount?: number;  // Bảo hiểm (có thể null)
-  advanceSalary?: number;    // Tiền ứng lương (có thể null)
+  // [DEPRECATED] Replaced by advanceNoteSummary from Assignment.advanceNote
+  // advanceSalary?: number;    // Tiền ứng lương (có thể null)
 }
 
 export interface PayrollUpdateRequest {
   insuranceTotal?: number;
-  advanceTotal?: number;
+  // [DEPRECATED] Replaced by advanceNoteSummary
+  // advanceTotal?: number;
 }
 
 export interface PayrollFilterParams {
@@ -68,6 +73,7 @@ export interface PayrollAssignmentResponse {
   assignmentBonus: number | null;
   assignmentPenalty: number | null;
   assignmentAllowance: number | null;
+  monthlySupport: number | null;
   assignmentInsurance: number | null;
   assignmentAdvance: number | null;
   assignmentSalary: number | null;
@@ -100,6 +106,26 @@ export interface PayrollResponse {
   totalPages: number;
   first: boolean;
   last: boolean;
+}
+
+// Payroll Summary (new API: GET /api/payrolls/summary)
+export interface PayrollSummaryItem {
+  payrollId: number;
+  employeeId: number;
+  employeeCode: string;
+  employeeName: string;
+  month: number;
+  year: number;
+  updatedAt: string;
+  advanceNote: number | null;
+  totalSalary: number;
+  paidAmount: number;
+  remainingAmount: number;
+}
+
+// Payment Request (POST /api/payrolls/{id}/payment)
+export interface PaymentRequest {
+  amount: number;
 }
 
 export interface PayrollOverview {
@@ -163,6 +189,26 @@ const payrollService = {
       };
     } catch (error) {
       console.error('Error fetching payrolls:', error);
+      throw error;
+    }
+  },
+
+  // Lấy bảng lương tổng hợp (new API: GET /api/payrolls/summary)
+  getPayrollSummary: async (month?: number, year?: number): Promise<PayrollSummaryItem[]> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (month !== undefined) queryParams.append("month", month.toString());
+      if (year !== undefined) queryParams.append("year", year.toString());
+
+      const response = await apiService.get<any>(`/payrolls/summary?${queryParams.toString()}`);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch payroll summary');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching payroll summary:', error);
       throw error;
     }
   },
@@ -258,6 +304,7 @@ const payrollService = {
   },
 
   // Cập nhật thanh toán lương (trả sớm hoặc trả đủ)
+  // @deprecated Use processPayment instead for the new payment API
   updatePaymentStatus: async (id: number, paidAmount: number): Promise<Payroll> => {
     try {
       const response = await apiService.put<any>(`/payrolls/${id}/payment-status?paidAmount=${paidAmount}`);
@@ -270,6 +317,38 @@ const payrollService = {
     } catch (error) {
       console.error('Error updating payment status:', error);
       throw error;
+    }
+  },
+
+  // Thanh toán lương (new API: POST /api/payrolls/{id}/payment)
+  processPayment: async (id: number, data: PaymentRequest): Promise<Payroll> => {
+    try {
+      const response = await apiService.post<any>(`/payrolls/${id}/payment`, data);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to process payment');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      throw error;
+    }
+  },
+
+  // Lấy cảnh báo thanh toán (new API: GET /api/payrolls/{id}/payment-warning)
+  getPaymentWarning: async (id: number, amount: number): Promise<string | null> => {
+    try {
+      const response = await apiService.get<any>(`/payrolls/${id}/payment-warning?amount=${amount}`);
+
+      if (!response.success) {
+        return null;
+      }
+
+      return response.data || null;
+    } catch (error) {
+      console.error('Error fetching payment warning:', error);
+      return null;
     }
   },
 

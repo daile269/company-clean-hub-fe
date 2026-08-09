@@ -419,6 +419,10 @@ export default function CompanyStaffDetailPage() {
           typeof editForm.socialInsurance === "string"
             ? Number(parseFormattedNumber(editForm.socialInsurance))
             : editForm.socialInsurance;
+        const monthlySupport =
+          typeof editForm.monthlySupport === "string"
+            ? Number(parseFormattedNumber(editForm.monthlySupport))
+            : editForm.monthlySupport;
 
         response = await employeeService.updateCompanyStaff(editForm.id, {
           ...editForm,
@@ -431,6 +435,7 @@ export default function CompanyStaffDetailPage() {
           allowance,
           socialInsurance,
           monthlyAdvanceLimit,
+          monthlySupport,
           cccdFrontImage: hasFront ? (editCccdFrontPreview ? editForm.cccdFrontImage : "") : "",
           cccdBackImage: hasBack ? (editCccdBackPreview ? editForm.cccdBackImage : "") : "",
         });
@@ -894,7 +899,17 @@ export default function CompanyStaffDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">
-                  Lương đóng bảo hiểm
+                  Hỗ trợ (VNĐ/tháng)
+                </p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {employee.monthlySupport
+                    ? formatCurrency(employee.monthlySupport)
+                    : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">
+                  Tiền bảo hiểm (VNĐ)
                 </p>
                 <p className="text-sm font-semibold text-gray-900">
                   {employee.socialInsurance
@@ -1694,10 +1709,36 @@ export default function CompanyStaffDetailPage() {
                   />
                 </div>
               )}{" "}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hỗ trợ (VNĐ/tháng)
+                </label>
+                <p className="text-xs text-gray-400 -mt-1 mb-1">Cố định hàng tháng, không chia theo ngày công</p>
+                <input
+                  type="text"
+                  value={
+                    typeof editForm.monthlySupport === "number"
+                      ? formatNumber(editForm.monthlySupport)
+                      : editForm.monthlySupport || ""
+                  }
+                  onChange={(e) => {
+                    const rawValue = handleNumberInput(e.target.value);
+                    setEditForm({
+                      ...editForm,
+                      monthlySupport: rawValue
+                        ? (formatNumber(rawValue) as any)
+                        : ("" as any),
+                    });
+                  }}
+                  disabled={isEditingRestricted}
+                  className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                  placeholder="VD: 500.000"
+                />
+              </div>
               {role !== "QLV" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lương đóng bảo hiểm *
+                    Tiền bảo hiểm (VNĐ) *
                   </label>
                   <input
                     type="text"
@@ -1751,7 +1792,7 @@ export default function CompanyStaffDetailPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tiền xin ứng hàng tháng (VND)
+                  Xin ứng lương (ghi chú)
                 </label>
                 <input
                   type="text"

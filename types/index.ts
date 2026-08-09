@@ -133,6 +133,7 @@ export interface Employee {
   socialInsurance?: number;      // Bảo hiểm xã hội / Lương đóng bảo hiểm (insuranceSalary)
   healthInsurance?: number;      // Bảo hiểm y tế
   monthlyAdvanceLimit?: number;  // Số tiền xin ứng hàng tháng
+  monthlySupport?: number;       // Tiền hỗ trợ cố định hàng tháng
   roleId?: number;
   roleName?: string;               // Tên vai trò
   status?: string;               // Trạng thái
@@ -171,6 +172,7 @@ export interface ApiEmployee {
   socialInsurance: number;
   healthInsurance: number;
   monthlyAdvanceLimit: number | null; // Số tiền xin ứng hàng tháng
+  monthlySupport: number | null;      // Tiền hỗ trợ cố định hàng tháng
   cccdFrontImage?: string;
   cccdBackImage?: string;
   currentCustomerName?: string;  // Tên KH đang làm việc, null nếu chưa phân công
@@ -289,7 +291,8 @@ export interface AssignmentPayrollDetail {
   assignmentId: number;
   baseSalary: number;      // Lương cơ bản
   workDays: number;        // Ngày công thực tế
-  expectedSalary: number;  // Lương dự kiến
+  monthlySupport: number;  // Hỗ trợ tháng cộng thẳng, không chia ngày công
+  expectedSalary: number;  // Lương dự kiến đã gồm monthlySupport
 }
 
 // Customer Assignment (Phân công quản lý khách hàng)

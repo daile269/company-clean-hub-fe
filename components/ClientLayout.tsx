@@ -12,6 +12,43 @@ export default function ClientLayout({
   const pathname = usePathname();
   const isAdminPage = pathname?.startsWith("/admin");
 
+  // Ngăn chặn lỗi từ third-party scripts (browser extensions, v.v.)
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      const filename = e.filename || "";
+      // Nếu lỗi đến từ script không phải của ứng dụng (extension, third-party)
+      if (
+        filename.includes("onboarding.js") ||
+        filename.startsWith("chrome-extension://") ||
+        filename.startsWith("moz-extension://") ||
+        filename.startsWith("safari-web-extension://") ||
+        filename.startsWith("ms-browser-extension://")
+      ) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      // Kiểm tra stack trace nếu có
+      const stack = e.reason?.stack || "";
+      if (stack.includes("onboarding.js") || stack.includes("getImageNode")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
+    window.addEventListener("error", handleError, true);
+    window.addEventListener("unhandledrejection", handleRejection, true);
+
+    return () => {
+      window.removeEventListener("error", handleError, true);
+      window.removeEventListener("unhandledrejection", handleRejection, true);
+    };
+  }, []);
+
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;

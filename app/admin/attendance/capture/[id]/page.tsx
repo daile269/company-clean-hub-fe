@@ -558,7 +558,11 @@ export default function AutoCapturePage() {
       </div>
 
       {capturedImage && (
-        <div className="mt-8 flex gap-4 w-full max-w-md">
+        <>
+        <p className="mt-4 text-xs text-gray-500 italic text-center">
+          Ảnh sẽ tự động xoá sau 90 ngày
+        </p>
+        <div className="mt-4 flex gap-4 w-full max-w-md">
           <button
             onClick={handleRetake}
             className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl border border-gray-600 transition-colors"
@@ -578,6 +582,7 @@ export default function AutoCapturePage() {
             ) : "Gửi điểm danh"}
           </button>
         </div>
+        </>
       )}
 
       <div className="mt-8 bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-xs text-gray-400 max-w-md">

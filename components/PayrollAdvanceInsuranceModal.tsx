@@ -25,9 +25,10 @@ export default function PayrollAdvanceInsuranceModal({
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [payroll, setPayroll] = useState<Payroll | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  // [DEPRECATED] advanceAmount replaced by advanceNoteSummary from Assignment.advanceNote
+  // const [advanceAmount, setAdvanceAmount] = useState<number>(0);
   const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
-  const [actionType, setActionType] = useState<"advance" | "insurance">("advance");
+  // [DEPRECATED] const [actionType, setActionType] = useState<"advance" | "insurance">("advance");
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 1, currentYear, currentYear + 1];
@@ -36,7 +37,7 @@ export default function PayrollAdvanceInsuranceModal({
     if (!isOpen) {
       // Reset modal
       setMode("select-month");
-      setAdvanceAmount(0);
+      // [DEPRECATED] setAdvanceAmount(0);
       setInsuranceAmount(0);
       setPayroll(null);
     }
@@ -60,13 +61,13 @@ export default function PayrollAdvanceInsuranceModal({
       if (employeePayroll) {
         // Payroll exists - show it
         setPayroll(employeePayroll);
-        setAdvanceAmount(employeePayroll.advanceTotal || 0);
+        // [DEPRECATED] setAdvanceAmount(employeePayroll.advanceTotal || 0);
         setInsuranceAmount(employeePayroll.insuranceTotal || 0);
         setMode("view-payroll");
       } else {
         // Payroll doesn't exist - ask user if they want to create it
         setPayroll(null);
-        setAdvanceAmount(0);
+        // [DEPRECATED] setAdvanceAmount(0);
         setInsuranceAmount(0);
         setMode("confirm-create");
       }
@@ -85,7 +86,7 @@ export default function PayrollAdvanceInsuranceModal({
         employeeId: Number(employeeId),
         month: selectedMonth,
         year: selectedYear,
-        advanceSalary: advanceSalary || undefined,
+        // [DEPRECATED] advanceSalary: advanceSalary || undefined,
         insuranceAmount: insuranceAmount || undefined,
       };
 
@@ -103,7 +104,7 @@ export default function PayrollAdvanceInsuranceModal({
       const createdPayroll = await payrollService.getPayrollById(payrollId);
       
       setPayroll(createdPayroll);
-      setAdvanceAmount(createdPayroll.advanceTotal || 0);
+      // [DEPRECATED] setAdvanceAmount(createdPayroll.advanceTotal || 0);
       setInsuranceAmount(createdPayroll.insuranceTotal || 0);
       toast.success("Tạo bảng lương thành công");
       setMode("view-payroll");
@@ -116,28 +117,26 @@ export default function PayrollAdvanceInsuranceModal({
     }
   };
 
-  const handleUpdateAdvance = async () => {
-    if (!payroll) return;
-
-    try {
-      setIsLoading(true);
-      // Update payroll with new advance amount (cumulative)
-      const response = await payrollService.recalculatePayroll(payroll.id, {
-        advanceTotal: advanceAmount,
-        insuranceTotal: insuranceAmount,
-      });
-
-      setPayroll(response);
-      toast.success("Cập nhật tiền ứng lương thành công");
-      setMode("view-payroll");
-      onSuccess?.();
-    } catch (error: any) {
-      console.error("Error updating advance:", error);
-      toast.error(error.message || "Không thể cập nhật tiền ứng lương");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // [DEPRECATED] advanceTotal replaced by advanceNoteSummary
+  // const handleUpdateAdvance = async () => {
+  //   if (!payroll) return;
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await payrollService.recalculatePayroll(payroll.id, {
+  //       advanceTotal: advanceAmount,
+  //       insuranceTotal: insuranceAmount,
+  //     });
+  //     setPayroll(response);
+  //     toast.success("Cập nhật tiền ứng lương thành công");
+  //     setMode("view-payroll");
+  //     onSuccess?.();
+  //   } catch (error: any) {
+  //     console.error("Error updating advance:", error);
+  //     toast.error(error.message || "Không thể cập nhật tiền ứng lương");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handleUpdateInsurance = async () => {
     if (!payroll) return;
@@ -285,12 +284,14 @@ export default function PayrollAdvanceInsuranceModal({
               </div>
 
               <div className="border-t pt-4 space-y-3">
+                {/* [DEPRECATED] advanceAmount display
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Tiền ứng:</span>
                   <span className="text-base font-semibold text-red-600">
                     {formatCurrency(advanceAmount)}
                   </span>
                 </div>
+                */}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Bảo hiểm:</span>
                   <span className="text-base font-semibold text-orange-600">
@@ -301,6 +302,7 @@ export default function PayrollAdvanceInsuranceModal({
             </div>
 
             <div className="space-y-2 mb-6">
+              {/* [DEPRECATED] advance button
               <button
                 onClick={() => {
                   setActionType("advance");
@@ -310,9 +312,10 @@ export default function PayrollAdvanceInsuranceModal({
               >
                 {advanceAmount > 0 ? "Cộng dồn tiền ứng" : "Thêm tiền ứng"}
               </button>
+              */}
               <button
                 onClick={() => {
-                  setActionType("insurance");
+                  // [DEPRECATED] setActionType("insurance");
                   setMode("add-insurance");
                 }}
                 className="w-full px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 border border-orange-200 text-sm font-medium"
@@ -338,13 +341,12 @@ export default function PayrollAdvanceInsuranceModal({
           </>
         )}
 
-        {/* Add Advance Mode */}
+        {/* [DEPRECATED] Add Advance Mode - replaced by advanceNoteSummary
         {mode === "add-advance" && (
           <>
             <h3 className="text-lg font-semibold text-gray-900 mb-6">
               {advanceAmount > 0 ? "Cộng dồn tiền ứng" : "Thêm tiền ứng"}
             </h3>
-
             {advanceAmount > 0 && (
               <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <p className="text-sm text-yellow-800">
@@ -352,61 +354,20 @@ export default function PayrollAdvanceInsuranceModal({
                 </p>
               </div>
             )}
-
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Số tiền ứng (VNĐ)
-              </label>
-              <input
-                type="number"
-                value={advanceAmount || ""}
-                onChange={(e) => setAdvanceAmount(Number(e.target.value) || 0)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="0"
-                min="0"
-                step="any"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Số tiền ứng (VNĐ)</label>
+              <input type="number" value={advanceAmount || ""} onChange={(e) => setAdvanceAmount(Number(e.target.value) || 0)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0" min="0" step="any" />
             </div>
-
             <div className="flex gap-3">
-              <button
-                onClick={() => setMode("view-payroll")}
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleUpdateAdvance}
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isLoading && (
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                )}
+              <button onClick={() => setMode("view-payroll")} disabled={isLoading} className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">Hủy</button>
+              <button onClick={handleUpdateAdvance} disabled={isLoading} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                {isLoading && ( <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>)}
                 {isLoading ? "Đang lưu..." : "Lưu"}
               </button>
             </div>
           </>
         )}
+        */}
 
         {/* Add Insurance Mode */}
         {mode === "add-insurance" && (
@@ -498,20 +459,12 @@ export default function PayrollAdvanceInsuranceModal({
                 </p>
               </div>
 
+              {/* [DEPRECATED] advanceAmount input
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Tiền ứng lương (tùy chọn)
-                </label>
-                <input
-                  type="number"
-                  value={advanceAmount || ""}
-                  onChange={(e) => setAdvanceAmount(Number(e.target.value) || 0)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
-                  min="0"
-                  step="any"
-                />
+                <label className="block text-sm font-medium text-gray-700">Tiền ứng lương (tùy chọn)</label>
+                <input type="number" value={advanceAmount || ""} onChange={(e) => setAdvanceAmount(Number(e.target.value) || 0)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0" min="0" step="any" />
               </div>
+              */}
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -538,7 +491,7 @@ export default function PayrollAdvanceInsuranceModal({
                 Hủy
               </button>
               <button
-                onClick={() => handleCreatePayroll(advanceAmount || undefined, insuranceAmount || undefined)}
+                onClick={() => handleCreatePayroll(/* [DEPRECATED] advanceAmount || */ undefined, insuranceAmount || undefined)}
                 disabled={isLoading}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >

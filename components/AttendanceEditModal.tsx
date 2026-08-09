@@ -30,6 +30,19 @@ export default function AttendanceEditModal({
     supportCost: 0,
     overtimeAmount: 0,
   });
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const formatInput = (value: number, fieldName: string): string => {
+    if (focusedField === fieldName) {
+      return value.toString();
+    }
+    return value.toLocaleString('vi-VN');
+  };
+
+  const parseInput = (raw: string): number => {
+    const cleaned = raw.replace(/\./g, '').replace(/[^0-9]/g, '');
+    return Number(cleaned) || 0;
+  };
 
   useEffect(() => {
     if (attendance) {
@@ -114,14 +127,18 @@ export default function AttendanceEditModal({
             </label>
             <div className="relative">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 name="bonus"
-                value={formData.bonus}
-                onChange={handleChange}
+                value={formatInput(formData.bonus, 'bonus')}
+                onChange={(e) => {
+                  const val = parseInput(e.target.value);
+                  setFormData((prev) => ({ ...prev, bonus: val }));
+                }}
+                onFocus={() => setFocusedField('bonus')}
+                onBlur={() => setFocusedField(null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="0"
-                min="0"
-                step="any"
               />
               <span className="absolute right-3 top-2 text-gray-500 text-sm">
                 đ
@@ -136,14 +153,18 @@ export default function AttendanceEditModal({
             </label>
             <div className="relative">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 name="penalty"
-                value={formData.penalty}
-                onChange={handleChange}
+                value={formatInput(formData.penalty, 'penalty')}
+                onChange={(e) => {
+                  const val = parseInput(e.target.value);
+                  setFormData((prev) => ({ ...prev, penalty: val }));
+                }}
+                onFocus={() => setFocusedField('penalty')}
+                onBlur={() => setFocusedField(null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="0"
-                min="0"
-                step="any"
               />
               <span className="absolute right-3 top-2 text-gray-500 text-sm">
                 đ
@@ -158,14 +179,18 @@ export default function AttendanceEditModal({
             </label>
             <div className="relative">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 name="supportCost"
-                value={formData.supportCost}
-                onChange={handleChange}
+                value={formatInput(formData.supportCost, 'supportCost')}
+                onChange={(e) => {
+                  const val = parseInput(e.target.value);
+                  setFormData((prev) => ({ ...prev, supportCost: val }));
+                }}
+                onFocus={() => setFocusedField('supportCost')}
+                onBlur={() => setFocusedField(null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
-                min="0"
-                step="any"
               />
               <span className="absolute right-3 top-2 text-gray-500 text-sm">
                 đ

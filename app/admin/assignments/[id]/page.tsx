@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import {
   assignmentService,
@@ -21,6 +21,16 @@ export default function AssignmentDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
   const role = authService.getUserRole();
   // Permission checks
   const canView = usePermission("ASSIGNMENT_VIEW");
@@ -416,13 +426,7 @@ export default function AssignmentDetail() {
         <h1 className="text-2xl font-bold">Chi tiết phân công</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              try {
-                router.back();
-              } catch (e) {
-                router.push("/admin/assignments");
-              }
-            }}
+            onClick={handleBack}
             className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
           >
             <svg

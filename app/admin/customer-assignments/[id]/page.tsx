@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import customerAssignmentService from "@/services/customerAssignmentService";
 import { customerService } from "@/services/customerService";
@@ -12,6 +12,16 @@ export default function ManagerAssignmentDetailPage() {
     const router = useRouter();
     const params = useParams();
     const managerId = params.id as string;
+    const searchParams = useSearchParams();
+    const returnUrl = searchParams?.get("returnUrl");
+
+    const handleBack = () => {
+        if (returnUrl) {
+            router.push(returnUrl);
+        } else {
+            router.back();
+        }
+    };
 
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -244,7 +254,7 @@ export default function ManagerAssignmentDetailPage() {
             {/* Header */}
             <div className="mb-6 md:mb-8">
                 <button
-                    onClick={() => router.back()}
+                    onClick={handleBack}
                     className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
                 >
                     <svg

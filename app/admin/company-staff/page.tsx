@@ -187,6 +187,28 @@ export default function CompanyStaffPage() {
     }
   };
 
+  // Scroll restoration
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined") {
+      const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+          sessionStorage.removeItem("scroll_pos_" + pathname);
+        }, 150);
+      }
+    }
+  }, [loading, pathname]);
+
+  const navigateToDetail = (employeeId: string | number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${currentParams.toString()}`;
+    router.push(`/admin/company-staff/${employeeId}?returnUrl=${encodeURIComponent(returnUrl)}`);
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -570,7 +592,7 @@ export default function CompanyStaffPage() {
                         key={employee.id}
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() =>
-                          router.push(`/admin/company-staff/${employee.id}`)
+                          navigateToDetail(employee.id)
                         }
                       >
                         <td className="px-3 py-3 w-32">

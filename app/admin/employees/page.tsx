@@ -169,6 +169,28 @@ export default function EmployeesPage() {
     }
   };
 
+  // Scroll restoration
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined") {
+      const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+          sessionStorage.removeItem("scroll_pos_" + pathname);
+        }, 150);
+      }
+    }
+  }, [loading, pathname]);
+
+  const navigateToDetail = (employeeId: string | number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${currentParams.toString()}`;
+    router.push(`/admin/employees/${employeeId}?returnUrl=${encodeURIComponent(returnUrl)}`);
+  };
+
   // Hiển thị toàn bộ nhân viên (filter đã xử lý phía BE)
   const filteredEmployees = employees;
 
@@ -576,7 +598,7 @@ export default function EmployeesPage() {
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() =>
-                        router.push(`/admin/employees/${employee.id}`)
+                        navigateToDetail(employee.id)
                       }
                     >
                       <td className="px-6 py-4 whitespace-nowrap">

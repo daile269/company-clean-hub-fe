@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 // mock data removed — use real API data
 import { Employee } from "@/types";
@@ -28,6 +28,16 @@ export default function CompanyStaffDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
   const canManageCost = usePermission("COST_MANAGE");
   const canEditEmployee = usePermission("EMPLOYEE_EDIT");
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -634,13 +644,7 @@ export default function CompanyStaffDetailPage() {
             </button>
 
             <button
-              onClick={() => {
-                try {
-                  router.back();
-                } catch (e) {
-                  router.push("/admin/company-staff");
-                }
-              }}
+              onClick={handleBack}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
             >
               <svg

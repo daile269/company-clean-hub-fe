@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import ErrorAlertModal from "@/components/shared/ErrorAlertModal";
 import { customerService } from "@/services/customerService";
@@ -31,6 +31,55 @@ export default function CustomerDetail() {
   // State cho modal thong bao loi (thay the toast.error)
   const [errorModalMsg, setErrorModalMsg] = useState<string>("");
   const showError = (msg: string) => setErrorModalMsg(msg);
+
+  // Helper: Kiểm tra hợp đồng có còn hiệu lực không (endDate >= today)
+  const isContractActive = (c: any) => {
+    if (!c || !c.endDate) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let endDate: Date;
+    if (c.endDate instanceof Date) {
+      endDate = new Date(c.endDate.getTime());
+    } else {
+      endDate = new Date(c.endDate);
+    }
+
+    if (isNaN(endDate.getTime())) return true;
+
+    // Đặt đến 23:59:59 của ngày kết thúc
+    endDate.setHours(23, 59, 59, 999);
+    return endDate >= today;
+  };
+
+  // Helper: Lấy tên hiển thị gốc của hợp đồng (tránh lặp tên các dịch vụ tăng ca)
+  const getContractLabel = (c: any) => {
+    if (!c) return "";
+    let mainTitle = "";
+    if (c.description && c.description.trim()) {
+      mainTitle = c.description.trim();
+    } else if (c.name && c.name.trim() && !c.name.startsWith("HĐ #")) {
+      mainTitle = c.name.trim();
+    } else if (Array.isArray(c.services) && c.services.length > 0) {
+      // Ưu tiên dịch vụ chính (không chứa chữ 'tăng ca')
+      const primaryService = c.services.find(
+        (s: any) => s.title && !s.title.toLowerCase().includes("tăng ca")
+      );
+      mainTitle = primaryService ? primaryService.title : c.services[0].title;
+    }
+    return mainTitle;
+  };
+
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
 
   // Role check for routing
   const role = authService.getUserRole();
@@ -1575,13 +1624,7 @@ export default function CustomerDetail() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-full sm:w-auto">
             <button
-              onClick={() => {
-                try {
-                  router.back();
-                } catch (e) {
-                  router.push("/admin/customers");
-                }
-              }}
+              onClick={handleBack}
               className="w-full sm:w-auto px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2 justify-center sm:justify-start"
             >
               <svg
@@ -2268,13 +2311,14 @@ export default function CustomerDetail() {
                       className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
                     >
                       <option value="">Chọn hợp đồng</option>
-                      {contracts.map((c: any) => (
-                        <option key={c.id} value={String(c.id)}>
-                          HĐ #{c.id} -{" "}
-                          {c.description ||
-                            c.services?.map((s: any) => s.title).join(", ")}
-                        </option>
-                      ))}
+                      {contracts.filter(isContractActive).map((c: any) => {
+                        const title = getContractLabel(c);
+                        return (
+                          <option key={c.id} value={String(c.id)}>
+                            HĐ #{c.id}{title ? ` - ${title}` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -2472,13 +2516,14 @@ export default function CustomerDetail() {
                 className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
               >
                 <option value="">Tất cả hợp đồng</option>
-                {contracts.map((contract) => (
-                  <option key={contract.id} value={contract.id}>
-                    HĐ #{contract.id} -{" "}
-                    {contract.description ||
-                      contract.services?.map((s: any) => s.title).join(", ")}
-                  </option>
-                ))}
+                {contracts.map((contract) => {
+                  const title = getContractLabel(contract);
+                  return (
+                    <option key={contract.id} value={contract.id}>
+                      HĐ #{contract.id}{title ? ` - ${title}` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             {/* Hàng 2: Tháng, Năm, Số lượng */}
@@ -2976,13 +3021,14 @@ export default function CustomerDetail() {
                 className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
               >
                 <option value="">Tất cả hợp đồng</option>
-                {contracts.map((contract) => (
-                  <option key={contract.id} value={contract.id}>
-                    HĐ #{contract.id} -{" "}
-                    {contract.description ||
-                      contract.services?.map((s: any) => s.title).join(", ")}
-                  </option>
-                ))}
+                {contracts.map((contract) => {
+                  const title = getContractLabel(contract);
+                  return (
+                    <option key={contract.id} value={contract.id}>
+                      HĐ #{contract.id}{title ? ` - ${title}` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             {/* Hàng 2: Tháng, Năm, Số lượng, Làm mới */}
@@ -3402,31 +3448,25 @@ export default function CustomerDetail() {
                   >
                     <option value="">Chọn hợp đồng</option>
                     {contracts
-                      .filter((contract: any) => {
-                        if (!contract.endDate) return true;
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const endDate = contract.endDate instanceof Date
-                          ? contract.endDate
-                          : new Date(contract.endDate);
-                        endDate.setHours(0, 0, 0, 0);
-                        return endDate >= today;
-                      })
-                      .map((contract: any) => (
-                        <option key={contract.id} value={contract.id}>
-                          HĐ #{contract.id} -{" "}
-                          {contract.services?.map((s: any) => s.title).join(", ")}{" "}
-                          ({formatDate(contract.startDate)} -{" "}
-                          {formatDate(contract.endDate)}) - Hợp đồng{" "}
-                          {contract.contractType === "ONE_TIME"
+                      .filter(isContractActive)
+                      .map((contract: any) => {
+                        const titleName = getContractLabel(contract);
+                        const typeLabel =
+                          contract.contractType === "ONE_TIME"
                             ? "Một lần"
                             : contract.contractType === "MONTHLY_FIXED"
                               ? "Hàng tháng (cố định)"
                               : contract.contractType === "MONTHLY_ACTUAL"
                                 ? "Hàng tháng (thực tế)"
-                                : "N/A"}
-                        </option>
-                      ))}
+                                : "N/A";
+                        return (
+                          <option key={contract.id} value={contract.id}>
+                            HĐ #{contract.id}{titleName ? ` - ${titleName}` : ""}{" "}
+                            ({formatDate(contract.startDate)} -{" "}
+                            {formatDate(contract.endDate)}) - Hợp đồng {typeLabel}
+                          </option>
+                        );
+                      })}
                   </select>
                   {loadingContracts && (
                     <p className="text-xs text-gray-500 mt-1">

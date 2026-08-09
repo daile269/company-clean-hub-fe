@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthUser } from "@/services/authService";
 import { permissionService } from "@/services/permissionService";
-import ManagerCaptureLink from "./ManagerCaptureLink";
 
 interface AdminSidebarProps {
   user: AuthUser | null;
@@ -280,7 +279,7 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
               Quản lý người dùng
             </Link>
           )}
-        {user && user?.roleName === "EMPLOYEE" && (
+        {user && ["EMPLOYEE", "QLV", "QLT1", "QLT2"].includes(user.roleName) && (
           <Link
             href="/admin/attendance/today-tasks"
             className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
@@ -307,16 +306,14 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
             Chụp ảnh chấm công
           </Link>
         )}
-        {user && ["QLV", "QLT1", "QLT2"].includes(user.roleName) && (
-          <ManagerCaptureLink userId={user.id} />
-        )}
-        {((user && user?.roleName === "CUSTOMER") ||
-          user?.roleName === "EMPLOYEE") && (
+        {user && ["CUSTOMER", "EMPLOYEE", "QLT1", "QLT2", "QLV"].includes(user.roleName) && (
             <Link
               href={
                 user?.roleName === "CUSTOMER"
                   ? `/admin/customers/${userId}`
-                  : `/admin/employees/${userId}`
+                  : user?.roleName === "EMPLOYEE"
+                  ? `/admin/employees/${userId}`
+                  : `/admin/company-staff/${userId}`
               }
               className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700"
             >

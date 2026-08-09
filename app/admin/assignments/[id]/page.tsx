@@ -14,6 +14,7 @@ import attendanceService, {
 } from "@/services/attendanceService";
 import contractService from "@/services/contractService";
 import { usePermission } from "@/hooks/usePermission";
+import AdvanceNoteEditModal from "@/components/AdvanceNoteEditModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 
@@ -50,6 +51,10 @@ export default function AssignmentDetail() {
     endDate: string;
     reason: string;
   }>({ endDate: "", reason: "" });
+  // Advance note & QLV restriction
+  const [isEditRestricted, setIsEditRestricted] = useState(false);
+  const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [advanceNoteInput, setAdvanceNoteInput] = useState<number>(0);
   // Attendances (work days) states
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loadingAttendances, setLoadingAttendances] = useState(false);
@@ -86,6 +91,15 @@ export default function AssignmentDetail() {
       setLoading(true);
       const data = await assignmentService.getById(Number(id!));
       setAssignment(data);
+      // QLV restriction: after 1 hour from creation, only advanceNote can be edited
+      if (role === "QLV" && data?.createdAt) {
+        const createdAt = new Date(data.createdAt);
+        const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+        setIsEditRestricted(hoursSinceCreation >= 1);
+      } else {
+        setIsEditRestricted(false);
+      }
+      setAdvanceNoteInput(data?.advanceNote || 0);
       // fetch contract details related to this assignment (if backend exposes that endpoint)
       if (data && data.id !== undefined && data.id !== null) {
         try {
@@ -276,6 +290,12 @@ export default function AssignmentDetail() {
           (editForm as any).plannedDays !== undefined
             ? Number(editForm.plannedDays)
             : (assignment as any).plannedDays,
+        advanceNote:
+          (editForm as any).advanceNote !== undefined &&
+            (editForm as any).advanceNote !== null &&
+            String((editForm as any).advanceNote) !== ""
+            ? Number(parseFormattedNumber(String((editForm as any).advanceNote)))
+            : undefined,
         description: editForm.description ?? assignment.description,
         // include previous contract id so backend can act accordingly if needed
         previousContractId: (assignment as any).contractId ?? undefined,
@@ -445,7 +465,7 @@ export default function AssignmentDetail() {
             </svg>
             Quay lại
           </button>
-          {canEdit && (
+          {canEdit && !isEditRestricted && (
             <button
               onClick={handleEdit}
               className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-2"
@@ -465,6 +485,31 @@ export default function AssignmentDetail() {
                 />
               </svg>
               Sửa
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => {
+                setAdvanceNoteInput(assignment.advanceNote || 0);
+                setShowAdvanceModal(true);
+              }}
+              className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 inline-flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Sửa xin ứng
             </button>
           )}
           {canEdit && assignment.status !== "TERMINATED" && !canRollbackTermination && (
@@ -1194,6 +1239,25 @@ export default function AssignmentDetail() {
                   placeholder="VD: 500.000"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Xin ứng lương (VNĐ)
+                </label>
+                <p className="text-xs text-gray-400 -mt-1 mb-1">Ghi chú tiền ứng, không ảnh hưởng tính lương</p>
+                <input
+                  type="text"
+                  value={String((editForm as any).advanceNote ?? "")}
+                  onChange={(e) => {
+                    const raw = handleNumberInput(e.target.value);
+                    setEditForm({
+                      ...editForm,
+                      advanceNote: raw ? (formatNumber(raw) as any) : ("" as any),
+                    } as any);
+                  }}
+                  className="w-full px-4 py-2 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Thông tin thêm
@@ -1298,6 +1362,16 @@ export default function AssignmentDetail() {
           </div>
         </div>
       )}
+
+      {/* Advance Note Edit Modal */}
+      <AdvanceNoteEditModal
+        isOpen={showAdvanceModal}
+        onClose={() => setShowAdvanceModal(false)}
+        assignmentId={assignment.id}
+        currentAdvanceNote={advanceNoteInput}
+        employeeName={assignment.employeeName}
+        onSuccess={() => loadAssignment()}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import ErrorAlertModal from "@/components/shared/ErrorAlertModal";
 import { customerService } from "@/services/customerService";
 import customerAssignmentService from "@/services/customerAssignmentService";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -26,6 +27,10 @@ export default function CustomerDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
+
+  // State cho modal thong bao loi (thay the toast.error)
+  const [errorModalMsg, setErrorModalMsg] = useState<string>("");
+  const showError = (msg: string) => setErrorModalMsg(msg);
 
   // Role check for routing
   const role = authService.getUserRole();
@@ -344,7 +349,7 @@ export default function CustomerDetail() {
       setContracts([...contractsList].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()));
     } catch (error: any) {
       console.error("Error loading contracts:", error);
-      toast.error(error.message || "Không thể tải danh sách hợp đồng");
+      showError(error.message || "Không thể tải danh sách hợp đồng");
     } finally {
       setLoadingContracts(false);
     }
@@ -479,7 +484,7 @@ export default function CustomerDetail() {
       });
     } catch (error: any) {
       console.error("Error loading employees:", error);
-      toast.error(error.message || "Không thể tải danh sách nhân viên");
+      showError(error.message || "Không thể tải danh sách nhân viên");
       setNotAssignedEmployees([]);
       setNotAssignedPage({
         content: [],
@@ -602,20 +607,20 @@ export default function CustomerDetail() {
           );
 
           if (!hasAccess) {
-            toast.error("Bạn không có quyền xem khách hàng này");
+            showError("Bạn không có quyền xem khách hàng này");
             router.push("/admin/customers");
             return;
           }
         } catch (error) {
           console.error("Error checking customer access:", error);
-          toast.error("Không thể xác thực quyền truy cập");
+          showError("Không thể xác thực quyền truy cập");
           router.push("/admin/customers");
           return;
         }
       }
     } catch (error: any) {
       console.error("Error loading customer:", error);
-      toast.error(error.message || "Không thể tải thông tin khách hàng");
+      showError(error.message || "Không thể tải thông tin khách hàng");
     } finally {
       setLoading(false);
     }
@@ -856,7 +861,7 @@ export default function CustomerDetail() {
     const historyId = selectedHistory.historyId || (selectedHistory as any).id;
 
     if (!historyId) {
-      toast.error("Không tìm thấy ID lịch sử");
+      showError("Không tìm thấy ID lịch sử");
       console.error("No historyId found in selectedHistory:", selectedHistory);
       return;
     }
@@ -877,11 +882,11 @@ export default function CustomerDetail() {
           loadAssignmentHistories(),
         ]);
       } else {
-        toast.error(response.message || "Không thể hoàn tác điều động");
+        showError(response.message || "Không thể hoàn tác điều động");
       }
     } catch (error: any) {
       console.error("Error rolling back assignment:", error);
-      toast.error(error?.message || "Không thể hoàn tác điều động");
+      showError(error?.message || "Không thể hoàn tác điều động");
     } finally {
       setRollingBack(false);
     }
@@ -1064,11 +1069,11 @@ export default function CustomerDetail() {
         // Reload customer data
         loadCustomer();
       } else {
-        toast.error(response.message || "Cập nhật thất bại");
+        showError(response.message || "Cập nhật thất bại");
       }
     } catch (error: any) {
       console.error("Error updating customer:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+      showError(error.message || "Có lỗi xảy ra khi cập nhật");
     }
   };
 
@@ -1083,11 +1088,11 @@ export default function CustomerDetail() {
         // Navigate back to customers list
         router.push("/admin/customers");
       } else {
-        toast.error(response.message || "Xóa thất bại");
+        showError(response.message || "Xóa thất bại");
       }
     } catch (error: any) {
       console.error("Error deleting customer:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi xóa");
+      showError(error.message || "Có lỗi xảy ra khi xóa");
     }
   };
 
@@ -1103,7 +1108,7 @@ export default function CustomerDetail() {
       setEmployees(response.content);
     } catch (error: any) {
       console.error("Error loading employees:", error);
-      toast.error(error.message || "Không thể tải danh sách nhân viên");
+      showError(error.message || "Không thể tải danh sách nhân viên");
     } finally {
       setLoadingEmployees(false);
     }
@@ -1131,7 +1136,7 @@ export default function CustomerDetail() {
       });
     } catch (error: any) {
       console.error("Error loading paginated employees:", error);
-      toast.error(error.message || "Không thể tải danh sách nhân viên");
+      showError(error.message || "Không thể tải danh sách nhân viên");
     } finally {
       setEmployeesPageLoading(false);
     }
@@ -1154,11 +1159,11 @@ export default function CustomerDetail() {
   const handleAssignEmployee = async () => {
     if (!customer) return;
     if (!assignmentForm.employeeId) {
-      toast.error("Vui lòng chọn nhân viên");
+      showError("Vui lòng chọn nhân viên");
       return;
     }
     if (!assignmentForm.contractId) {
-      toast.error("Vui lòng chọn hợp đồng");
+      showError("Vui lòng chọn hợp đồng");
       return;
     }
 
@@ -1166,7 +1171,7 @@ export default function CustomerDetail() {
       assignmentForm.assignmentType === "SUPPORT" &&
       (!assignmentForm.dates || assignmentForm.dates.length === 0)
     ) {
-      toast.error("Vui lòng chọn ít nhất một ngày hỗ trợ");
+      showError("Vui lòng chọn ít nhất một ngày hỗ trợ");
       return;
     }
 
@@ -1227,7 +1232,7 @@ export default function CustomerDetail() {
           //     );
           //   } catch (err: any) {
           //     console.error("Error updating employee advance limit:", err);
-          //     toast.error("Chưa cập nhật được hạn mức ứng lương trên nhân viên: " + (err.message || ""));
+          //     showError("Chưa cập nhật được hạn mức ứng lương trên nhân viên: " + (err.message || ""));
           //   }
           // }
 
@@ -1268,7 +1273,7 @@ export default function CustomerDetail() {
           } catch (err: any) {
             console.error("Error updating payroll insurance/advance:", err);
             // Không block flow — employee đã được update, payroll có thể tính lại sau
-            toast.error("Lưu ý: chưa đồng bộ được vào bảng lương tháng này (" + (err.message || "") + ")");
+            showError("Lưu ý: chưa đồng bộ được vào bảng lương tháng này (" + (err.message || "") + ")");
           }
         }
 
@@ -1295,11 +1300,11 @@ export default function CustomerDetail() {
           loadAssignmentHistories(),
         ]);
       } else {
-        toast.error(response.message || "Phân công thất bại");
+        showError(response.message || "Phân công thất bại");
       }
     } catch (error: any) {
       console.error("Error assigning employee:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi phân công");
+      showError(error.message || "Có lỗi xảy ra khi phân công");
     } finally {
       setSavingAssignment(false);
     }
@@ -1320,11 +1325,11 @@ export default function CustomerDetail() {
         // Refresh the assigned employees list to show updated value
         await loadAssignedEmployees();
       } else {
-        toast.error(response.message || "Cập nhật thất bại");
+        showError(response.message || "Cập nhật thất bại");
       }
     } catch (error: any) {
       console.error("Error updating advance note:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+      showError(error.message || "Có lỗi xảy ra khi cập nhật");
     } finally {
       setSavingAdvance(false);
     }
@@ -1336,14 +1341,14 @@ export default function CustomerDetail() {
       !reassignmentForm.replacedEmployeeId ||
       !reassignmentForm.replacementEmployeeId
     ) {
-      toast.error("Vui lòng chọn nhân viên bị thay và nhân viên thay thế");
+      showError("Vui lòng chọn nhân viên bị thay và nhân viên thay thế");
       return;
     }
     if (
       !reassignmentForm.selectedDates ||
       reassignmentForm.selectedDates.length === 0
     ) {
-      toast.error("Vui lòng chọn ít nhất một ngày điều động");
+      showError("Vui lòng chọn ít nhất một ngày điều động");
       return;
     }
 
@@ -1400,11 +1405,11 @@ export default function CustomerDetail() {
           loadAssignmentHistories(),
         ]);
       } else {
-        toast.error(response.message || "Điều động thất bại");
+        showError(response.message || "Điều động thất bại");
       }
     } catch (error: any) {
       console.error("Error creating temporary reassignment:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi điều động");
+      showError(error.message || "Có lỗi xảy ra khi điều động");
     } finally {
       setSavingReassignment(false);
     }
@@ -1431,7 +1436,7 @@ export default function CustomerDetail() {
         !contractForm.endDate
       ) {
         console.error("Missing required contract fields:", contractForm);
-        toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+        showError("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
 
@@ -1452,7 +1457,7 @@ export default function CustomerDetail() {
       const serviceResponse = await serviceService.create(serviceRequest);
 
       if (!serviceResponse || !serviceResponse.id) {
-        toast.error("Không thể tạo dịch vụ");
+        showError("Không thể tạo dịch vụ");
         return;
       }
 
@@ -1529,7 +1534,7 @@ export default function CustomerDetail() {
       });
     } catch (error: any) {
       console.error("Error creating contract:", error);
-      toast.error(error.message || "Không thể tạo hợp đồng");
+      showError(error.message || "Không thể tạo hợp đồng");
     } finally {
       setSavingContract(false);
     }
@@ -1562,6 +1567,7 @@ export default function CustomerDetail() {
   return (
     <div className="p-3 sm:p-6">
       <Toaster position="top-right" />
+      <ErrorAlertModal message={errorModalMsg} onClose={() => setErrorModalMsg("")} />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Chi tiết khách hàng</h1>
@@ -2358,7 +2364,7 @@ export default function CustomerDetail() {
                           !reviewForm.employeeId ||
                           !reviewForm.rating
                         ) {
-                          toast.error(
+                          showError(
                             "Vui lòng chọn hợp đồng, nhân viên và số điểm",
                           );
                           return;
@@ -2411,7 +2417,7 @@ export default function CustomerDetail() {
 
                           const res = await reviewService.create(payload);
                           if (res && res.success === false) {
-                            toast.error(res.message || "Lỗi khi thêm đánh giá");
+                            showError(res.message || "Lỗi khi thêm đánh giá");
                           } else {
                             toast.success("Đã thêm đánh giá");
                             setShowAddReviewModal(false);
@@ -2430,7 +2436,7 @@ export default function CustomerDetail() {
                           }
                         } catch (err: any) {
                           console.error(err);
-                          toast.error(err?.message || "Có lỗi");
+                          showError(err?.message || "Có lỗi");
                         } finally {
                           setSavingReview(false);
                         }
@@ -5379,7 +5385,7 @@ export default function CustomerDetail() {
                       type="button"
                       onClick={() => {
                         const amt = parseFloat(newSalaryNoteForm.amount.replace(/\./g, '').replace(/,/g, '.'));
-                        if (!amt || amt <= 0) { toast.error("Vui lòng nhập số tiền"); return; }
+                        if (!amt || amt <= 0) { showError("Vui lòng nhập số tiền"); return; }
                         setContractSalaryNotes(prev => [...prev, { ...newSalaryNoteForm }]);
                         setNewSalaryNoteForm({ category: 'MONTHLY_ASSIGNMENT', salaryType: 'FIXED', amount: '', description: '' });
                       }}

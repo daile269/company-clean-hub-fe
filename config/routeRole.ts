@@ -9,6 +9,14 @@ export const ROUTE_ROLES: Record<string, string[]> = {
   '/admin/payroll': ['QLT1', 'QLT2', 'ACCOUNTANT'],
   '/admin/payroll/[id]': ['QLT1', 'QLT2', 'ACCOUNTANT'],
 
+  // Invoice routes
+  '/admin/invoices': ['QLT1', 'QLT2', 'ACCOUNTANT'],
+  '/admin/invoices/[id]': ['QLT1', 'QLT2', 'ACCOUNTANT'],
+
+  // Work schedule routes
+  '/admin/work-schedules': ['QLT1', 'QLT2', 'ACCOUNTANT', 'CUSTOMER'],
+  '/admin/work-schedules/[id]': ['QLT1', 'QLT2', 'ACCOUNTANT', 'CUSTOMER'],
+
   // Employee routes
   '/admin/employees': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
   '/admin/employees/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'EMPLOYEE', 'CUSTOMER'],
@@ -22,8 +30,8 @@ export const ROUTE_ROLES: Record<string, string[]> = {
   '/admin/assignments/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'CUSTOMER'],
 
   // Attendance routes
-  '/admin/attendances': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
-  '/admin/attendances/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
+  '/admin/attendances': ['QLT1', 'QLT2', 'ACCOUNTANT'],
+  '/admin/attendances/[id]': ['QLT1', 'QLT2', 'ACCOUNTANT'],
 
   // Company staff routes (employee management)
   '/admin/company-staff': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],

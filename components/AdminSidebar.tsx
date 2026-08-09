@@ -186,7 +186,7 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
               Quản lý bảng lương
             </Link>
           )}
-        {permissionService.hasPermission("INVOICE_VIEW") && (
+        {permissionService.hasPermission("INVOICE_VIEW") && user?.roleName !== "QLV" && (
           <Link
             href="/admin/invoices"
             className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"
@@ -207,7 +207,7 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
             Quản lý hóa đơn
           </Link>
         )}
-        {user && (user?.roleName === "QLT1" || user?.roleName === "QLT2" || user?.roleName === "ADMIN") && (
+        {user && (user?.roleName === "QLT1" || user?.roleName === "QLT2" || user?.roleName === "ADMIN" || user?.roleName === "CUSTOMER") && (
           <Link
             href="/admin/work-schedules"
             className="group flex items-center px-2 py-2 text-base font-medium rounded-md hover:bg-gray-700 mt-1"

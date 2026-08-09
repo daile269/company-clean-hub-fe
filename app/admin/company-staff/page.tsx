@@ -249,6 +249,10 @@ export default function CompanyStaffPage() {
       toast.error("Số CCCD không được để trống");
       return;
     }
+    if (!/^\d{12}$/.test(addForm.idCard.trim())) {
+      toast.error("Số CCCD phải bao gồm đúng 12 chữ số");
+      return;
+    }
 
     const locationAddress = formatLocationAddress(addWard, addProvince);
     const fullAddress = addDetailAddress.trim()

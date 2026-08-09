@@ -228,11 +228,11 @@ export default function ClientLayout({
                 <ul className="space-y-3 text-white text-sm">
                   <li>
                     <p className="font-medium text-white mb-1">Trụ sở chính:</p>
-                    <p>349B Lạc Long Quân, P.5, Q.11, TP.HCM</p>
+                    <p>349B Đ. Lạc Long Quân, Phường Hòa Bình, TP. Hồ Chí Minh, Việt Nam</p>
                   </li>
                   <li>
                     <p className="font-medium text-white mb-1">Chi nhánh 2:</p>
-                    <p>877 Lê Đức Thọ, P.16, Q.Gò Vấp, TP.HCM</p>
+                    <p>877 Đ. Lê Đức Thọ, Phường Gò Vấp, TP. Hồ Chí Minh, Việt Nam</p>
                   </li>
                 </ul>
               </div>
@@ -244,12 +244,12 @@ export default function ClientLayout({
                 <ul className="space-y-3 text-white text-sm">
                   <li>
                     <p className="font-medium text-white mb-1">PDD Đà Nẵng:</p>
-                    <p>68 Vũ Lập, P.Hòa Khánh Nam, Q.Liên Chiểu, TP.Đà Nẵng</p>
+                    <p>68 Đ. Vũ Lập, Phường Hòa Khánh, TP. Đà Nẵng, Việt Nam</p>
                   </li>
                   <li>
                     <p className="font-medium text-white mb-1">PDD Hà Nội:</p>
                     <p>
-                      54 Nguyễn Chí Thanh, P.Láng Thượng, Q.Đống Đa, TP.Hà Nội
+                      54A Đ. Nguyễn Chí Thanh, Phường Láng, TP. Hà Nội, Việt Nam
                     </p>
                   </li>
                 </ul>

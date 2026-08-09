@@ -642,6 +642,10 @@ export default function EmployeeDetail() {
       toast.error("Số CCCD không được để trống");
       return;
     }
+    if (!/^\d{12}$/.test(editForm.idCard.trim())) {
+      toast.error("Số CCCD phải bao gồm đúng 12 chữ số");
+      return;
+    }
 
     const locationAddress = formatLocationAddress(editWard, editProvince);
     const fullAddress = editDetailAddress.trim()
@@ -2106,7 +2110,7 @@ export default function EmployeeDetail() {
           <h3 className="text-lg font-semibold text-gray-800">
             Hình ảnh nhân viên
           </h3>
-          {employeeImages.length > 0 && (
+          {employeeImages.length > 0 && role !== "EMPLOYEE" && (
             <button
               onClick={() => setShowImageManageModal(true)}
               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
@@ -2210,6 +2214,10 @@ export default function EmployeeDetail() {
               </div>
             )}
           </>
+        ) : role === "EMPLOYEE" ? (
+          <div className="py-8 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+            <p className="text-sm font-medium">Chưa có hình ảnh nhân viên</p>
+          </div>
         ) : (
           <ImageUploader
             onChange={handleUploadEmployeeImage}

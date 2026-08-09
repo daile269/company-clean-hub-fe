@@ -25,7 +25,8 @@ export default function EmployeesPage() {
   const initialSearch = searchParams.get("keyword") ?? "";
   const initialPage = Number(searchParams.get("page") ?? "0");
   const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
-  const initialTab = (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
+  const initialTab =
+    (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
   const initialProvince = searchParams.get("province") ?? "";
 
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -37,7 +38,9 @@ export default function EmployeesPage() {
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [searchKeyword, setSearchKeyword] = useState(initialSearch);
-  const [activeTab, setActiveTab] = useState<"new" | "unassigned" | "by_location">(initialTab);
+  const [activeTab, setActiveTab] = useState<
+    "new" | "unassigned" | "by_location"
+  >(initialTab);
   const [filterProvince, setFilterProvince] = useState<string>(initialProvince);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -106,7 +109,15 @@ export default function EmployeesPage() {
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
-  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, pathname, router]);
+  }, [
+    searchKeyword,
+    currentPage,
+    pageSize,
+    activeTab,
+    filterProvince,
+    pathname,
+    router,
+  ]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -137,7 +148,8 @@ export default function EmployeesPage() {
         page: p,
         pageSize: ps,
         employmentType: "CONTRACT_STAFF",
-        province: activeTab === "by_location" ? filterProvince || undefined : undefined,
+        province:
+          activeTab === "by_location" ? filterProvince || undefined : undefined,
         unassigned: activeTab === "unassigned" ? true : undefined,
       });
       setEmployees(response.content);
@@ -223,6 +235,10 @@ export default function EmployeesPage() {
     }
     if (!addForm.idCard || addForm.idCard.trim() === "") {
       toast.error("Số CCCD không được để trống");
+      return;
+    }
+    if (!/^\d{12}$/.test(addForm.idCard.trim())) {
+      toast.error("Số CCCD phải bao gồm đúng 12 chữ số");
       return;
     }
 
@@ -406,11 +422,25 @@ export default function EmployeesPage() {
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             {/* Filter Tabs */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {([
-                { key: "new", label: "👤 Nhân viên mới", icon: SolidIcons.faUserPlus },
-                { key: "unassigned", label: "⚠️ Chưa phân công", icon: SolidIcons.faUserSlash },
-                { key: "by_location", label: "📍 Theo chỗ ở", icon: SolidIcons.faMapMarkerAlt },
-              ] as const).map((tab) => (
+              {(
+                [
+                  {
+                    key: "new",
+                    label: "👤 Nhân viên mới",
+                    icon: SolidIcons.faUserPlus,
+                  },
+                  {
+                    key: "unassigned",
+                    label: "⚠️ Chưa phân công",
+                    icon: SolidIcons.faUserSlash,
+                  },
+                  {
+                    key: "by_location",
+                    label: "📍 Theo chỗ ở",
+                    icon: SolidIcons.faMapMarkerAlt,
+                  },
+                ] as const
+              ).map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => {
@@ -450,7 +480,10 @@ export default function EmployeesPage() {
                     Tỉnh / Thành phố
                   </label>
                   <SearchSelect
-                    options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                    options={VIETNAM_PROVINCES.map((p) => ({
+                      id: p.name,
+                      label: p.name,
+                    }))}
                     value={filterProvince}
                     onChange={(val) => {
                       setFilterProvince(String(val));
@@ -466,8 +499,19 @@ export default function EmployeesPage() {
                     title="Xuất Excel"
                     onClick={() => setShowExportModal(true)}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
+                      />
                     </svg>
                     Xuất danh sách nhân viên
                   </button>
@@ -503,8 +547,12 @@ export default function EmployeesPage() {
                       }
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{employee.phone}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">({employee.employeeCode})</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {employee.phone}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          ({employee.employeeCode})
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -512,7 +560,9 @@ export default function EmployeesPage() {
                             {employee.name.charAt(0)}
                           </div>
                           <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {employee.name}
+                            </div>
                             <span
                               className={`inline-flex mt-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                                 employee.status === "ACTIVE"
@@ -520,7 +570,9 @@ export default function EmployeesPage() {
                                   : "bg-red-100 text-red-700"
                               }`}
                             >
-                              {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                              {employee.status === "ACTIVE"
+                                ? "Hoạt động"
+                                : "Không hoạt động"}
                             </span>
                           </div>
                         </div>
@@ -532,19 +584,30 @@ export default function EmployeesPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (employee.currentCustomerId) {
-                                router.push(`/admin/customers/${employee.currentCustomerId}`);
+                                router.push(
+                                  `/admin/customers/${employee.currentCustomerId}`,
+                                );
                               }
                             }}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
                             title="Bấm để chuyển tới trang chi tiết Khách hàng"
                           >
-                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-blue-500" />
+                            <FontAwesomeIcon
+                              icon={SolidIcons.faBuilding}
+                              className="text-blue-500"
+                            />
                             <span>{employee.currentCustomerName}</span>
-                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            <FontAwesomeIcon
+                              icon={SolidIcons.faArrowUpRightFromSquare}
+                              className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                            />
                           </button>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                            <FontAwesomeIcon icon={SolidIcons.faCircleExclamation} className="text-amber-400" />
+                            <FontAwesomeIcon
+                              icon={SolidIcons.faCircleExclamation}
+                              className="text-amber-400"
+                            />
                             Chưa phân công
                           </span>
                         )}
@@ -759,20 +822,33 @@ export default function EmployeesPage() {
 
                 {/* Unique Fields Note */}
                 <div className="mb-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100 flex items-start gap-2.5 text-blue-900 text-xs shadow-2xs">
-                  <FontAwesomeIcon icon={SolidIcons.faInfoCircle} className="text-blue-500 text-sm mt-0.5 shrink-0" />
+                  <FontAwesomeIcon
+                    icon={SolidIcons.faInfoCircle}
+                    className="text-blue-500 text-sm mt-0.5 shrink-0"
+                  />
                   <div className="leading-relaxed">
-                    <span className="font-semibold text-blue-950">Thông tin không được trùng lặp:</span>{" "}
-                    Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân hàng và Mã nhân viên.
+                    <span className="font-semibold text-blue-950">
+                      Thông tin không được trùng lặp:
+                    </span>{" "}
+                    Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân
+                    hàng và Mã nhân viên.
                   </div>
                 </div>
 
                 {/* Error Alert Panel when duplicate or server error occurs */}
                 {errorAlertMessage && (
                   <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-800 shadow-sm animate-fade-in">
-                    <FontAwesomeIcon icon={SolidIcons.faExclamationTriangle} className="text-red-600 text-sm mt-0.5 shrink-0" />
+                    <FontAwesomeIcon
+                      icon={SolidIcons.faExclamationTriangle}
+                      className="text-red-600 text-sm mt-0.5 shrink-0"
+                    />
                     <div className="flex-1 text-xs">
-                      <p className="font-semibold text-red-900 mb-0.5">Phát hiện trùng lặp hoặc lỗi dữ liệu!</p>
-                      <p className="text-red-700 leading-relaxed font-medium">{errorAlertMessage}</p>
+                      <p className="font-semibold text-red-900 mb-0.5">
+                        Phát hiện trùng lặp hoặc lỗi dữ liệu!
+                      </p>
+                      <p className="text-red-700 leading-relaxed font-medium">
+                        {errorAlertMessage}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -860,10 +936,14 @@ export default function EmployeesPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Tỉnh / Thành phố <span className="text-red-500">*</span>
+                          Tỉnh / Thành phố{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <SearchSelect
-                          options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                          options={VIETNAM_PROVINCES.map((p) => ({
+                            id: p.name,
+                            label: p.name,
+                          }))}
                           value={addProvince}
                           onChange={(val) => {
                             setAddProvince(String(val));
@@ -876,12 +956,15 @@ export default function EmployeesPage() {
 
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Phường / Xã / Quận <span className="text-red-500">*</span>
+                          Phường / Xã / Quận{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <SearchSelect
                           options={
                             addProvince
-                              ? (VIETNAM_PROVINCES.find((p) => p.name === addProvince)?.wards.map((w) => ({ id: w, label: w })) || [])
+                              ? VIETNAM_PROVINCES.find(
+                                  (p) => p.name === addProvince,
+                                )?.wards.map((w) => ({ id: w, label: w })) || []
                               : []
                           }
                           value={addWard}
@@ -1046,7 +1129,7 @@ export default function EmployeesPage() {
                         setAddForm({ ...addForm, idCard: e.target.value })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Số CCCD (nếu có)"
+                      placeholder="Số CCCD"
                     />
                   </div>
 

@@ -157,14 +157,14 @@ export default function AdminDashboard() {
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
                   Trụ sở chính
                 </p>
-                <p className="font-semibold text-gray-800 mt-1">349B Lạc Long Quân</p>
-                <p className="text-xs text-gray-500 mt-0.5">Phường 5, Quận 11, TP. Hồ Chí Minh</p>
+                <p className="font-semibold text-gray-800 mt-1">349B Đ. Lạc Long Quân</p>
+                <p className="text-xs text-gray-500 mt-0.5">Phường Hòa Bình, TP. Hồ Chí Minh, Việt Nam</p>
               </div>
 
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/20 transition-all duration-300">
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Chi nhánh Gò Vấp</p>
-                <p className="font-semibold text-gray-800 mt-1">877 Lê Đức Thọ</p>
-                <p className="text-xs text-gray-500 mt-0.5">Phường 16, Quận Gò Vấp, TP. Hồ Chí Minh</p>
+                <p className="font-semibold text-gray-800 mt-1">877 Đ. Lê Đức Thọ</p>
+                <p className="text-xs text-gray-500 mt-0.5">Phường Gò Vấp, TP. Hồ Chí Minh, Việt Nam</p>
               </div>
             </div>
           </div>
@@ -195,14 +195,14 @@ export default function AdminDashboard() {
             <div className="space-y-4 text-sm text-gray-600">
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/20 transition-all duration-300">
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Văn phòng Đà Nẵng</p>
-                <p className="font-semibold text-gray-800 mt-1">68 Vũ Lập</p>
-                <p className="text-xs text-gray-500 mt-0.5">P. Hòa Khánh Nam, Q. Liên Chiểu, TP. Đà Nẵng</p>
+                <p className="font-semibold text-gray-800 mt-1">68 Đ. Vũ Lập</p>
+                <p className="text-xs text-gray-500 mt-0.5">Phường Hòa Khánh, TP. Đà Nẵng, Việt Nam</p>
               </div>
 
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-emerald-50/20 transition-all duration-300">
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Văn phòng Hà Nội</p>
-                <p className="font-semibold text-gray-800 mt-1">54 Nguyễn Chí Thanh</p>
-                <p className="text-xs text-gray-500 mt-0.5">Phường Láng Thượng, Quận Đống Đa, TP. Hà Nội</p>
+                <p className="font-semibold text-gray-800 mt-1">54A Đ. Nguyễn Chí Thanh</p>
+                <p className="text-xs text-gray-500 mt-0.5">Phường Láng, TP. Hà Nội, Việt Nam</p>
               </div>
             </div>
           </div>

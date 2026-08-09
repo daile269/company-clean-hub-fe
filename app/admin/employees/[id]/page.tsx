@@ -1234,7 +1234,7 @@ export default function EmployeeDetail() {
                   )}
 
                   {/* Payroll Details - For EMPLOYEE and manager roles */}
-                  {["EMPLOYEE", "QLT1", "QLT2", "QLV"].includes(role) &&
+                  {["EMPLOYEE", "QLT1", "QLT2", "QLV"].includes(role ?? "") &&
                     !loadingPayrollDetails &&
                     (() => {
                       const payrollDetail = assignmentPayrollDetails.find(

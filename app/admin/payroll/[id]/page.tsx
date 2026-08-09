@@ -11,6 +11,8 @@ import AttendanceCalendar from "@/components/AttendanceCalendar";
 import toast, { Toaster } from "react-hot-toast";
 import FullPageLoading from "@/components/shared/FullPageLoading";
 import { usePermission } from "@/hooks/usePermission";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 export default function PayrollDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -482,23 +484,38 @@ export default function PayrollDetailPage() {
               </div>
             </div>
 
-            {/* Card 3: Loại phân công */}
+            {/* Card 3: Hợp đồng & Phân công */}
             <div className="bg-white rounded-lg shadow p-4 sm:p-6">
               <h3 className="text-sm sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">
-                Loại phân công
+                Hợp đồng & Phân công
               </h3>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap gap-2">
                 {assignments && assignments.length > 0 ? (
-                  [...new Map(assignments.map(a => [a.assignmentType, a])).values()].map(
-                    (assignment) => (
-                      <span
-                        key={assignment.id}
-                        className={`px-2 sm:px-3 py-0.5 sm:py-1 inline-flex text-[10px] sm:text-xs font-semibold rounded-full ${getAssignmentTypeColor(assignment.assignmentType)}`}
-                      >
+                  assignments.map((assignment: any) => (
+                    <div key={assignment.id} className="flex items-center gap-1.5 bg-gray-50 p-2 rounded-lg border border-gray-200 flex-wrap">
+                      <span className={`px-2 py-0.5 inline-flex text-[10px] sm:text-xs font-semibold rounded-full ${getAssignmentTypeColor(assignment.assignmentType)}`}>
                         {getAssignmentTypeLabel(assignment.assignmentType)}
                       </span>
-                    )
-                  )
+                      {assignment.customerName && (
+                        <span className="text-xs text-gray-700 font-medium">({assignment.customerName})</span>
+                      )}
+                      {assignment.contractId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentUrl = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
+                            router.push(`/admin/contracts/${assignment.contractId}?returnUrl=${encodeURIComponent(currentUrl)}`);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                          title="Xem chi tiết Hợp đồng"
+                        >
+                          <FontAwesomeIcon icon={SolidIcons.faFileContract} className="text-blue-500" />
+                          <span>Xem HĐ #{assignment.contractId}</span>
+                          <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))
                 ) : (
                   <span className="text-xs sm:text-sm text-gray-500">Không có phân công</span>
                 )}

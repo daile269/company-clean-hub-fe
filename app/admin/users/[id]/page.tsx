@@ -199,15 +199,17 @@ export default function UserDetail() {
       return;
     }
 
-    // Validate email
-    if (!editForm.email) {
-      toast.error("Email bắt buộc");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editForm.email)) {
-      toast.error("Email không hợp lệ");
-      return;
+    // Validate email (không bắt buộc)
+    if (editForm.email && editForm.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editForm.email)) {
+        toast.error("Email không hợp lệ");
+        return;
+      }
+      if (editForm.email.length > 255) {
+        toast.error("Email không được vượt quá 255 ký tự");
+        return;
+      }
     }
 
     // Validate phone
@@ -218,11 +220,7 @@ export default function UserDetail() {
 
     try {
       setSavingEdit(true);
-      // Send update with a placeholder password (backend requirement)
-      await userService.update(id, {
-        ...editForm,
-        password: "password123", // Required by backend but won't be changed
-      });
+      await userService.update(id, editForm);
       toast.success("Cập nhật người dùng thành công");
       setShowEditModal(false);
 
@@ -619,7 +617,7 @@ export default function UserDetail() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
+                  Email
                 </label>
                 <input
                   type="email"

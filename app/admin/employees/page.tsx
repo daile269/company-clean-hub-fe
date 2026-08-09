@@ -364,17 +364,17 @@ export default function EmployeesPage() {
   return (
     <div>
       <Toaster position="top-right" />
-      <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
           Quản lý nhân viên làm việc theo hợp đồng của khách hàng
         </h1>
-        {canCreate && (
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={handleOpenAddModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            onClick={() => router.push("/admin/customers")}
+            className="bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 shadow-2xs px-4 py-2 rounded-lg flex items-center gap-2 font-semibold text-sm transition-all"
           >
             <svg
-              className="w-5 h-5"
+              className="w-5 h-5 text-blue-600"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -383,12 +383,33 @@ export default function EmployeesPage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 4v16m8-8H4"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0L9 7m3 4l3-4"
               />
             </svg>
-            Thêm nhân viên
+            Quản lý khách hàng
           </button>
-        )}
+          {canCreate && (
+            <button
+              onClick={handleOpenAddModal}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium text-sm transition-all"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Thêm nhân viên
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Loading State */}

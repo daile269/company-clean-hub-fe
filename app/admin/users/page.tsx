@@ -165,19 +165,17 @@ export default function UsersPage() {
       return;
     }
 
-    // Validate email
-    if (!addForm.email) {
-      toast.error("Email bắt buộc");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(addForm.email)) {
-      toast.error("Email không hợp lệ");
-      return;
-    }
-    if (addForm.email.length > 255) {
-      toast.error("Email không được vượt quá 255 ký tự");
-      return;
+    // Validate email (không bắt buộc)
+    if (addForm.email && addForm.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(addForm.email)) {
+        toast.error("Email không hợp lệ");
+        return;
+      }
+      if (addForm.email.length > 255) {
+        toast.error("Email không được vượt quá 255 ký tự");
+        return;
+      }
     }
 
     // Validate phone
@@ -704,7 +702,7 @@ export default function UsersPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
+                  Email
                 </label>
                 <input
                   type="email"

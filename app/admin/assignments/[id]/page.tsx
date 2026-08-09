@@ -676,7 +676,10 @@ export default function AssignmentDetail() {
                   {assignment.contractId && (
                     <button
                       type="button"
-                      onClick={() => router.push(`/admin/contracts/${assignment.contractId}`)}
+                      onClick={() => {
+                        const currentUrl = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
+                        router.push(`/admin/contracts/${assignment.contractId}?returnUrl=${encodeURIComponent(currentUrl)}`);
+                      }}
                       className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
                       title="Xem chi tiết Hợp đồng"
                     >

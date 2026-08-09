@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Attendance } from "@/services/attendanceService";
 import attendanceService from "@/services/attendanceService";
 
@@ -30,18 +30,63 @@ export default function AttendanceEditModal({
     supportCost: 0,
     overtimeAmount: 0,
   });
-  const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const formatInput = (value: number, fieldName: string): string => {
-    if (focusedField === fieldName) {
-      return value.toString();
-    }
+  // Refs để quản lý vị trí con trỏ khi format số
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const cursorRef = useRef<{ field: string; pos: number } | null>(null);
+
+  // Luôn format số có dấu chấm phân cách hàng nghìn, kể cả khi đang focus
+  const formatInput = (value: number): string => {
+    if (value === 0) return '';
     return value.toLocaleString('vi-VN');
   };
 
   const parseInput = (raw: string): number => {
     const cleaned = raw.replace(/\./g, '').replace(/[^0-9]/g, '');
     return Number(cleaned) || 0;
+  };
+
+  // Khôi phục vị trí con trỏ sau khi format thay đổi
+  useEffect(() => {
+    if (cursorRef.current) {
+      const el = inputRefs.current[cursorRef.current.field];
+      if (el) {
+        el.setSelectionRange(cursorRef.current.pos, cursorRef.current.pos);
+      }
+      cursorRef.current = null;
+    }
+  }, [formData]);
+
+  // Xử lý thay đổi input có format: giữ đúng vị trí con trỏ
+  const handleFormattedChange = (
+    fieldName: string,
+    rawValue: string,
+    inputEl: HTMLInputElement
+  ) => {
+    const cursorPos = inputEl.selectionStart ?? 0;
+    const oldText = inputEl.value;
+    // Đếm số chữ số trước vị trí con trỏ (bỏ qua dấu chấm)
+    const digitsBefore = oldText.slice(0, cursorPos).replace(/\./g, '').length;
+    // Thêm/xoá 1 chữ số: digitsBefore +/- 1
+    const digitsDelta = rawValue.replace(/\./g, '').length - oldText.replace(/\./g, '').length;
+    const targetDigits = Math.max(0, digitsBefore + digitsDelta);
+
+    const val = parseInput(rawValue);
+    const newFormatted = formatInput(val);
+
+    // Tính vị trí con trỏ mới trong chuỗi đã format
+    let newPos = 0;
+    let digits = 0;
+    for (let i = 0; i < newFormatted.length; i++) {
+      if (newFormatted[i] !== '.') {
+        if (digits >= targetDigits) break;
+        digits++;
+      }
+      newPos = i + 1;
+    }
+
+    cursorRef.current = { field: fieldName, pos: newPos };
+    setFormData((prev) => ({ ...prev, [fieldName]: val }));
   };
 
   useEffect(() => {
@@ -130,13 +175,9 @@ export default function AttendanceEditModal({
                 type="text"
                 inputMode="numeric"
                 name="bonus"
-                value={formatInput(formData.bonus, 'bonus')}
-                onChange={(e) => {
-                  const val = parseInput(e.target.value);
-                  setFormData((prev) => ({ ...prev, bonus: val }));
-                }}
-                onFocus={() => setFocusedField('bonus')}
-                onBlur={() => setFocusedField(null)}
+                ref={(el) => { inputRefs.current.bonus = el; }}
+                value={formatInput(formData.bonus)}
+                onChange={(e) => handleFormattedChange('bonus', e.target.value, e.target)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="0"
               />
@@ -156,13 +197,9 @@ export default function AttendanceEditModal({
                 type="text"
                 inputMode="numeric"
                 name="penalty"
-                value={formatInput(formData.penalty, 'penalty')}
-                onChange={(e) => {
-                  const val = parseInput(e.target.value);
-                  setFormData((prev) => ({ ...prev, penalty: val }));
-                }}
-                onFocus={() => setFocusedField('penalty')}
-                onBlur={() => setFocusedField(null)}
+                ref={(el) => { inputRefs.current.penalty = el; }}
+                value={formatInput(formData.penalty)}
+                onChange={(e) => handleFormattedChange('penalty', e.target.value, e.target)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="0"
               />
@@ -182,13 +219,9 @@ export default function AttendanceEditModal({
                 type="text"
                 inputMode="numeric"
                 name="supportCost"
-                value={formatInput(formData.supportCost, 'supportCost')}
-                onChange={(e) => {
-                  const val = parseInput(e.target.value);
-                  setFormData((prev) => ({ ...prev, supportCost: val }));
-                }}
-                onFocus={() => setFocusedField('supportCost')}
-                onBlur={() => setFocusedField(null)}
+                ref={(el) => { inputRefs.current.supportCost = el; }}
+                value={formatInput(formData.supportCost)}
+                onChange={(e) => handleFormattedChange('supportCost', e.target.value, e.target)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
               />

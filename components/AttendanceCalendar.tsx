@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Attendance } from "@/services/attendanceService";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -136,7 +136,20 @@ export default function AttendanceCalendar({
     const [assignmentsLoading, setAssignmentsLoading] = useState(false);
     const [assignmentAllowanceInputs, setAssignmentAllowanceInputs] = useState<Record<number, number>>({});
     const [savingAssignmentMap, setSavingAssignmentMap] = useState<Record<number, boolean>>({});
-    const [focusedAssignmentAllowanceId, setFocusedAssignmentAllowanceId] = useState<number | null>(null);
+    // Refs để quản lý vị trí con trỏ khi format số trong input phụ cấp
+    const allowanceInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+    const allowanceCursorRef = useRef<{ assignmentId: number; pos: number } | null>(null);
+
+    // Khôi phục vị trí con trỏ sau khi format thay đổi
+    useEffect(() => {
+      if (allowanceCursorRef.current) {
+        const el = allowanceInputRefs.current[allowanceCursorRef.current.assignmentId];
+        if (el) {
+          el.setSelectionRange(allowanceCursorRef.current.pos, allowanceCursorRef.current.pos);
+        }
+        allowanceCursorRef.current = null;
+      }
+    }, [assignmentAllowanceInputs]);
     // Track selected day for mobile tap interaction
     const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
     // Detect if device supports touch
@@ -343,17 +356,33 @@ export default function AttendanceCalendar({
                                             disabled={isCancelled}
                                             type="text"
                                             inputMode="numeric"
+                                            ref={(el) => { allowanceInputRefs.current[assignmentId] = el; }}
                                             className="w-full px-2 py-1 border border-purple-200 rounded text-xs focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
-                                            value={
-                                                focusedAssignmentAllowanceId === assignmentId
-                                                    ? allowanceValue.toString()
-                                                    : allowanceValue.toLocaleString('vi-VN')
-                                            }
-                                            onFocus={() => setFocusedAssignmentAllowanceId(assignmentId)}
-                                            onBlur={() => setFocusedAssignmentAllowanceId(null)}
+                                            value={allowanceValue === 0 ? '' : allowanceValue.toLocaleString('vi-VN')}
                                             onChange={(e) => {
+                                                const inputEl = e.target;
+                                                const cursorPos = inputEl.selectionStart ?? 0;
+                                                const oldText = inputEl.value;
+                                                const digitsBefore = oldText.slice(0, cursorPos).replace(/\./g, '').length;
+                                                const digitsDelta = e.target.value.replace(/\./g, '').length - oldText.replace(/\./g, '').length;
+                                                const targetDigits = Math.max(0, digitsBefore + digitsDelta);
+
                                                 const raw = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '');
                                                 const val = Number(raw) || 0;
+                                                const newFormatted = val === 0 ? '' : val.toLocaleString('vi-VN');
+
+                                                // Tính vị trí con trỏ mới
+                                                let newPos = 0;
+                                                let digits = 0;
+                                                for (let i = 0; i < newFormatted.length; i++) {
+                                                    if (newFormatted[i] !== '.') {
+                                                        if (digits >= targetDigits) break;
+                                                        digits++;
+                                                    }
+                                                    newPos = i + 1;
+                                                }
+                                                allowanceCursorRef.current = { assignmentId, pos: newPos };
+
                                                 setAssignmentAllowanceInputs((prev) => ({
                                                     ...prev,
                                                     [assignmentId]: val,

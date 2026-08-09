@@ -25,8 +25,10 @@ export default function EmployeesPage() {
   const initialSearch = searchParams.get("keyword") ?? "";
   const initialPage = Number(searchParams.get("page") ?? "0");
   const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
-  const initialTab = (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
+  const initialTab =
+    (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
   const initialProvince = searchParams.get("province") ?? "";
+  const initialWard = searchParams.get("ward") ?? "";
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +39,11 @@ export default function EmployeesPage() {
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [searchKeyword, setSearchKeyword] = useState(initialSearch);
-  const [activeTab, setActiveTab] = useState<"new" | "unassigned" | "by_location">(initialTab);
+  const [activeTab, setActiveTab] = useState<
+    "new" | "unassigned" | "by_location"
+  >(initialTab);
   const [filterProvince, setFilterProvince] = useState<string>(initialProvince);
+  const [filterWard, setFilterWard] = useState<string>(initialWard);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
@@ -91,7 +96,7 @@ export default function EmployeesPage() {
   // Load employees from API with pagination
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince]);
+  }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince, filterWard]);
 
   // Sync URL
   useEffect(() => {
@@ -101,12 +106,22 @@ export default function EmployeesPage() {
     params.set("pageSize", pageSize.toString());
     if (activeTab && activeTab !== "new") params.set("tab", activeTab);
     if (filterProvince) params.set("province", filterProvince);
+    if (filterWard) params.set("ward", filterWard);
 
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
-  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, pathname, router]);
+  }, [
+    searchKeyword,
+    currentPage,
+    pageSize,
+    activeTab,
+    filterProvince,
+    filterWard,
+    pathname,
+    router,
+  ]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -137,7 +152,10 @@ export default function EmployeesPage() {
         page: p,
         pageSize: ps,
         employmentType: "CONTRACT_STAFF",
-        province: activeTab === "by_location" ? filterProvince || undefined : undefined,
+        province:
+          activeTab === "by_location" ? filterProvince || undefined : undefined,
+        ward:
+          activeTab === "by_location" ? filterWard || undefined : undefined,
         unassigned: activeTab === "unassigned" ? true : undefined,
       });
       setEmployees(response.content);
@@ -149,6 +167,28 @@ export default function EmployeesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Scroll restoration
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined") {
+      const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+          sessionStorage.removeItem("scroll_pos_" + pathname);
+        }, 150);
+      }
+    }
+  }, [loading, pathname]);
+
+  const navigateToDetail = (employeeId: string | number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${currentParams.toString()}`;
+    router.push(`/admin/employees/${employeeId}?returnUrl=${encodeURIComponent(returnUrl)}`);
   };
 
   // Hiển thị toàn bộ nhân viên (filter đã xử lý phía BE)
@@ -223,6 +263,10 @@ export default function EmployeesPage() {
     }
     if (!addForm.idCard || addForm.idCard.trim() === "") {
       toast.error("Số CCCD không được để trống");
+      return;
+    }
+    if (!/^\d{12}$/.test(addForm.idCard.trim())) {
+      toast.error("Số CCCD phải bao gồm đúng 12 chữ số");
       return;
     }
 
@@ -320,17 +364,17 @@ export default function EmployeesPage() {
   return (
     <div>
       <Toaster position="top-right" />
-      <div className="mb-8 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
           Quản lý nhân viên làm việc theo hợp đồng của khách hàng
         </h1>
-        {canCreate && (
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={handleOpenAddModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            onClick={() => router.push("/admin/customers")}
+            className="bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 shadow-2xs px-4 py-2 rounded-lg flex items-center gap-2 font-semibold text-sm transition-all"
           >
             <svg
-              className="w-5 h-5"
+              className="w-5 h-5 text-blue-600"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -339,12 +383,33 @@ export default function EmployeesPage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 4v16m8-8H4"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0L9 7m3 4l3-4"
               />
             </svg>
-            Thêm nhân viên
+            Quản lý khách hàng
           </button>
-        )}
+          {canCreate && (
+            <button
+              onClick={handleOpenAddModal}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium text-sm transition-all"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Thêm nhân viên
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Loading State */}
@@ -406,17 +471,34 @@ export default function EmployeesPage() {
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             {/* Filter Tabs */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {([
-                { key: "new", label: "👤 Nhân viên mới", icon: SolidIcons.faUserPlus },
-                { key: "unassigned", label: "⚠️ Chưa phân công", icon: SolidIcons.faUserSlash },
-                { key: "by_location", label: "📍 Theo chỗ ở", icon: SolidIcons.faMapMarkerAlt },
-              ] as const).map((tab) => (
+              {(
+                [
+                  {
+                    key: "new",
+                    label: "👤 Nhân viên mới",
+                    icon: SolidIcons.faUserPlus,
+                  },
+                  {
+                    key: "unassigned",
+                    label: "⚠️ Chưa phân công",
+                    icon: SolidIcons.faUserSlash,
+                  },
+                  {
+                    key: "by_location",
+                    label: "📍 Theo chỗ ở",
+                    icon: SolidIcons.faMapMarkerAlt,
+                  },
+                ] as const
+              ).map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => {
                     setActiveTab(tab.key);
                     setCurrentPage(0);
-                    if (tab.key !== "by_location") setFilterProvince("");
+                    if (tab.key !== "by_location") {
+                      setFilterProvince("");
+                      setFilterWard("");
+                    }
                   }}
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     activeTab === tab.key
@@ -430,8 +512,8 @@ export default function EmployeesPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className={activeTab === "by_location" ? (filterProvince ? "md:col-span-2" : "md:col-span-3") : "md:col-span-3"}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tìm kiếm
                 </label>
@@ -445,20 +527,47 @@ export default function EmployeesPage() {
               </div>
 
               {activeTab === "by_location" ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tỉnh / Thành phố
-                  </label>
-                  <SearchSelect
-                    options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
-                    value={filterProvince}
-                    onChange={(val) => {
-                      setFilterProvince(String(val));
-                      setCurrentPage(0);
-                    }}
-                    placeholder="Chọn tỉnh / thành phố..."
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tỉnh / Thành phố
+                    </label>
+                    <SearchSelect
+                      options={VIETNAM_PROVINCES.map((p) => ({
+                        id: p.name,
+                        label: p.name,
+                      }))}
+                      value={filterProvince}
+                      onChange={(val) => {
+                        setFilterProvince(String(val));
+                        setFilterWard("");
+                        setCurrentPage(0);
+                      }}
+                      placeholder="Chọn tỉnh / thành phố..."
+                    />
+                  </div>
+                  {filterProvince && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phường / Xã / Thị trấn
+                      </label>
+                      <SearchSelect
+                        options={
+                          VIETNAM_PROVINCES.find((p) => p.name === filterProvince)?.wards.map((w) => ({
+                            id: w,
+                            label: w,
+                          })) || []
+                        }
+                        value={filterWard}
+                        onChange={(val) => {
+                          setFilterWard(String(val));
+                          setCurrentPage(0);
+                        }}
+                        placeholder="Chọn phường / xã..."
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex items-end md:justify-end">
                   <button
@@ -466,8 +575,19 @@ export default function EmployeesPage() {
                     title="Xuất Excel"
                     onClick={() => setShowExportModal(true)}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 3v12m0 0l-3-3m3 3l3-3M21 21H3"
+                      />
                     </svg>
                     Xuất danh sách nhân viên
                   </button>
@@ -499,12 +619,16 @@ export default function EmployeesPage() {
                       key={employee.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() =>
-                        router.push(`/admin/employees/${employee.id}`)
+                        navigateToDetail(employee.id)
                       }
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{employee.phone}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">({employee.employeeCode})</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {employee.phone}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          ({employee.employeeCode})
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -512,7 +636,9 @@ export default function EmployeesPage() {
                             {employee.name.charAt(0)}
                           </div>
                           <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {employee.name}
+                            </div>
                             <span
                               className={`inline-flex mt-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                                 employee.status === "ACTIVE"
@@ -520,7 +646,9 @@ export default function EmployeesPage() {
                                   : "bg-red-100 text-red-700"
                               }`}
                             >
-                              {employee.status === "ACTIVE" ? "Hoạt động" : "Không hoạt động"}
+                              {employee.status === "ACTIVE"
+                                ? "Hoạt động"
+                                : "Không hoạt động"}
                             </span>
                           </div>
                         </div>
@@ -532,19 +660,30 @@ export default function EmployeesPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (employee.currentCustomerId) {
-                                router.push(`/admin/customers/${employee.currentCustomerId}`);
+                                router.push(
+                                  `/admin/customers/${employee.currentCustomerId}`,
+                                );
                               }
                             }}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
                             title="Bấm để chuyển tới trang chi tiết Khách hàng"
                           >
-                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-blue-500" />
+                            <FontAwesomeIcon
+                              icon={SolidIcons.faBuilding}
+                              className="text-blue-500"
+                            />
                             <span>{employee.currentCustomerName}</span>
-                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            <FontAwesomeIcon
+                              icon={SolidIcons.faArrowUpRightFromSquare}
+                              className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                            />
                           </button>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                            <FontAwesomeIcon icon={SolidIcons.faCircleExclamation} className="text-amber-400" />
+                            <FontAwesomeIcon
+                              icon={SolidIcons.faCircleExclamation}
+                              className="text-amber-400"
+                            />
                             Chưa phân công
                           </span>
                         )}
@@ -759,20 +898,33 @@ export default function EmployeesPage() {
 
                 {/* Unique Fields Note */}
                 <div className="mb-4 p-3 rounded-xl bg-blue-50/80 border border-blue-100 flex items-start gap-2.5 text-blue-900 text-xs shadow-2xs">
-                  <FontAwesomeIcon icon={SolidIcons.faInfoCircle} className="text-blue-500 text-sm mt-0.5 shrink-0" />
+                  <FontAwesomeIcon
+                    icon={SolidIcons.faInfoCircle}
+                    className="text-blue-500 text-sm mt-0.5 shrink-0"
+                  />
                   <div className="leading-relaxed">
-                    <span className="font-semibold text-blue-950">Thông tin không được trùng lặp:</span>{" "}
-                    Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân hàng và Mã nhân viên.
+                    <span className="font-semibold text-blue-950">
+                      Thông tin không được trùng lặp:
+                    </span>{" "}
+                    Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân
+                    hàng và Mã nhân viên.
                   </div>
                 </div>
 
                 {/* Error Alert Panel when duplicate or server error occurs */}
                 {errorAlertMessage && (
                   <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-800 shadow-sm animate-fade-in">
-                    <FontAwesomeIcon icon={SolidIcons.faExclamationTriangle} className="text-red-600 text-sm mt-0.5 shrink-0" />
+                    <FontAwesomeIcon
+                      icon={SolidIcons.faExclamationTriangle}
+                      className="text-red-600 text-sm mt-0.5 shrink-0"
+                    />
                     <div className="flex-1 text-xs">
-                      <p className="font-semibold text-red-900 mb-0.5">Phát hiện trùng lặp hoặc lỗi dữ liệu!</p>
-                      <p className="text-red-700 leading-relaxed font-medium">{errorAlertMessage}</p>
+                      <p className="font-semibold text-red-900 mb-0.5">
+                        Phát hiện trùng lặp hoặc lỗi dữ liệu!
+                      </p>
+                      <p className="text-red-700 leading-relaxed font-medium">
+                        {errorAlertMessage}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -860,10 +1012,14 @@ export default function EmployeesPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Tỉnh / Thành phố <span className="text-red-500">*</span>
+                          Tỉnh / Thành phố{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <SearchSelect
-                          options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                          options={VIETNAM_PROVINCES.map((p) => ({
+                            id: p.name,
+                            label: p.name,
+                          }))}
                           value={addProvince}
                           onChange={(val) => {
                             setAddProvince(String(val));
@@ -876,12 +1032,15 @@ export default function EmployeesPage() {
 
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Phường / Xã / Quận <span className="text-red-500">*</span>
+                          Phường / Xã / Quận{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <SearchSelect
                           options={
                             addProvince
-                              ? (VIETNAM_PROVINCES.find((p) => p.name === addProvince)?.wards.map((w) => ({ id: w, label: w })) || [])
+                              ? VIETNAM_PROVINCES.find(
+                                  (p) => p.name === addProvince,
+                                )?.wards.map((w) => ({ id: w, label: w })) || []
                               : []
                           }
                           value={addWard}
@@ -1046,7 +1205,7 @@ export default function EmployeesPage() {
                         setAddForm({ ...addForm, idCard: e.target.value })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Số CCCD (nếu có)"
+                      placeholder="Số CCCD"
                     />
                   </div>
 

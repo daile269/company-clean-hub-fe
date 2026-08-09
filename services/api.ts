@@ -40,48 +40,64 @@ class ApiService {
     return this.token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
   }
 
-private async request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
 
-  const token = this.getToken();
-  const headers: Record<string, string> = {};
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        ...options,
+        headers,
+        signal: options.signal || controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const payrollId = response.headers.get('x-payroll-id');
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          success: false,
+          message: 'Có lỗi xảy ra',
+          code: response.status,
+        }));
+
+        throw {
+          ...error,
+          meta: payrollId ? { payrollId } : undefined,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        ...data,
+        meta: payrollId ? { payrollId } : undefined,
+      };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw {
+          success: false,
+          message: 'Yêu cầu quá thời gian chờ (Timeout 30s), vui lòng thử lại',
+          code: 408,
+        };
+      }
+      throw err;
+    }
   }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${this.baseURL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const payrollId = response.headers.get('x-payroll-id');
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      success: false,
-      message: 'Có lỗi xảy ra',
-      code: response.status,
-    }));
-
-    throw {
-      ...error,
-      meta: payrollId ? { payrollId } : undefined,
-    };
-  }
-
-  const data = await response.json();
-
-  return {
-    ...data,
-    meta: payrollId ? { payrollId } : undefined,
-  };
-}
 
 
   async getFile(endpoint: string): Promise<Blob> {

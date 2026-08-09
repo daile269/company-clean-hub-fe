@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 
 import { Employee, EmployeeType, AssignmentPayrollDetail } from "@/types";
@@ -66,8 +66,18 @@ export default function EmployeeDetail() {
 
   const params = useParams();
   const id = params?.id as string | undefined;
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
 
   const router = useRouter();
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
 
   // Get current user role
   const role = authService.getUserRole();
@@ -642,6 +652,10 @@ export default function EmployeeDetail() {
       toast.error("Số CCCD không được để trống");
       return;
     }
+    if (!/^\d{12}$/.test(editForm.idCard.trim())) {
+      toast.error("Số CCCD phải bao gồm đúng 12 chữ số");
+      return;
+    }
 
     const locationAddress = formatLocationAddress(editWard, editProvince);
     const fullAddress = editDetailAddress.trim()
@@ -850,13 +864,7 @@ export default function EmployeeDetail() {
         {employee && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                try {
-                  router.back();
-                } catch (e) {
-                  router.push("/admin/employees");
-                }
-              }}
+              onClick={handleBack}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
             >
               <svg
@@ -1189,7 +1197,8 @@ export default function EmployeeDetail() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/admin/contracts/${a.contractId}`);
+                              const currentUrl = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
+                              router.push(`/admin/contracts/${a.contractId}?returnUrl=${encodeURIComponent(currentUrl)}`);
                             }}
                             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
                             title="Xem chi tiết Hợp đồng"
@@ -2106,7 +2115,7 @@ export default function EmployeeDetail() {
           <h3 className="text-lg font-semibold text-gray-800">
             Hình ảnh nhân viên
           </h3>
-          {employeeImages.length > 0 && (
+          {employeeImages.length > 0 && role !== "EMPLOYEE" && (
             <button
               onClick={() => setShowImageManageModal(true)}
               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
@@ -2210,6 +2219,10 @@ export default function EmployeeDetail() {
               </div>
             )}
           </>
+        ) : role === "EMPLOYEE" ? (
+          <div className="py-8 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+            <p className="text-sm font-medium">Chưa có hình ảnh nhân viên</p>
+          </div>
         ) : (
           <ImageUploader
             onChange={handleUploadEmployeeImage}

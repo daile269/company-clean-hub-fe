@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
+import ErrorAlertModal from "@/components/shared/ErrorAlertModal";
 import { customerService } from "@/services/customerService";
 import customerAssignmentService from "@/services/customerAssignmentService";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -26,6 +27,59 @@ export default function CustomerDetail() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const router = useRouter();
+
+  // State cho modal thong bao loi (thay the toast.error)
+  const [errorModalMsg, setErrorModalMsg] = useState<string>("");
+  const showError = (msg: string) => setErrorModalMsg(msg);
+
+  // Helper: Kiểm tra hợp đồng có còn hiệu lực không (endDate >= today)
+  const isContractActive = (c: any) => {
+    if (!c || !c.endDate) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let endDate: Date;
+    if (c.endDate instanceof Date) {
+      endDate = new Date(c.endDate.getTime());
+    } else {
+      endDate = new Date(c.endDate);
+    }
+
+    if (isNaN(endDate.getTime())) return true;
+
+    // Đặt đến 23:59:59 của ngày kết thúc
+    endDate.setHours(23, 59, 59, 999);
+    return endDate >= today;
+  };
+
+  // Helper: Lấy tên hiển thị gốc của hợp đồng (tránh lặp tên các dịch vụ tăng ca)
+  const getContractLabel = (c: any) => {
+    if (!c) return "";
+    let mainTitle = "";
+    if (c.description && c.description.trim()) {
+      mainTitle = c.description.trim();
+    } else if (c.name && c.name.trim() && !c.name.startsWith("HĐ #")) {
+      mainTitle = c.name.trim();
+    } else if (Array.isArray(c.services) && c.services.length > 0) {
+      // Ưu tiên dịch vụ chính (không chứa chữ 'tăng ca')
+      const primaryService = c.services.find(
+        (s: any) => s.title && !s.title.toLowerCase().includes("tăng ca")
+      );
+      mainTitle = primaryService ? primaryService.title : c.services[0].title;
+    }
+    return mainTitle;
+  };
+
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
 
   // Role check for routing
   const role = authService.getUserRole();
@@ -344,7 +398,7 @@ export default function CustomerDetail() {
       setContracts([...contractsList].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()));
     } catch (error: any) {
       console.error("Error loading contracts:", error);
-      toast.error(error.message || "Không thể tải danh sách hợp đồng");
+      showError(error.message || "Không thể tải danh sách hợp đồng");
     } finally {
       setLoadingContracts(false);
     }
@@ -479,7 +533,7 @@ export default function CustomerDetail() {
       });
     } catch (error: any) {
       console.error("Error loading employees:", error);
-      toast.error(error.message || "Không thể tải danh sách nhân viên");
+      showError(error.message || "Không thể tải danh sách nhân viên");
       setNotAssignedEmployees([]);
       setNotAssignedPage({
         content: [],
@@ -602,20 +656,20 @@ export default function CustomerDetail() {
           );
 
           if (!hasAccess) {
-            toast.error("Bạn không có quyền xem khách hàng này");
+            showError("Bạn không có quyền xem khách hàng này");
             router.push("/admin/customers");
             return;
           }
         } catch (error) {
           console.error("Error checking customer access:", error);
-          toast.error("Không thể xác thực quyền truy cập");
+          showError("Không thể xác thực quyền truy cập");
           router.push("/admin/customers");
           return;
         }
       }
     } catch (error: any) {
       console.error("Error loading customer:", error);
-      toast.error(error.message || "Không thể tải thông tin khách hàng");
+      showError(error.message || "Không thể tải thông tin khách hàng");
     } finally {
       setLoading(false);
     }
@@ -856,7 +910,7 @@ export default function CustomerDetail() {
     const historyId = selectedHistory.historyId || (selectedHistory as any).id;
 
     if (!historyId) {
-      toast.error("Không tìm thấy ID lịch sử");
+      showError("Không tìm thấy ID lịch sử");
       console.error("No historyId found in selectedHistory:", selectedHistory);
       return;
     }
@@ -877,11 +931,11 @@ export default function CustomerDetail() {
           loadAssignmentHistories(),
         ]);
       } else {
-        toast.error(response.message || "Không thể hoàn tác điều động");
+        showError(response.message || "Không thể hoàn tác điều động");
       }
     } catch (error: any) {
       console.error("Error rolling back assignment:", error);
-      toast.error(error?.message || "Không thể hoàn tác điều động");
+      showError(error?.message || "Không thể hoàn tác điều động");
     } finally {
       setRollingBack(false);
     }
@@ -1064,11 +1118,11 @@ export default function CustomerDetail() {
         // Reload customer data
         loadCustomer();
       } else {
-        toast.error(response.message || "Cập nhật thất bại");
+        showError(response.message || "Cập nhật thất bại");
       }
     } catch (error: any) {
       console.error("Error updating customer:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+      showError(error.message || "Có lỗi xảy ra khi cập nhật");
     }
   };
 
@@ -1083,11 +1137,11 @@ export default function CustomerDetail() {
         // Navigate back to customers list
         router.push("/admin/customers");
       } else {
-        toast.error(response.message || "Xóa thất bại");
+        showError(response.message || "Xóa thất bại");
       }
     } catch (error: any) {
       console.error("Error deleting customer:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi xóa");
+      showError(error.message || "Có lỗi xảy ra khi xóa");
     }
   };
 
@@ -1103,7 +1157,7 @@ export default function CustomerDetail() {
       setEmployees(response.content);
     } catch (error: any) {
       console.error("Error loading employees:", error);
-      toast.error(error.message || "Không thể tải danh sách nhân viên");
+      showError(error.message || "Không thể tải danh sách nhân viên");
     } finally {
       setLoadingEmployees(false);
     }
@@ -1131,7 +1185,7 @@ export default function CustomerDetail() {
       });
     } catch (error: any) {
       console.error("Error loading paginated employees:", error);
-      toast.error(error.message || "Không thể tải danh sách nhân viên");
+      showError(error.message || "Không thể tải danh sách nhân viên");
     } finally {
       setEmployeesPageLoading(false);
     }
@@ -1154,11 +1208,11 @@ export default function CustomerDetail() {
   const handleAssignEmployee = async () => {
     if (!customer) return;
     if (!assignmentForm.employeeId) {
-      toast.error("Vui lòng chọn nhân viên");
+      showError("Vui lòng chọn nhân viên");
       return;
     }
     if (!assignmentForm.contractId) {
-      toast.error("Vui lòng chọn hợp đồng");
+      showError("Vui lòng chọn hợp đồng");
       return;
     }
 
@@ -1166,7 +1220,7 @@ export default function CustomerDetail() {
       assignmentForm.assignmentType === "SUPPORT" &&
       (!assignmentForm.dates || assignmentForm.dates.length === 0)
     ) {
-      toast.error("Vui lòng chọn ít nhất một ngày hỗ trợ");
+      showError("Vui lòng chọn ít nhất một ngày hỗ trợ");
       return;
     }
 
@@ -1227,7 +1281,7 @@ export default function CustomerDetail() {
           //     );
           //   } catch (err: any) {
           //     console.error("Error updating employee advance limit:", err);
-          //     toast.error("Chưa cập nhật được hạn mức ứng lương trên nhân viên: " + (err.message || ""));
+          //     showError("Chưa cập nhật được hạn mức ứng lương trên nhân viên: " + (err.message || ""));
           //   }
           // }
 
@@ -1268,7 +1322,7 @@ export default function CustomerDetail() {
           } catch (err: any) {
             console.error("Error updating payroll insurance/advance:", err);
             // Không block flow — employee đã được update, payroll có thể tính lại sau
-            toast.error("Lưu ý: chưa đồng bộ được vào bảng lương tháng này (" + (err.message || "") + ")");
+            showError("Lưu ý: chưa đồng bộ được vào bảng lương tháng này (" + (err.message || "") + ")");
           }
         }
 
@@ -1295,11 +1349,11 @@ export default function CustomerDetail() {
           loadAssignmentHistories(),
         ]);
       } else {
-        toast.error(response.message || "Phân công thất bại");
+        showError(response.message || "Phân công thất bại");
       }
     } catch (error: any) {
       console.error("Error assigning employee:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi phân công");
+      showError(error.message || "Có lỗi xảy ra khi phân công");
     } finally {
       setSavingAssignment(false);
     }
@@ -1320,11 +1374,11 @@ export default function CustomerDetail() {
         // Refresh the assigned employees list to show updated value
         await loadAssignedEmployees();
       } else {
-        toast.error(response.message || "Cập nhật thất bại");
+        showError(response.message || "Cập nhật thất bại");
       }
     } catch (error: any) {
       console.error("Error updating advance note:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật");
+      showError(error.message || "Có lỗi xảy ra khi cập nhật");
     } finally {
       setSavingAdvance(false);
     }
@@ -1336,14 +1390,14 @@ export default function CustomerDetail() {
       !reassignmentForm.replacedEmployeeId ||
       !reassignmentForm.replacementEmployeeId
     ) {
-      toast.error("Vui lòng chọn nhân viên bị thay và nhân viên thay thế");
+      showError("Vui lòng chọn nhân viên bị thay và nhân viên thay thế");
       return;
     }
     if (
       !reassignmentForm.selectedDates ||
       reassignmentForm.selectedDates.length === 0
     ) {
-      toast.error("Vui lòng chọn ít nhất một ngày điều động");
+      showError("Vui lòng chọn ít nhất một ngày điều động");
       return;
     }
 
@@ -1400,11 +1454,11 @@ export default function CustomerDetail() {
           loadAssignmentHistories(),
         ]);
       } else {
-        toast.error(response.message || "Điều động thất bại");
+        showError(response.message || "Điều động thất bại");
       }
     } catch (error: any) {
       console.error("Error creating temporary reassignment:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi điều động");
+      showError(error.message || "Có lỗi xảy ra khi điều động");
     } finally {
       setSavingReassignment(false);
     }
@@ -1431,7 +1485,7 @@ export default function CustomerDetail() {
         !contractForm.endDate
       ) {
         console.error("Missing required contract fields:", contractForm);
-        toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+        showError("Vui lòng điền đầy đủ thông tin bắt buộc");
         return;
       }
 
@@ -1452,7 +1506,7 @@ export default function CustomerDetail() {
       const serviceResponse = await serviceService.create(serviceRequest);
 
       if (!serviceResponse || !serviceResponse.id) {
-        toast.error("Không thể tạo dịch vụ");
+        showError("Không thể tạo dịch vụ");
         return;
       }
 
@@ -1529,7 +1583,7 @@ export default function CustomerDetail() {
       });
     } catch (error: any) {
       console.error("Error creating contract:", error);
-      toast.error(error.message || "Không thể tạo hợp đồng");
+      showError(error.message || "Không thể tạo hợp đồng");
     } finally {
       setSavingContract(false);
     }
@@ -1562,6 +1616,7 @@ export default function CustomerDetail() {
   return (
     <div className="p-3 sm:p-6">
       <Toaster position="top-right" />
+      <ErrorAlertModal message={errorModalMsg} onClose={() => setErrorModalMsg("")} />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Chi tiết khách hàng</h1>
@@ -1569,13 +1624,7 @@ export default function CustomerDetail() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-full sm:w-auto">
             <button
-              onClick={() => {
-                try {
-                  router.back();
-                } catch (e) {
-                  router.push("/admin/customers");
-                }
-              }}
+              onClick={handleBack}
               className="w-full sm:w-auto px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2 justify-center sm:justify-start"
             >
               <svg
@@ -2262,13 +2311,14 @@ export default function CustomerDetail() {
                       className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
                     >
                       <option value="">Chọn hợp đồng</option>
-                      {contracts.map((c: any) => (
-                        <option key={c.id} value={String(c.id)}>
-                          HĐ #{c.id} -{" "}
-                          {c.description ||
-                            c.services?.map((s: any) => s.title).join(", ")}
-                        </option>
-                      ))}
+                      {contracts.filter(isContractActive).map((c: any) => {
+                        const title = getContractLabel(c);
+                        return (
+                          <option key={c.id} value={String(c.id)}>
+                            HĐ #{c.id}{title ? ` - ${title}` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -2358,7 +2408,7 @@ export default function CustomerDetail() {
                           !reviewForm.employeeId ||
                           !reviewForm.rating
                         ) {
-                          toast.error(
+                          showError(
                             "Vui lòng chọn hợp đồng, nhân viên và số điểm",
                           );
                           return;
@@ -2411,7 +2461,7 @@ export default function CustomerDetail() {
 
                           const res = await reviewService.create(payload);
                           if (res && res.success === false) {
-                            toast.error(res.message || "Lỗi khi thêm đánh giá");
+                            showError(res.message || "Lỗi khi thêm đánh giá");
                           } else {
                             toast.success("Đã thêm đánh giá");
                             setShowAddReviewModal(false);
@@ -2430,7 +2480,7 @@ export default function CustomerDetail() {
                           }
                         } catch (err: any) {
                           console.error(err);
-                          toast.error(err?.message || "Có lỗi");
+                          showError(err?.message || "Có lỗi");
                         } finally {
                           setSavingReview(false);
                         }
@@ -2466,13 +2516,14 @@ export default function CustomerDetail() {
                 className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
               >
                 <option value="">Tất cả hợp đồng</option>
-                {contracts.map((contract) => (
-                  <option key={contract.id} value={contract.id}>
-                    HĐ #{contract.id} -{" "}
-                    {contract.description ||
-                      contract.services?.map((s: any) => s.title).join(", ")}
-                  </option>
-                ))}
+                {contracts.map((contract) => {
+                  const title = getContractLabel(contract);
+                  return (
+                    <option key={contract.id} value={contract.id}>
+                      HĐ #{contract.id}{title ? ` - ${title}` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             {/* Hàng 2: Tháng, Năm, Số lượng */}
@@ -2970,13 +3021,14 @@ export default function CustomerDetail() {
                 className="text-sm px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
               >
                 <option value="">Tất cả hợp đồng</option>
-                {contracts.map((contract) => (
-                  <option key={contract.id} value={contract.id}>
-                    HĐ #{contract.id} -{" "}
-                    {contract.description ||
-                      contract.services?.map((s: any) => s.title).join(", ")}
-                  </option>
-                ))}
+                {contracts.map((contract) => {
+                  const title = getContractLabel(contract);
+                  return (
+                    <option key={contract.id} value={contract.id}>
+                      HĐ #{contract.id}{title ? ` - ${title}` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             {/* Hàng 2: Tháng, Năm, Số lượng, Làm mới */}
@@ -3396,31 +3448,25 @@ export default function CustomerDetail() {
                   >
                     <option value="">Chọn hợp đồng</option>
                     {contracts
-                      .filter((contract: any) => {
-                        if (!contract.endDate) return true;
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const endDate = contract.endDate instanceof Date
-                          ? contract.endDate
-                          : new Date(contract.endDate);
-                        endDate.setHours(0, 0, 0, 0);
-                        return endDate >= today;
-                      })
-                      .map((contract: any) => (
-                        <option key={contract.id} value={contract.id}>
-                          HĐ #{contract.id} -{" "}
-                          {contract.services?.map((s: any) => s.title).join(", ")}{" "}
-                          ({formatDate(contract.startDate)} -{" "}
-                          {formatDate(contract.endDate)}) - Hợp đồng{" "}
-                          {contract.contractType === "ONE_TIME"
+                      .filter(isContractActive)
+                      .map((contract: any) => {
+                        const titleName = getContractLabel(contract);
+                        const typeLabel =
+                          contract.contractType === "ONE_TIME"
                             ? "Một lần"
                             : contract.contractType === "MONTHLY_FIXED"
                               ? "Hàng tháng (cố định)"
                               : contract.contractType === "MONTHLY_ACTUAL"
                                 ? "Hàng tháng (thực tế)"
-                                : "N/A"}
-                        </option>
-                      ))}
+                                : "N/A";
+                        return (
+                          <option key={contract.id} value={contract.id}>
+                            HĐ #{contract.id}{titleName ? ` - ${titleName}` : ""}{" "}
+                            ({formatDate(contract.startDate)} -{" "}
+                            {formatDate(contract.endDate)}) - Hợp đồng {typeLabel}
+                          </option>
+                        );
+                      })}
                   </select>
                   {loadingContracts && (
                     <p className="text-xs text-gray-500 mt-1">
@@ -5379,7 +5425,7 @@ export default function CustomerDetail() {
                       type="button"
                       onClick={() => {
                         const amt = parseFloat(newSalaryNoteForm.amount.replace(/\./g, '').replace(/,/g, '.'));
-                        if (!amt || amt <= 0) { toast.error("Vui lòng nhập số tiền"); return; }
+                        if (!amt || amt <= 0) { showError("Vui lòng nhập số tiền"); return; }
                         setContractSalaryNotes(prev => [...prev, { ...newSalaryNoteForm }]);
                         setNewSalaryNoteForm({ category: 'MONTHLY_ASSIGNMENT', salaryType: 'FIXED', amount: '', description: '' });
                       }}

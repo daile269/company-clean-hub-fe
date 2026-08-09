@@ -144,6 +144,28 @@ export default function CustomersPage() {
     }
   };
 
+  // Scroll restoration
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined") {
+      const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+          sessionStorage.removeItem("scroll_pos_" + pathname);
+        }, 150);
+      }
+    }
+  }, [loading, pathname]);
+
+  const navigateToDetail = (customerId: string | number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${currentParams.toString()}`;
+    router.push(`/admin/customers/${customerId}?returnUrl=${encodeURIComponent(returnUrl)}`);
+  };
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
@@ -466,7 +488,7 @@ export default function CustomersPage() {
                       key={customer.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() =>
-                        router.push(`/admin/customers/${customer.id}`)
+                        navigateToDetail(customer.id)
                       }
                     >
                       <td className="w-16 sm:w-auto px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 truncate">

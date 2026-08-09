@@ -1,5 +1,5 @@
 "use client";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Contract, ContractDocument } from "@/types";
@@ -25,8 +25,18 @@ import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 export default function ContractDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
   const contractId = params.id as string;
   const role = authService.getUserRole();
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
 
   const [contract, setContract] = useState<Contract | null>(null);
   const [documents, setDocuments] = useState<ContractDocument[]>([]);
@@ -1064,7 +1074,7 @@ export default function ContractDetailPage() {
         {/* Header */}
         <div className="mb-6 flex justify-between items-center">
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
           >
             <svg

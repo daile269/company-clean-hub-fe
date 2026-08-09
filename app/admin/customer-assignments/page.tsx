@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import customerAssignmentService from "@/services/customerAssignmentService";
 import userService from "@/services/userService";
@@ -17,10 +17,34 @@ interface ManagerWithAssignments {
 
 export default function CustomerAssignmentsPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [managersData, setManagersData] = useState<ManagerWithAssignments[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Scroll restoration
+    useEffect(() => {
+        if (!loading && typeof window !== "undefined") {
+            const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+            if (savedScroll) {
+                setTimeout(() => {
+                    window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+                    sessionStorage.removeItem("scroll_pos_" + pathname);
+                }, 150);
+            }
+        }
+    }, [loading, pathname]);
+
+    const navigateToDetail = (managerId: number) => {
+        if (typeof window !== "undefined") {
+            sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+        }
+        const currentParams = new URLSearchParams(searchParams.toString());
+        const returnUrl = `${pathname}?${currentParams.toString()}`;
+        router.push(`/admin/customer-assignments/${managerId}?returnUrl=${encodeURIComponent(returnUrl)}`);
+    };
 
     useEffect(() => {
         loadCurrentUser();
@@ -299,7 +323,7 @@ export default function CustomerAssignmentsPage() {
                         </h2>
                         <div className="space-y-4">
                             {filteredQlt2Managers.map((manager) => (
-                                <ManagerCard key={manager.managerId} manager={manager} router={router} />
+                                <ManagerCard key={manager.managerId} manager={manager} onNavigate={navigateToDetail} />
                             ))}
                             {filteredQlt2Managers.length === 0 && (
                                 <EmptyState message="Không có quản lý tổng 2 nào" />
@@ -327,7 +351,7 @@ export default function CustomerAssignmentsPage() {
                         </h2>
                         <div className="space-y-4">
                             {filteredQlvManagers.map((manager) => (
-                                <ManagerCard key={manager.managerId} manager={manager} router={router} />
+                                <ManagerCard key={manager.managerId} manager={manager} onNavigate={navigateToDetail} />
                             ))}
                             {filteredQlvManagers.length === 0 && (
                                 <EmptyState message="Không có quản lý vùng nào" />
@@ -356,7 +380,7 @@ export default function CustomerAssignmentsPage() {
                     </h2>
                     <div className="space-y-4">
                         {filteredQlvManagers.map((manager) => (
-                            <ManagerCard key={manager.managerId} manager={manager} router={router} />
+                            <ManagerCard key={manager.managerId} manager={manager} onNavigate={navigateToDetail} />
                         ))}
                         {filteredQlvManagers.length === 0 && (
                             <EmptyState message="Không có quản lý vùng nào" />
@@ -369,14 +393,12 @@ export default function CustomerAssignmentsPage() {
 }
 
 // Manager Card Component
-function ManagerCard({ manager, router }: { manager: ManagerWithAssignments; router: any }) {
+function ManagerCard({ manager, onNavigate }: { manager: ManagerWithAssignments; onNavigate: (id: number) => void }) {
     return (
         <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
             <div
                 className="p-4 md:p-6 cursor-pointer"
-                onClick={() =>
-                    router.push(`/admin/customer-assignments/${manager.managerId}`)
-                }
+                onClick={() => onNavigate(manager.managerId)}
             >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-4">
                     <div>

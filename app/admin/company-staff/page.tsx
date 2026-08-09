@@ -27,6 +27,7 @@ export default function CompanyStaffPage() {
   const initialPageSize = Number(searchParams.get("pageSize") ?? "10");
   const initialTab = (searchParams.get("tab") as "new" | "unassigned" | "by_location") ?? "new";
   const initialProvince = searchParams.get("province") ?? "";
+  const initialWard = searchParams.get("ward") ?? "";
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +35,7 @@ export default function CompanyStaffPage() {
   const [searchKeyword, setSearchKeyword] = useState(initialSearch);
   const [activeTab, setActiveTab] = useState<"new" | "unassigned" | "by_location">(initialTab);
   const [filterProvince, setFilterProvince] = useState<string>(initialProvince);
+  const [filterWard, setFilterWard] = useState<string>(initialWard);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
@@ -120,7 +122,7 @@ export default function CompanyStaffPage() {
 
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince]);
+  }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince, filterWard]);
 
   // (No URL-based initialization or persistence)
 
@@ -132,12 +134,13 @@ export default function CompanyStaffPage() {
     params.set("pageSize", pageSize.toString());
     if (activeTab && activeTab !== "new") params.set("tab", activeTab);
     if (filterProvince) params.set("province", filterProvince);
+    if (filterWard) params.set("ward", filterWard);
 
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
       scroll: false,
     });
-  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, pathname, router]);
+  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, filterWard, pathname, router]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -170,6 +173,7 @@ export default function CompanyStaffPage() {
         pageSize: ps,
         employmentType: "COMPANY_STAFF",
         province: activeTab === "by_location" ? filterProvince || undefined : undefined,
+        ward: activeTab === "by_location" ? filterWard || undefined : undefined,
         unassigned: activeTab === "unassigned" ? true : undefined,
       });
       setEmployees(response.content);
@@ -181,6 +185,28 @@ export default function CompanyStaffPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Scroll restoration
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined") {
+      const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+          sessionStorage.removeItem("scroll_pos_" + pathname);
+        }, 150);
+      }
+    }
+  }, [loading, pathname]);
+
+  const navigateToDetail = (employeeId: string | number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${currentParams.toString()}`;
+    router.push(`/admin/company-staff/${employeeId}?returnUrl=${encodeURIComponent(returnUrl)}`);
   };
 
   const formatCurrency = (amount: number) => {
@@ -247,6 +273,10 @@ export default function CompanyStaffPage() {
     }
     if (!addForm.idCard || addForm.idCard.trim() === "") {
       toast.error("Số CCCD không được để trống");
+      return;
+    }
+    if (!/^\d{12}$/.test(addForm.idCard.trim())) {
+      toast.error("Số CCCD phải bao gồm đúng 12 chữ số");
       return;
     }
 
@@ -452,7 +482,10 @@ export default function CompanyStaffPage() {
                     onClick={() => {
                       setActiveTab(tab.key);
                       setCurrentPage(0);
-                      if (tab.key !== "by_location") setFilterProvince("");
+                      if (tab.key !== "by_location") {
+                        setFilterProvince("");
+                        setFilterWard("");
+                      }
                     }}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                       activeTab === tab.key
@@ -466,8 +499,8 @@ export default function CompanyStaffPage() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className={activeTab === "by_location" ? (filterProvince ? "md:col-span-2" : "md:col-span-3") : "md:col-span-3"}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tìm kiếm
                   </label>
@@ -481,20 +514,44 @@ export default function CompanyStaffPage() {
                 </div>
 
                 {activeTab === "by_location" ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tỉnh / Thành phố
-                    </label>
-                    <SearchSelect
-                      options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
-                      value={filterProvince}
-                      onChange={(val) => {
-                        setFilterProvince(String(val));
-                        setCurrentPage(0);
-                      }}
-                      placeholder="Chọn tỉnh / thành phố..."
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tỉnh / Thành phố
+                      </label>
+                      <SearchSelect
+                        options={VIETNAM_PROVINCES.map((p) => ({ id: p.name, label: p.name }))}
+                        value={filterProvince}
+                        onChange={(val) => {
+                          setFilterProvince(String(val));
+                          setFilterWard("");
+                          setCurrentPage(0);
+                        }}
+                        placeholder="Chọn tỉnh / thành phố..."
+                      />
+                    </div>
+                    {filterProvince && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phường / Xã / Thị trấn
+                        </label>
+                        <SearchSelect
+                          options={
+                            VIETNAM_PROVINCES.find((p) => p.name === filterProvince)?.wards.map((w) => ({
+                              id: w,
+                              label: w,
+                            })) || []
+                          }
+                          value={filterWard}
+                          onChange={(val) => {
+                            setFilterWard(String(val));
+                            setCurrentPage(0);
+                          }}
+                          placeholder="Chọn phường / xã..."
+                        />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex items-end md:justify-end">
                     <button
@@ -535,7 +592,7 @@ export default function CompanyStaffPage() {
                         key={employee.id}
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() =>
-                          router.push(`/admin/company-staff/${employee.id}`)
+                          navigateToDetail(employee.id)
                         }
                       >
                         <td className="px-3 py-3 w-32">

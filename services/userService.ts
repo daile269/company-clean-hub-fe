@@ -106,15 +106,17 @@ export const create = async (userData: any): Promise<ApiUser> => {
 // Cập nhật user
 export const update = async (id: string, userData: any): Promise<ApiUser> => {
   try {
-    const payload = {
+    const payload: any = {
       username: userData.username,
       name: userData.name,
       phone: userData.phone,
       email: userData.email,
-      password: userData.password, // Required by backend
       roleId: userData.roleId,
       status: userData.status,
     };
+    if (userData.password && userData.password.trim() !== '') {
+      payload.password = userData.password;
+    }
 
     const response = await apiService.put<any>(`/users/${id}`, payload);
 

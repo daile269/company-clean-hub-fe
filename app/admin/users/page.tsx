@@ -101,6 +101,28 @@ export default function UsersPage() {
     return matchesFilter;
   });
 
+  // Scroll restoration
+  useEffect(() => {
+    if (!loading && typeof window !== "undefined") {
+      const savedScroll = sessionStorage.getItem("scroll_pos_" + pathname);
+      if (savedScroll) {
+        setTimeout(() => {
+          window.scrollTo({ top: Number(savedScroll), behavior: "instant" });
+          sessionStorage.removeItem("scroll_pos_" + pathname);
+        }, 150);
+      }
+    }
+  }, [loading, pathname]);
+
+  const navigateToDetail = (userId: string | number) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("scroll_pos_" + pathname, window.scrollY.toString());
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const returnUrl = `${pathname}?${currentParams.toString()}`;
+    router.push(`/admin/users/${userId}?returnUrl=${encodeURIComponent(returnUrl)}`);
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
     return new Intl.DateTimeFormat("vi-VN", {
@@ -143,19 +165,17 @@ export default function UsersPage() {
       return;
     }
 
-    // Validate email
-    if (!addForm.email) {
-      toast.error("Email bắt buộc");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(addForm.email)) {
-      toast.error("Email không hợp lệ");
-      return;
-    }
-    if (addForm.email.length > 255) {
-      toast.error("Email không được vượt quá 255 ký tự");
-      return;
+    // Validate email (không bắt buộc)
+    if (addForm.email && addForm.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(addForm.email)) {
+        toast.error("Email không hợp lệ");
+        return;
+      }
+      if (addForm.email.length > 255) {
+        toast.error("Email không được vượt quá 255 ký tự");
+        return;
+      }
     }
 
     // Validate phone
@@ -492,7 +512,7 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                    onClick={() => navigateToDetail(user.id)}
                   >
                     <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       #{user.id}
@@ -682,7 +702,7 @@ export default function UsersPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
+                  Email
                 </label>
                 <input
                   type="email"

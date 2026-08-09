@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 // mock data removed — use real API data
 import { Employee } from "@/types";
@@ -28,6 +28,16 @@ export default function CompanyStaffDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get("returnUrl");
+
+  const handleBack = () => {
+    if (returnUrl) {
+      router.push(returnUrl);
+    } else {
+      router.back();
+    }
+  };
   const canManageCost = usePermission("COST_MANAGE");
   const canEditEmployee = usePermission("EMPLOYEE_EDIT");
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -634,13 +644,7 @@ export default function CompanyStaffDetailPage() {
             </button>
 
             <button
-              onClick={() => {
-                try {
-                  router.back();
-                } catch (e) {
-                  router.push("/admin/company-staff");
-                }
-              }}
+              onClick={handleBack}
               className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 inline-flex items-center gap-2"
             >
               <svg
@@ -940,7 +944,7 @@ export default function CompanyStaffDetailPage() {
               <h3 className="text-lg font-semibold text-gray-800">
                 Hình ảnh nhân viên
               </h3>
-              {employeeImages.length > 0 && (
+              {employeeImages.length > 0 && role !== "EMPLOYEE" && (
                 <button
                   onClick={() => setShowImageManageModal(true)}
                   className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2 cursor-pointer text-sm"
@@ -1046,7 +1050,7 @@ export default function CompanyStaffDetailPage() {
                   </div>
                 )}
               </>
-            ) : canEditEmployee ? (
+            ) : canEditEmployee && role !== "EMPLOYEE" ? (
               <ImageUploader
                 onChange={handleUploadEmployeeImage}
                 isLoading={isUploadingEmployeeImage}
@@ -1283,6 +1287,22 @@ export default function CompanyStaffDetailPage() {
                           >
                             {getAssignmentStatusLabel(a.status)}
                           </span>
+                        )}
+                        {a.contractId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentUrl = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
+                              router.push(`/admin/contracts/${a.contractId}?returnUrl=${encodeURIComponent(currentUrl)}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Xem chi tiết Hợp đồng"
+                          >
+                            <FontAwesomeIcon icon={SolidIcons.faFileContract} className="text-blue-500" />
+                            <span>Xem HĐ #{a.contractId}</span>
+                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-blue-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          </button>
                         )}
                       </div>
                       <p className="text-sm text-gray-500">

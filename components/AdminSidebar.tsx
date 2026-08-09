@@ -14,13 +14,6 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
   const [userId, setUserId] = useState<string | null>(user?.id ? user.id.toString() : null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!user) {
-      window.location.reload();
-    }
-  }, [user]);
-
-  useEffect(() => {
     setUserId(user?.id ? user.id.toString() : null);
   }, [user?.id]);
 

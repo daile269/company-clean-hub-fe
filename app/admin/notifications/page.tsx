@@ -116,6 +116,11 @@ export default function NotificationsPage() {
         [notif.type]: Math.max(0, (prev[notif.type] ?? 1) - 1),
       }));
     }
+    // R3: TEMPORARY_OVER_5_DAYS → ưu tiên điều hướng đến contract (yêu cầu KH)
+    if (notif.type === 'TEMPORARY_OVER_5_DAYS' && notif.refContractId) {
+      router.push(`/admin/contracts/${notif.refContractId}`);
+      return;
+    }
     // Navigate based on ref fields
     if (notif.refEmployeeId) {
       router.push(`/admin/employees/${notif.refEmployeeId}`);

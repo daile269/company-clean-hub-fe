@@ -191,6 +191,12 @@ export default function NotificationBell() {
         ),
       }));
     }
+    // R3: TEMPORARY_OVER_5_DAYS → ưu tiên điều hướng đến contract (yêu cầu KH)
+    if (notif.type === 'TEMPORARY_OVER_5_DAYS' && notif.refContractId) {
+      router.push(`/admin/contracts/${notif.refContractId}`);
+      setIsOpen(false);
+      return;
+    }
     // Navigate based on ref fields (priority: employee > contract > assignment)
     if (notif.refEmployeeId) {
       router.push(`/admin/employees/${notif.refEmployeeId}`);

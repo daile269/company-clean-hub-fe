@@ -524,7 +524,6 @@ export default function PayrollPage() {
                 <tbody className="divide-y divide-gray-200">
                   {paginatedPayrolls.map((payroll) => {
                     const isNavigating = navigatingToId === payroll.payrollId;
-                    const isFullyPaid = (payroll.remainingAmount || 0) <= 0;
                     return (
                       <tr
                         key={payroll.payrollId}
@@ -573,7 +572,7 @@ export default function PayrollPage() {
                           {formatCurrency(payroll.remainingAmount || 0)}
                         </td>
                         <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                          {!isFullyPaid && canMarkPaid && (
+                          {canMarkPaid && (
                             <button
                               onClick={() => {
                                 setSelectedPayrollForPayment(payroll);
@@ -596,7 +595,6 @@ export default function PayrollPage() {
             <div className="sm:hidden divide-y divide-gray-200">
               {paginatedPayrolls.map((payroll) => {
                 const isNavigating = navigatingToId === payroll.payrollId;
-                const isFullyPaid = (payroll.remainingAmount || 0) <= 0;
                 return (
                   <div
                     key={payroll.payrollId}
@@ -620,7 +618,7 @@ export default function PayrollPage() {
                         </span>
                         <span className="text-sm font-bold text-gray-900">{payroll.employeeName}</span>
                       </div>
-                      {!isFullyPaid && canMarkPaid && (
+                      {canMarkPaid && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

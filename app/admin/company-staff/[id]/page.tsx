@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 // mock data removed — use real API data
-import { Employee } from "@/types";
+import { Employee, AssignmentPayrollDetail } from "@/types";
 import {
   employeeService,
   buildCloudinaryUrl,
@@ -11,6 +11,7 @@ import {
 } from "@/services/employeeService";
 import { ImageUploader } from "@/components/shared/ImageUploader";
 import { assignmentService, Assignment } from "@/services/assignmentService";
+import payrollService from "@/services/payrollService";
 import PayrollAdvanceInsuranceModal from "@/components/PayrollAdvanceInsuranceModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
@@ -74,6 +75,9 @@ export default function CompanyStaffDetailPage() {
   const [restrictionMessage, setRestrictionMessage] = useState<string>("");
   const [editErrorAlert, setEditErrorAlert] = useState<string>("");
   const role = authService.getUserRole();
+  // Determine if the profile being viewed is the current user's own profile
+  const currentUser = authService.getCurrentUser();
+  const isOwnProfile = currentUser?.id === Number(id);
   // Format number utilities
   const formatNumber = (num: number | string) => {
     if (!num && num !== 0) return "";
@@ -114,6 +118,12 @@ export default function CompanyStaffDetailPage() {
     new Date().getFullYear(),
   );
   const [activeSchedule, setActiveSchedule] = useState<Assignment | null>(null);
+
+  // Per-assignment payroll details (shown when viewing own profile)
+  const [assignmentPayrollDetails, setAssignmentPayrollDetails] = useState<
+    AssignmentPayrollDetail[]
+  >([]);
+  const [loadingPayrollDetails, setLoadingPayrollDetails] = useState(false);
 
   // Work schedule assignment modal
   const [showWorkScheduleModal, setShowWorkScheduleModal] = useState(false);
@@ -216,6 +226,31 @@ export default function CompanyStaffDetailPage() {
       loadAssignments();
     }
   }, [id, assignmentPage, assignmentMonth, assignmentYear]);
+
+  // Load per-assignment payroll details when viewing own profile
+  const loadAssignmentPayrollDetails = async () => {
+    if (!isOwnProfile || !id) return;
+    try {
+      setLoadingPayrollDetails(true);
+      const details = await payrollService.getAssignmentPayrollDetails(
+        Number(id),
+        assignmentMonth,
+        assignmentYear,
+      );
+      setAssignmentPayrollDetails(details);
+    } catch (error) {
+      console.error("Error loading payroll details:", error);
+      setAssignmentPayrollDetails([]);
+    } finally {
+      setLoadingPayrollDetails(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id && isOwnProfile && assignments.length > 0) {
+      loadAssignmentPayrollDetails();
+    }
+  }, [id, assignmentMonth, assignmentYear, isOwnProfile, assignments]);
 
   // previous mockAssignments removed in favor of real API
 
@@ -1324,6 +1359,46 @@ export default function CompanyStaffDetailPage() {
                       Ghi chú: {a.description}
                     </p>
                   )}
+
+                  {/* Payroll Details - shown only when viewing own profile */}
+                  {isOwnProfile &&
+                    !loadingPayrollDetails &&
+                    (() => {
+                      const payrollDetail = assignmentPayrollDetails.find(
+                        (d) => d.assignmentId === a.id,
+                      );
+                      if (!payrollDetail) return null;
+                      return (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="grid grid-cols-3 gap-3 text-sm">
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">
+                                Lương CB
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {formatCurrency(payrollDetail.baseSalary)}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">
+                                Ngày công
+                              </span>
+                              <span className="font-semibold text-blue-600">
+                                {payrollDetail.workDays} ngày
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">
+                                Lương DK
+                              </span>
+                              <span className="font-semibold text-green-600">
+                                {formatCurrency(payrollDetail.expectedSalary)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                 </div>
               );
             })}

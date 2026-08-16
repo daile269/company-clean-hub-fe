@@ -13,6 +13,7 @@ import attendanceService, {
   AttendancePaginationResponse,
 } from "@/services/attendanceService";
 import contractService from "@/services/contractService";
+import payrollService from "@/services/payrollService";
 import { usePermission } from "@/hooks/usePermission";
 import AdvanceNoteEditModal from "@/components/AdvanceNoteEditModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -55,6 +56,10 @@ export default function AssignmentDetail() {
   const [isEditRestricted, setIsEditRestricted] = useState(false);
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [advanceNoteInput, setAdvanceNoteInput] = useState<number>(0);
+  // Bảo hiểm (chỉ CONTRACT scope) — đồng bộ vào bảng lương tháng hiện tại
+  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [insuranceOriginal, setInsuranceOriginal] = useState<number>(0);
+  const [insuranceLoading, setInsuranceLoading] = useState(false);
   // Attendances (work days) states
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loadingAttendances, setLoadingAttendances] = useState(false);
@@ -240,6 +245,30 @@ export default function AssignmentDetail() {
     (assignment as any)?.contractName ??
     (assignment as any)?.contractId ??
     (assignment as any)?.contract?.id;
+  const loadInsurance = async () => {
+    if (!assignment || (assignment as any)?.scope === "COMPANY") return;
+    setInsuranceLoading(true);
+    try {
+      const now = new Date();
+      const payrolls = await payrollService.getPayrolls({
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        page: 0,
+        pageSize: 100,
+      });
+      const existing = payrolls.content?.find(
+        (p) => Number(p.employeeId) === Number(assignment.employeeId)
+      );
+      const current = existing?.insuranceTotal ?? 0;
+      setInsuranceAmount(current);
+      setInsuranceOriginal(current);
+    } catch (err) {
+      console.error("Error loading insurance:", err);
+    } finally {
+      setInsuranceLoading(false);
+    }
+  };
+
   const handleEdit = () => {
     if (!canEdit) return;
     setEditForm({
@@ -251,6 +280,7 @@ export default function AssignmentDetail() {
       plannedDays: (assignment as any)?.plannedDays ?? undefined,
     });
     setShowEditModal(true);
+    loadInsurance();
   };
 
   const handleSaveEdit = async () => {
@@ -308,6 +338,52 @@ export default function AssignmentDetail() {
       if (response.success) {
         toast.success("Đã cập nhật thông tin phân công thành công");
         setShowEditModal(false);
+
+        // Đồng bộ bảo hiểm vào bảng lương tháng hiện tại nếu có thay đổi (chỉ CONTRACT scope)
+        if (
+          (assignment as any)?.scope !== "COMPANY" &&
+          insuranceAmount !== insuranceOriginal
+        ) {
+          try {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+            const payrolls = await payrollService.getPayrolls({
+              month,
+              year,
+              page: 0,
+              pageSize: 100,
+            });
+            const existingPayroll = payrolls.content?.find(
+              (p) => Number(p.employeeId) === Number(assignment.employeeId)
+            );
+
+            if (existingPayroll) {
+              // Đã có payroll → cập nhật insuranceTotal (kể cả = 0 để xoá bảo hiểm)
+              await payrollService.recalculatePayroll(existingPayroll.id, {
+                insuranceTotal: insuranceAmount,
+              });
+              toast.success("Đã cập nhật bảo hiểm");
+            } else if (insuranceAmount > 0) {
+              // Chưa có payroll → chỉ tạo mới khi có bảo hiểm > 0
+              await payrollService.calculatePayroll({
+                employeeId: assignment.employeeId,
+                month,
+                year,
+                insuranceAmount,
+              });
+              toast.success("Đã cập nhật bảo hiểm");
+            }
+          } catch (err: any) {
+            console.error("Error syncing payroll insurance:", err);
+            toast.error(
+              "Lưu ý: chưa đồng bộ được bảo hiểm vào bảng lương tháng này (" +
+                (err.message || "") +
+                ")"
+            );
+          }
+        }
+
         loadAssignment();
       } else {
         toast.error(response.message || "Cập nhật thất bại");
@@ -1239,6 +1315,27 @@ export default function AssignmentDetail() {
                   placeholder="VD: 500.000"
                 />
               </div>
+              {role !== "QLV" && (assignment as any)?.scope !== "COMPANY" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tiền bảo hiểm (VND)
+                  </label>
+                  <p className="text-xs text-gray-400 -mt-1 mb-1">
+                    Sẽ cập nhật bảng lương tháng hiện tại
+                  </p>
+                  <input
+                    type="text"
+                    value={insuranceAmount > 0 ? formatNumber(insuranceAmount) : ""}
+                    onChange={(e) => {
+                      const raw = handleNumberInput(e.target.value);
+                      setInsuranceAmount(raw ? Number(raw) : 0);
+                    }}
+                    disabled={insuranceLoading}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Xin ứng lương (VNĐ)

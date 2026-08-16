@@ -18,6 +18,8 @@ function VerificationDetailContent() {
   const [verification, setVerification] = useState<AssignmentVerificationResponse | null>(null);
   const [verificationImages, setVerificationImages] = useState<any[]>([]);
   const [employeeImages, setEmployeeImages] = useState<EmployeeImage[]>([]);
+  const [cccdFrontImage, setCccdFrontImage] = useState<string | undefined>(undefined);
+  const [cccdBackImage, setCccdBackImage] = useState<string | undefined>(undefined);
   const [loadingEmployeeImages, setLoadingEmployeeImages] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,16 @@ function VerificationDetailContent() {
         setEmployeeImages([]);
       } finally {
         setLoadingEmployeeImages(false);
+      }
+
+      // Load ảnh CCCD (mặt trước / mặt sau) của nhân viên
+      try {
+        const employee = await employeeService.getById(verification.employeeId.toString());
+        setCccdFrontImage(employee?.cccdFrontImage);
+        setCccdBackImage(employee?.cccdBackImage);
+      } catch {
+        setCccdFrontImage(undefined);
+        setCccdBackImage(undefined);
       }
     } catch (error) {
       console.error("Error loading verification detail:", error);
@@ -263,6 +275,56 @@ function VerificationDetailContent() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Căn cước công dân (CCCD) */}
+          <div className="mb-6">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zm4 6h3m3 0h3" />
+              </svg>
+              Căn cước công dân (CCCD)
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border rounded-lg p-2 bg-gray-50 text-center">
+                <p className="text-[11px] font-medium text-gray-500 mb-1.5">Mặt trước</p>
+                {cccdFrontImage ? (
+                  <button
+                    onClick={() => setSelectedImage(buildCloudinaryUrl(cccdFrontImage))}
+                    className="block w-full relative h-40 rounded overflow-hidden border hover:opacity-90 transition-opacity"
+                  >
+                    <img
+                      src={buildCloudinaryUrl(cccdFrontImage)}
+                      alt="CCCD Mặt trước"
+                      className="w-full h-full object-contain bg-white"
+                    />
+                  </button>
+                ) : (
+                  <div className="h-40 bg-gray-200/60 rounded flex items-center justify-center text-xs text-gray-400">
+                    Chưa có ảnh
+                  </div>
+                )}
+              </div>
+              <div className="border rounded-lg p-2 bg-gray-50 text-center">
+                <p className="text-[11px] font-medium text-gray-500 mb-1.5">Mặt sau</p>
+                {cccdBackImage ? (
+                  <button
+                    onClick={() => setSelectedImage(buildCloudinaryUrl(cccdBackImage))}
+                    className="block w-full relative h-40 rounded overflow-hidden border hover:opacity-90 transition-opacity"
+                  >
+                    <img
+                      src={buildCloudinaryUrl(cccdBackImage)}
+                      alt="CCCD Mặt sau"
+                      className="w-full h-full object-contain bg-white"
+                    />
+                  </button>
+                ) : (
+                  <div className="h-40 bg-gray-200/60 rounded flex items-center justify-center text-xs text-gray-400">
+                    Chưa có ảnh
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Ảnh xác minh */}

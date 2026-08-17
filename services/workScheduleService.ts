@@ -49,6 +49,7 @@ export interface WorkScheduleContractSummary {
   contractCode: string;
   customerName: string;
   customerId: number;
+  serviceNames: string[];
   totalEmployees: number;
   totalSchedules: number;
   verifiedCount: number;

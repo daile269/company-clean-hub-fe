@@ -714,6 +714,7 @@ export default function CustomerDetail() {
           contractDescription: contract.contractDescription,
           contractStartDate: contract.contractStartDate,
           contractType: contract.contractType,
+          serviceNames: contract.serviceNames,
         })),
       );
 
@@ -738,6 +739,7 @@ export default function CustomerDetail() {
               contractDescription: assignment.contractDescription,
               contractStartDate: assignment.contractStartDate,
               contractType: assignment.contractType,
+              serviceNames: assignment.serviceNames,
               assignments: [],
             };
             acc.push(contractGroup);
@@ -819,6 +821,7 @@ export default function CustomerDetail() {
           contractDescription: contract.contractDescription,
           contractStartDate: contract.contractStartDate,
           contractType: contract.contractType,
+          serviceNames: contract.serviceNames,
         })),
       );
 
@@ -852,6 +855,7 @@ export default function CustomerDetail() {
               contractDescription: assignment.contractDescription,
               contractStartDate: assignment.contractStartDate,
               contractType: assignment.contractType,
+              serviceNames: assignment.serviceNames,
               assignments: [],
             };
             acc.push(contractGroup);
@@ -2661,10 +2665,9 @@ export default function CustomerDetail() {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-sm font-semibold text-blue-900">
-                          Hợp đồng #{contractGroup.contractId}
-                        </span>
-                        <span className="text-sm text-blue-700 ml-2">
-                          - {contractGroup.contractDescription || "N/A"}
+                          {contractGroup.serviceNames && contractGroup.serviceNames.length > 0 
+                            ? contractGroup.serviceNames[0] 
+                            : `Hợp đồng ${contractGroup.contractId}`}
                         </span>
                       </div>
                       <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
@@ -3160,10 +3163,9 @@ export default function CustomerDetail() {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-sm font-semibold text-blue-900">
-                        Hợp đồng #{contractGroup.contractId}
-                      </span>
-                      <span className="text-sm text-blue-700 ml-2">
-                        - {contractGroup.contractDescription || "N/A"}
+                        {contractGroup.serviceNames && contractGroup.serviceNames.length > 0 
+                          ? contractGroup.serviceNames[0] 
+                          : `Hợp đồng ${contractGroup.contractId}`}
                       </span>
                     </div>
                     <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
@@ -4625,8 +4627,9 @@ export default function CustomerDetail() {
                           {/* Contract Header */}
                           <div className="bg-blue-50 px-3 py-2 rounded-t-lg border border-blue-200">
                             <p className="text-xs font-semibold text-blue-800">
-                              Hợp đồng {contractGroup.contractId}:{" "}
-                              {contractGroup.contractDescription}
+                              {contractGroup.serviceNames && contractGroup.serviceNames.length > 0 
+                                ? contractGroup.serviceNames[0] 
+                                : `Hợp đồng ${contractGroup.contractId}`}
                             </p>
                           </div>
                           {/* Assignments under this contract */}

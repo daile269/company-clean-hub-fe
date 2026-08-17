@@ -459,7 +459,9 @@ export default function WorkSchedulesPage() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="font-semibold text-gray-900 line-clamp-1">{c.customerName}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{c.contractCode}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {c.serviceNames && c.serviceNames.length > 0 ? c.serviceNames[0] : c.contractCode}
+                      </p>
                     </div>
                     <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full">{c.totalEmployees} NV</span>
                   </div>

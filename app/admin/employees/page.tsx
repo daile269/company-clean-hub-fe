@@ -250,7 +250,6 @@ export default function EmployeesPage() {
 
   const handleOpenAddModal = async () => {
     setShowAddModal(true);
-    setGeneratingCode(true);
     setCccdFrontFile(null);
     setCccdFrontPreview("");
     setCccdBackFile(null);
@@ -258,19 +257,17 @@ export default function EmployeesPage() {
     setAddProvince("");
     setAddWard("");
     setAddDetailAddress("");
-    try {
-      const code = await employeeService.generateEmployeeCode("CONTRACT_STAFF");
-      setAddForm({
-        ...addForm,
-        employeeCode: code,
-        address: "",
-      });
-    } catch (error) {
-      console.error("Error generating employee code:", error);
-      toast.error("Không thể tạo mã nhân viên tự động");
-    } finally {
-      setGeneratingCode(false);
-    }
+    setAddForm({
+      employeeCode: "",
+      name: "",
+      phone: "",
+      username: "",
+      password: "",
+      address: "",
+      idCard: "",
+      bankAccount: "",
+      bankName: "",
+    });
   };
 
   const handleAddEmployee = async () => {
@@ -354,7 +351,7 @@ export default function EmployeesPage() {
         address: fullAddress,
         username: addForm.phone.trim(),
         phone: addForm.phone.trim(),
-        employeeCode: addForm.employeeCode || "",
+        employeeCode: addForm.phone.trim(),
         idCard: addForm.idCard || addForm.phone.trim(),
       };
 
@@ -961,8 +958,7 @@ export default function EmployeesPage() {
                     <span className="font-semibold text-blue-950">
                       Thông tin không được trùng lặp:
                     </span>{" "}
-                    Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân
-                    hàng và Mã nhân viên.
+                    Số điện thoại (Tên đăng nhập & Mã nhân viên), Số CCCD và Số tài khoản ngân hàng.
                   </div>
                 </div>
 
@@ -1184,19 +1180,17 @@ export default function EmployeesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mã nhân viên (Tự động sinh)
+                      Số CCCD <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={addForm.employeeCode}
+                      maxLength={12}
+                      value={addForm.idCard || ""}
                       onChange={(e) =>
-                        setAddForm({ ...addForm, employeeCode: e.target.value })
+                        setAddForm({ ...addForm, idCard: e.target.value.replace(/\D/g, "").slice(0, 12) })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      placeholder={
-                        generatingCode ? "Đang tạo mã..." : "VD: NV000001"
-                      }
-                      readOnly={generatingCode}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Số CCCD (12 chữ số)"
                     />
                   </div>
 
@@ -1262,22 +1256,6 @@ export default function EmployeesPage() {
                   </div>
 
 
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Số CCCD <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={12}
-                      value={addForm.idCard || ""}
-                      onChange={(e) =>
-                        setAddForm({ ...addForm, idCard: e.target.value.replace(/\D/g, "").slice(0, 12) })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Số CCCD (12 chữ số)"
-                    />
-                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

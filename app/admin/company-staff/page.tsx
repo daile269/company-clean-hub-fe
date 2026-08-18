@@ -259,7 +259,6 @@ export default function CompanyStaffPage() {
 
   const handleOpenAddModal = async () => {
     setShowAddModal(true);
-    setGeneratingCode(true);
     setCccdFrontFile(null);
     setCccdFrontPreview("");
     setCccdBackFile(null);
@@ -267,20 +266,23 @@ export default function CompanyStaffPage() {
     setAddProvince("");
     setAddWard("");
     setAddDetailAddress("");
-    try {
-      const code = await employeeService.generateEmployeeCode("COMPANY_STAFF");
-      console.log("Generated employee code:", code);
-      setAddForm({
-        ...addForm,
-        employeeCode: code,
-        address: "",
-      });
-    } catch (error) {
-      console.error("Error generating employee code:", error);
-      toast.error("Không thể tạo mã nhân viên tự động");
-    } finally {
-      setGeneratingCode(false);
-    }
+    setAddForm({
+      employeeCode: "",
+      name: "",
+      phone: "",
+      username: "",
+      password: "",
+      address: "",
+      idCard: "",
+      bankAccount: "",
+      bankName: "",
+      roleId: 2,
+      description: "",
+      monthlySalary: "",
+      allowance: "",
+      socialInsurance: "",
+      monthlyAdvanceLimit: "",
+    });
   };
 
   const handleAddEmployee = async () => {
@@ -376,7 +378,7 @@ export default function CompanyStaffPage() {
         address: fullAddress,
         username: addForm.phone.trim(),
         phone: addForm.phone.trim(),
-        employeeCode: addForm.employeeCode || "",
+        employeeCode: addForm.phone.trim(),
         idCard: addForm.idCard || addForm.phone.trim(),
         monthlySalary,
         allowance,
@@ -913,7 +915,7 @@ export default function CompanyStaffPage() {
                     <FontAwesomeIcon icon={SolidIcons.faInfoCircle} className="text-blue-500 text-sm mt-0.5 shrink-0" />
                     <div className="leading-relaxed">
                       <span className="font-semibold text-blue-950">Thông tin không được trùng lặp:</span>{" "}
-                      Số điện thoại (Tên đăng nhập), Số CCCD, Số tài khoản ngân hàng và Mã nhân viên.
+                      Số điện thoại (Tên đăng nhập & Mã nhân viên), Số CCCD và Số tài khoản ngân hàng.
                     </div>
                   </div>
 
@@ -1124,27 +1126,6 @@ export default function CompanyStaffPage() {
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Nhập họ tên"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Mã nhân viên (Tự động sinh)
-                      </label>
-                      <input
-                        type="text"
-                        value={addForm.employeeCode}
-                        onChange={(e) =>
-                          setAddForm({
-                            ...addForm,
-                            employeeCode: e.target.value,
-                          })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                        placeholder={
-                          generatingCode ? "Đang tạo mã..." : "VD: NV001"
-                        }
-                        readOnly={generatingCode}
                       />
                     </div>
 

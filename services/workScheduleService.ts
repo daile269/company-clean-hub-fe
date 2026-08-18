@@ -94,10 +94,11 @@ const workScheduleService = {
     return response.data ?? [];
   },
 
-  getEmployeesWithSchedules: async (month?: number, year?: number): Promise<EmployeeScheduleSummary[]> => {
+  getEmployeesWithSchedules: async (month?: number, year?: number, contractId?: number): Promise<EmployeeScheduleSummary[]> => {
     const params = new URLSearchParams();
     if (month) params.append("month", month.toString());
     if (year) params.append("year", year.toString());
+    if (contractId) params.append("contractId", contractId.toString());
     const response = await apiService.get<EmployeeScheduleSummary[]>(`/work-schedules/employees-with-schedules?${params}`);
     return response.data ?? [];
   },
@@ -107,9 +108,11 @@ const workScheduleService = {
     return response.data ?? [];
   },
 
-  getByEmployee: async (employeeId: number, startDate: string, endDate: string): Promise<WorkScheduleResponse[]> => {
+  getByEmployee: async (employeeId: number, startDate: string, endDate: string, contractId?: number): Promise<WorkScheduleResponse[]> => {
+    const params = new URLSearchParams({ startDate, endDate });
+    if (contractId) params.append("contractId", contractId.toString());
     const response = await apiService.get<WorkScheduleResponse[]>(
-      `/work-schedules/employee/${employeeId}?startDate=${startDate}&endDate=${endDate}`
+      `/work-schedules/employee/${employeeId}?${params}`
     );
     return response.data ?? [];
   },

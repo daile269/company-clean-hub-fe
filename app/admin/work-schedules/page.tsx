@@ -332,7 +332,7 @@ export default function WorkSchedulesPage() {
       const endDate = new Date(year, month, 0).toISOString().split("T")[0];
       const [allSchedules, allEmployees] = await Promise.all([
         workScheduleService.getByDateRange(startDate, endDate),
-        workScheduleService.getEmployeesWithSchedules(month, year),
+        workScheduleService.getEmployeesWithSchedules(month, year, contract.contractId),
       ]);
       // Filter employees có schedules thuộc contract này
       const contractEmployeeIds = new Set(
@@ -350,7 +350,7 @@ export default function WorkSchedulesPage() {
     try {
       const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
       const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-      const data = await workScheduleService.getByEmployee(employee.employeeId, startDate, endDate);
+      const data = await workScheduleService.getByEmployee(employee.employeeId, startDate, endDate, selectedContract?.contractId);
       setSchedules(data.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate)));
     } catch { toast.error("Lỗi khi tải lịch chấm công"); }
     finally { setLoadingSchedules(false); }
@@ -551,6 +551,12 @@ export default function WorkSchedulesPage() {
       {/* ── Level 3: Schedules ── */}
       {selectedEmployee && (
         <div>
+          {selectedContract && (
+            <p className="text-sm text-gray-500 mb-3">
+              Hợp đồng: <span className="font-medium text-gray-700">{selectedContract.serviceNames?.[0] ?? selectedContract.contractCode}</span>
+              <span className="text-gray-400"> — {selectedContract.customerName}</span>
+            </p>
+          )}
           {loadingSchedules ? (
             <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : schedules.length === 0 ? (

@@ -44,6 +44,9 @@ export interface Assignment {
   // Backend additional fields
   contractId?: number;
   contractDescription?: string;
+  serviceName?: string;         // Tên dịch vụ gốc trong hợp đồng
+  workStartTime?: string;       // Giờ bắt đầu làm việc (HH:mm:ss)
+  workEndTime?: string;         // Giờ kết thúc làm việc (HH:mm:ss)
   scope?: string; // "CONTRACT" or "COMPANY"
   // Optional nested contract object if backend returns it
   contract?: {

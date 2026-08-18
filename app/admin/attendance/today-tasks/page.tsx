@@ -5,11 +5,38 @@ import toast, { Toaster } from "react-hot-toast";
 import { assignmentService, Assignment } from "@/services/assignmentService";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Quy định chụp hình chấm công:
+// - Mở chụp trước 1 giờ so với giờ bắt đầu làm việc
+// - Khoá chụp sau 1 giờ so với giờ kết thúc làm việc
+function getCaptureWindow(workStartTime?: string, workEndTime?: string): { open: number; close: number } | null {
+  if (!workStartTime || !workEndTime) return null;
+  const [sh, sm] = workStartTime.split(":").map(Number);
+  const [eh, em] = workEndTime.split(":").map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+  return {
+    open: sh * 60 + sm - 60,
+    close: eh * 60 + em + 60,
+  };
+}
+
+function isWithinWindow(win: { open: number; close: number } | null, now: Date): boolean {
+  if (!win) return true; // không có giờ làm → giữ nguyên hành vi cũ (luôn cho chụp)
+  const cur = now.getHours() * 60 + now.getMinutes();
+  return cur >= win.open && cur <= win.close;
+}
+
+function formatMinutes(m: number): string {
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
 export default function TodayTasksPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuth();
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     if (user && user.roleName !== "CUSTOMER") {
@@ -18,6 +45,12 @@ export default function TodayTasksPage() {
       setLoading(false);
     }
   }, [user?.id, user?.roleName]);
+
+  // Cập nhật giờ mỗi 30s để tự ẩn/hiện nút theo khung giờ chụp
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   const loadTodayTasks = async () => {
     try {
@@ -85,11 +118,16 @@ export default function TodayTasksPage() {
               <p className="text-gray-500 mt-2">Bạn đã hoàn thành tất cả việc chụp ảnh chấm công cho hôm nay.</p>
             </div>
           ) : (
-            assignments.map((task) => (
+            assignments.map((task) => {
+              const win = getCaptureWindow(task.workStartTime, task.workEndTime);
+              const open = isWithinWindow(win, now);
+              return (
               <div
                 key={task.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col"
-                onClick={() => router.push(`/admin/attendance/capture/${task.id}`)}
+                className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col ${open ? "hover:shadow-md transition-shadow cursor-pointer" : "cursor-default"}`}
+                onClick={() => {
+                  if (open) router.push(`/admin/attendance/capture/${task.id}`);
+                }}
               >
                 <div className="p-5 flex-grow">
                   <div className="flex justify-between items-start mb-4">
@@ -109,8 +147,16 @@ export default function TodayTasksPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <span className="line-clamp-1">{task.contractDescription || "Dịch vụ vệ sinh"}</span>
+                      <span className="line-clamp-1">{task.serviceName || task.contractDescription || "Dịch vụ vệ sinh"}</span>
                     </div>
+                    {task.workStartTime && task.workEndTime && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Thời gian làm việc: {task.workStartTime.substring(0, 5)} – {task.workEndTime.substring(0, 5)}</span>
+                      </div>
+                    )}
                     <div className="flex items-center text-sm text-gray-600">
                       <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -121,16 +167,40 @@ export default function TodayTasksPage() {
                 </div>
 
                 <div className="bg-gray-50 px-5 py-4 border-t border-gray-100 mt-auto">
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Chụp ảnh ngay</span>
-                  </button>
+                  {open ? (
+                    <>
+                      <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>Chụp ảnh ngay</span>
+                      </button>
+                      {win && (
+                        <p className="mt-2 text-center text-xs text-gray-400">
+                          Khung giờ chụp: {formatMinutes(win.open)} – {formatMinutes(win.close)}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="py-2 text-center">
+                      <div className="flex items-center justify-center text-sm font-medium text-amber-600">
+                        <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Ngoài khung giờ chụp
+                      </div>
+                      {win && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Chỉ chụp từ {formatMinutes(win.open)} đến {formatMinutes(win.close)}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

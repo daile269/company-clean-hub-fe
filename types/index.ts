@@ -346,6 +346,7 @@ export interface CccdValidationResponse {
   front?: CccdSideResult;
   back?: CccdSideResult;
   extractedData?: CccdExtractedData;
+  errorMessage?: string;
   errors: string[];
 }
 

@@ -68,7 +68,7 @@ export default function CustomersPage() {
     loadCustomers();
   }, [currentPage, searchKeyword, pageSize, activeTab, currentUser]);
 
-  // Mảng dependencies để sync URL
+  // Sync URL params mà KHÔNG trigger Next.js navigation (tránh vòng lặp render)
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchKeyword) params.set("keyword", searchKeyword);
@@ -77,10 +77,12 @@ export default function CustomersPage() {
     if (activeTab && activeTab !== "has_contract") params.set("tab", activeTab);
 
     const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
-      scroll: false,
-    });
-  }, [searchKeyword, currentPage, pageSize, activeTab, pathname, router]);
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKeyword, currentPage, pageSize, activeTab]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);

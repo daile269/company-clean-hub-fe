@@ -36,7 +36,7 @@ export default function InvoicesPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Sync State to URL
+  // Sync URL params mà KHÔNG trigger Next.js navigation (tránh vòng lặp render)
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchKeyword) params.set("keyword", searchKeyword);
@@ -46,10 +46,12 @@ export default function InvoicesPage() {
     params.set("pageSize", pageSize.toString());
 
     const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
-      scroll: false,
-    });
-  }, [searchKeyword, month, year, currentPage, pageSize, pathname, router]);
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKeyword, month, year, currentPage, pageSize]);
 
   const searchEffectFirstRunRef = useRef(true);
   useEffect(() => {

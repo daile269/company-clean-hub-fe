@@ -54,8 +54,9 @@ class ApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const timeoutMs = (options as any)?.timeout || 60000;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -91,7 +92,7 @@ class ApiService {
       if (err.name === 'AbortError') {
         throw {
           success: false,
-          message: 'Yêu cầu quá thời gian chờ (Timeout 30s), vui lòng thử lại',
+          message: `Yêu cầu quá thời gian chờ (Timeout ${Math.round(timeoutMs / 1000)}s), vui lòng thử lại`,
           code: 408,
         };
       }

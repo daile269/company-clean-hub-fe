@@ -8,6 +8,7 @@ import EmployeeExportModal from "@/components/EmployeeExportModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 import { usePermission } from "@/hooks/usePermission";
+import { compressImage } from "@/utils/imageCompressor";
 import BankSelect from "@/components/BankSelect";
 import SearchSelect from "@/components/SearchSelect";
 import {
@@ -78,21 +79,24 @@ export default function EmployeesPage() {
   const [addDetailAddress, setAddDetailAddress] = useState<string>("");
   const [errorAlertMessage, setErrorAlertMessage] = useState<string>("");
   const [scanningCccd, setScanningCccd] = useState<boolean>(false);
+  const [isCccdValidated, setIsCccdValidated] = useState<boolean>(false);
 
   const tryAutoScanCccd = async (front: File | null, back: File | null) => {
     if (!front || !back) return;
     try {
       setScanningCccd(true);
+      setIsCccdValidated(false);
       const res = await employeeService.validateCccdImages(front, back);
       if (res.success && res.data) {
         if (res.data.status === "INVALID" || !res.data.valid) {
           const errList = res.data.errors || [];
           const sideErr = res.data.front?.errors?.[0] || res.data.back?.errors?.[0];
-          const rawMsg = sideErr || errList[0] || "Ảnh CCCD không đạt tiêu chuẩn (bị mờ, tối hoặc lệch)";
+          const rawMsg = res.data.errorMessage || sideErr || errList[0] || "Ảnh CCCD không đạt tiêu chuẩn (bị mờ, tối hoặc lệch)";
           const msg = getCccdErrorMessage(rawMsg);
           toast.error(`Xác thực CCCD thất bại: ${msg}`);
           return;
         }
+        setIsCccdValidated(true);
         if (res.data.extractedData) {
           const { idCard, fullName } = res.data.extractedData;
           setAddForm((prev) => ({
@@ -114,20 +118,24 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleCccdFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCccdFrontChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+      const rawFile = e.target.files[0];
+      const file = await compressImage(rawFile);
       setCccdFrontFile(file);
       setCccdFrontPreview(URL.createObjectURL(file));
+      setIsCccdValidated(false);
       tryAutoScanCccd(file, cccdBackFile);
     }
   };
 
-  const handleCccdBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCccdBackChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+      const rawFile = e.target.files[0];
+      const file = await compressImage(rawFile);
       setCccdBackFile(file);
       setCccdBackPreview(URL.createObjectURL(file));
+      setIsCccdValidated(false);
       tryAutoScanCccd(cccdFrontFile, file);
     }
   };
@@ -137,6 +145,7 @@ export default function EmployeesPage() {
   }, [currentPage, pageSize, searchKeyword, activeTab, filterProvince, filterWard]);
 
   // Sync URL
+  // Sync URL params mà KHÔNG trigger Next.js navigation (tránh vòng lặp render)
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchKeyword) params.set("keyword", searchKeyword);
@@ -147,19 +156,12 @@ export default function EmployeesPage() {
     if (filterWard) params.set("ward", filterWard);
 
     const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
-      scroll: false,
-    });
-  }, [
-    searchKeyword,
-    currentPage,
-    pageSize,
-    activeTab,
-    filterProvince,
-    filterWard,
-    pathname,
-    router,
-  ]);
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKeyword, currentPage, pageSize, activeTab, filterProvince, filterWard]);
 
   // Debounce search input
   const searchEffectFirstRunRef = useRef(true);
@@ -329,7 +331,7 @@ export default function EmployeesPage() {
     setErrorAlertMessage("");
     try {
       setAddLoading(true);
-      if (cccdFrontFile && cccdBackFile) {
+      if (cccdFrontFile && cccdBackFile && !isCccdValidated) {
         const valRes = await employeeService.validateCccdImages(cccdFrontFile, cccdBackFile);
         if (valRes.success && valRes.data) {
           if (valRes.data.status === 'INVALID' || !valRes.data.valid) {
@@ -340,6 +342,7 @@ export default function EmployeesPage() {
             setAddLoading(false);
             return;
           }
+          setIsCccdValidated(true);
           if (valRes.data.status === 'REVIEW') {
             toast(`⚠️ Ảnh CCCD đạt mức REVIEW (${valRes.data.overallScore}/100đ). Hệ thống vẫn cho phép tiếp tục.`);
           }

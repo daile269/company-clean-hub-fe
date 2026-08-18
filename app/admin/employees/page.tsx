@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { employeeService } from "@/services/employeeService";
-import { Employee, EmployeeType } from "@/types";
+import { Employee, EmployeeType, getCccdErrorMessage } from "@/types";
 import EmployeeExportModal from "@/components/EmployeeExportModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
@@ -77,12 +77,49 @@ export default function EmployeesPage() {
   const [addWard, setAddWard] = useState<string>("");
   const [addDetailAddress, setAddDetailAddress] = useState<string>("");
   const [errorAlertMessage, setErrorAlertMessage] = useState<string>("");
+  const [scanningCccd, setScanningCccd] = useState<boolean>(false);
+
+  const tryAutoScanCccd = async (front: File | null, back: File | null) => {
+    if (!front || !back) return;
+    try {
+      setScanningCccd(true);
+      const res = await employeeService.validateCccdImages(front, back);
+      if (res.success && res.data) {
+        if (res.data.status === "INVALID" || !res.data.valid) {
+          const errList = res.data.errors || [];
+          const sideErr = res.data.front?.errors?.[0] || res.data.back?.errors?.[0];
+          const rawMsg = sideErr || errList[0] || "Ảnh CCCD không đạt tiêu chuẩn (bị mờ, tối hoặc lệch)";
+          const msg = getCccdErrorMessage(rawMsg);
+          toast.error(`Xác thực CCCD thất bại: ${msg}`);
+          return;
+        }
+        if (res.data.extractedData) {
+          const { idCard, fullName } = res.data.extractedData;
+          setAddForm((prev) => ({
+            ...prev,
+            idCard: idCard || prev.idCard || "",
+            name: fullName || prev.name || "",
+          }));
+          toast(`✨ Tự động nhận diện thành công: ${fullName || ""} ${idCard ? `(${idCard})` : ""}`);
+        } else if (res.data.status === "REVIEW") {
+          toast(`⚠️ Ảnh CCCD đạt mức REVIEW (${res.data.overallScore}/100đ). Cần lưu ý độ rõ nét.`);
+        } else {
+          toast.success(`Xác thực CCCD hợp lệ (${res.data.overallScore}/100đ)`);
+        }
+      }
+    } catch (err: any) {
+      console.error("CCCD scan error:", err);
+    } finally {
+      setScanningCccd(false);
+    }
+  };
 
   const handleCccdFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setCccdFrontFile(file);
       setCccdFrontPreview(URL.createObjectURL(file));
+      tryAutoScanCccd(file, cccdBackFile);
     }
   };
 
@@ -91,6 +128,7 @@ export default function EmployeesPage() {
       const file = e.target.files[0];
       setCccdBackFile(file);
       setCccdBackPreview(URL.createObjectURL(file));
+      tryAutoScanCccd(cccdFrontFile, file);
     }
   };
   // Load employees from API with pagination
@@ -294,6 +332,23 @@ export default function EmployeesPage() {
     setErrorAlertMessage("");
     try {
       setAddLoading(true);
+      if (cccdFrontFile && cccdBackFile) {
+        const valRes = await employeeService.validateCccdImages(cccdFrontFile, cccdBackFile);
+        if (valRes.success && valRes.data) {
+          if (valRes.data.status === 'INVALID' || !valRes.data.valid) {
+            const errList = valRes.data.errors || [];
+            const sideErr = valRes.data.front?.errors?.[0] || valRes.data.back?.errors?.[0];
+            const msg = sideErr || errList[0] || "Ảnh CCCD không đạt tiêu chuẩn (bị mờ, tối hoặc lệch)";
+            toast.error(`Xác thực CCCD thất bại: ${msg}`);
+            setAddLoading(false);
+            return;
+          }
+          if (valRes.data.status === 'REVIEW') {
+            toast(`⚠️ Ảnh CCCD đạt mức REVIEW (${valRes.data.overallScore}/100đ). Hệ thống vẫn cho phép tiếp tục.`);
+          }
+        }
+      }
+
       const payload = {
         ...addForm,
         address: fullAddress,
@@ -937,6 +992,146 @@ export default function EmployeesPage() {
                   </div>
                 )}
 
+                {/* Khối Upload CCCD đưa lên vị trí đầu tiên để tự động điền Họ tên & Số CCCD */}
+                <div className="mb-4 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-gray-800">
+                      1. Tải lên ảnh Căn cước công dân (CCCD) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-blue-600 font-medium">✨ Hệ thống sẽ tự đọc Họ tên & Số CCCD</span>
+                  </div>
+                  {scanningCccd && (
+                    <div className="mb-3 p-2 bg-blue-100 border border-blue-300 rounded-lg flex items-center gap-2 text-xs text-blue-800 animate-pulse">
+                      <svg className="animate-spin h-4 w-4 text-blue-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>🔍 Đang tự động quét QR Code & đọc thông tin CCCD...</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Mặt trước */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center bg-white hover:bg-blue-50/50 transition-colors">
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">
+                        Mặt trước CCCD <span className="text-red-500">*</span>
+                      </label>
+                      {cccdFrontPreview ? (
+                        <div className="relative w-full h-32 rounded border overflow-hidden mb-2 bg-gray-50">
+                          <img
+                            src={cccdFrontPreview}
+                            alt="CCCD Mặt trước"
+                            className="w-full h-full object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCccdFrontFile(null);
+                              setCccdFrontPreview("");
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600 shadow"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            id="cccd-front-input"
+                            onChange={handleCccdFrontChange}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="cccd-front-input"
+                            className="cursor-pointer flex flex-col items-center justify-center py-4"
+                          >
+                            <svg
+                              className="w-7 h-7 text-blue-500 mb-1"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            <span className="text-xs font-medium text-blue-600">
+                              Chọn ảnh Mặt trước
+                            </span>
+                            <span className="text-[10px] text-gray-400 mt-0.5">
+                              PNG, JPG, JPEG
+                            </span>
+                          </label>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Mặt sau */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center bg-white hover:bg-blue-50/50 transition-colors">
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">
+                        Mặt sau CCCD (Có QR Code) <span className="text-red-500">*</span>
+                      </label>
+                      {cccdBackPreview ? (
+                        <div className="relative w-full h-32 rounded border overflow-hidden mb-2 bg-gray-50">
+                          <img
+                            src={cccdBackPreview}
+                            alt="CCCD Mặt sau"
+                            className="w-full h-full object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCccdBackFile(null);
+                              setCccdBackPreview("");
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600 shadow"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            id="cccd-back-input"
+                            onChange={handleCccdBackChange}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="cccd-back-input"
+                            className="cursor-pointer flex flex-col items-center justify-center py-4"
+                          >
+                            <svg
+                              className="w-7 h-7 text-blue-500 mb-1"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            <span className="text-xs font-medium text-blue-600">
+                              Chọn ảnh Mặt sau
+                            </span>
+                            <span className="text-[10px] text-gray-400 mt-0.5">
+                              PNG, JPG, JPEG
+                            </span>
+                          </label>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1066,133 +1261,7 @@ export default function EmployeesPage() {
                     </div>
                   </div>
 
-                  <div className="col-span-2 border-t pt-3 mt-1">
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      Hình ảnh Căn cước công dân (CCCD){" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Mặt trước */}
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center bg-gray-50 hover:bg-blue-50/50 transition-colors">
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">
-                          Mặt trước CCCD <span className="text-red-500">*</span>
-                        </label>
-                        {cccdFrontPreview ? (
-                          <div className="relative w-full h-32 rounded border overflow-hidden mb-2">
-                            <img
-                              src={cccdFrontPreview}
-                              alt="CCCD Mặt trước"
-                              className="w-full h-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCccdFrontFile(null);
-                                setCccdFrontPreview("");
-                              }}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              id="cccd-front-input"
-                              onChange={handleCccdFrontChange}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="cccd-front-input"
-                              className="cursor-pointer flex flex-col items-center justify-center py-4"
-                            >
-                              <svg
-                                className="w-7 h-7 text-blue-500 mb-1"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                              </svg>
-                              <span className="text-xs font-medium text-blue-600">
-                                Chọn ảnh Mặt trước
-                              </span>
-                              <span className="text-[10px] text-gray-400 mt-0.5">
-                                PNG, JPG, JPEG
-                              </span>
-                            </label>
-                          </>
-                        )}
-                      </div>
 
-                      {/* Mặt sau */}
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center bg-gray-50 hover:bg-blue-50/50 transition-colors">
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">
-                          Mặt sau CCCD <span className="text-red-500">*</span>
-                        </label>
-                        {cccdBackPreview ? (
-                          <div className="relative w-full h-32 rounded border overflow-hidden mb-2">
-                            <img
-                              src={cccdBackPreview}
-                              alt="CCCD Mặt sau"
-                              className="w-full h-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCccdBackFile(null);
-                                setCccdBackPreview("");
-                              }}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:bg-red-600"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              id="cccd-back-input"
-                              onChange={handleCccdBackChange}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="cccd-back-input"
-                              className="cursor-pointer flex flex-col items-center justify-center py-4"
-                            >
-                              <svg
-                                className="w-7 h-7 text-blue-500 mb-1"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                />
-                              </svg>
-                              <span className="text-xs font-medium text-blue-600">
-                                Chọn ảnh Mặt sau
-                              </span>
-                              <span className="text-[10px] text-gray-400 mt-0.5">
-                                PNG, JPG, JPEG
-                              </span>
-                            </label>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1200,12 +1269,13 @@ export default function EmployeesPage() {
                     </label>
                     <input
                       type="text"
+                      maxLength={12}
                       value={addForm.idCard || ""}
                       onChange={(e) =>
-                        setAddForm({ ...addForm, idCard: e.target.value })
+                        setAddForm({ ...addForm, idCard: e.target.value.replace(/\D/g, "").slice(0, 12) })
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Số CCCD"
+                      placeholder="Số CCCD (12 chữ số)"
                     />
                   </div>
 

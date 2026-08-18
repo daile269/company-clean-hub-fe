@@ -1,5 +1,5 @@
 import { apiService, ApiResponse } from "./api";
-import { ApiEmployee, Employee, EmployeeType } from "@/types";
+import { ApiEmployee, Employee, EmployeeType, CccdValidationResponse } from "@/types";
 
 const CLOUDINARY_CLOUD_NAME = "dcewns7zp";
 
@@ -301,6 +301,20 @@ class EmployeeService {
     }
     return apiService.postFormData<ApiEmployee>(
       `/employees/${employeeId}/cccd-images`,
+      formData
+    );
+  }
+
+  // Validate CCCD images using OpenCV standalone API before uploading to Cloudinary
+  async validateCccdImages(
+    frontFile: File,
+    backFile: File
+  ): Promise<ApiResponse<CccdValidationResponse>> {
+    const formData = new FormData();
+    formData.append("frontImage", frontFile);
+    formData.append("backImage", backFile);
+    return apiService.postFormData<CccdValidationResponse>(
+      "/documents/cccd/validate",
       formData
     );
   }

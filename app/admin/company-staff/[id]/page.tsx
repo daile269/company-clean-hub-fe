@@ -53,11 +53,43 @@ export default function CompanyStaffDetailPage() {
   const [editCccdBackFile, setEditCccdBackFile] = useState<File | null>(null);
   const [editCccdBackPreview, setEditCccdBackPreview] = useState<string>("");
 
+  const tryAutoScanEditCccd = async (front: File | null, back: File | null) => {
+    if (!front || !back) return;
+    try {
+      const res = await employeeService.validateCccdImages(front, back);
+      if (res.success && res.data) {
+        if (res.data.status === "INVALID" || !res.data.valid) {
+          const errList = res.data.errors || [];
+          const sideErr = res.data.front?.errors?.[0] || res.data.back?.errors?.[0];
+          const msg = sideErr || errList[0] || "Ảnh CCCD không đạt tiêu chuẩn";
+          toast.error(`Xác thực CCCD thất bại: ${msg}`);
+          return;
+        }
+        if (res.data.extractedData) {
+          const { idCard, fullName } = res.data.extractedData;
+          setEditForm((prev) => prev ? {
+            ...prev,
+            idCard: idCard || prev.idCard || "",
+            name: fullName || prev.name || "",
+          } : null);
+          toast(`✨ Tự động nhận diện thành công: ${fullName || ""} ${idCard ? `(${idCard})` : ""}`);
+        } else if (res.data.status === "REVIEW") {
+          toast(`⚠️ Ảnh CCCD đạt mức REVIEW (${res.data.overallScore}/100đ). Cần lưu ý độ rõ nét.`);
+        } else {
+          toast.success(`Xác thực CCCD hợp lệ (${res.data.overallScore}/100đ)`);
+        }
+      }
+    } catch (err) {
+      console.error("Edit CCCD scan error:", err);
+    }
+  };
+
   const handleEditCccdFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setEditCccdFrontFile(file);
       setEditCccdFrontPreview(URL.createObjectURL(file));
+      tryAutoScanEditCccd(file, editCccdBackFile);
     }
   };
 
@@ -66,6 +98,7 @@ export default function CompanyStaffDetailPage() {
     if (file) {
       setEditCccdBackFile(file);
       setEditCccdBackPreview(URL.createObjectURL(file));
+      tryAutoScanEditCccd(editCccdFrontFile, file);
     }
   };
   const [savingEmployee, setSavingEmployee] = useState(false);
@@ -435,6 +468,31 @@ export default function CompanyStaffDetailPage() {
 
     setSavingEmployee(true);
     setEditErrorAlert("");
+
+    // Step 0: Validate CCCD if new files selected
+    if (editCccdFrontFile && editCccdBackFile) {
+      try {
+        const valRes = await employeeService.validateCccdImages(editCccdFrontFile, editCccdBackFile);
+        if (valRes.success && valRes.data) {
+          if (valRes.data.status === 'INVALID' || !valRes.data.valid) {
+            const errList = valRes.data.errors || [];
+            const sideErr = valRes.data.front?.errors?.[0] || valRes.data.back?.errors?.[0];
+            const msg = sideErr || errList[0] || "Ảnh CCCD không đạt tiêu chuẩn (bị mờ, tối hoặc lệch)";
+            toast.error(`Xác thực CCCD thất bại: ${msg}`);
+            setEditErrorAlert(`Xác thực CCCD thất bại: ${msg}`);
+            setSavingEmployee(false);
+            return;
+          }
+          if (valRes.data.status === 'REVIEW') {
+            toast(`⚠️ Ảnh CCCD đạt mức REVIEW (${valRes.data.overallScore}/100đ). Đã tiếp tục lưu.`);
+          }
+        }
+      } catch (valErr: any) {
+        toast.error(`Lỗi khi xác thực CCCD: ${valErr?.message || 'Không thể kết nối dịch vụ xác thực'}`);
+        return;
+      }
+    }
+
     try {
       // Parse formatted numbers if they are strings
       const monthlyAdvanceLimit =
@@ -1552,12 +1610,14 @@ export default function CompanyStaffDetailPage() {
                 </label>
                 <input
                   type="text"
+                  maxLength={12}
                   value={editForm.idCard || ""}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, idCard: e.target.value })
+                    setEditForm({ ...editForm, idCard: e.target.value.replace(/\D/g, "").slice(0, 12) })
                   }
                   disabled={isEditingRestricted}
                   className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditingRestricted ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
+                  placeholder="Số CCCD (12 chữ số)"
                 />
               </div>
 
@@ -1578,7 +1638,7 @@ export default function CompanyStaffDetailPage() {
                           <img
                             src={editCccdFrontPreview}
                             alt="CCCD Mặt trước"
-                            className="w-full h-32 object-cover rounded-lg"
+                            className="w-full h-32 object-contain bg-gray-50 rounded-lg"
                           />
                           {!isEditingRestricted && (
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -1634,7 +1694,7 @@ export default function CompanyStaffDetailPage() {
                           <img
                             src={editCccdBackPreview}
                             alt="CCCD Mặt sau"
-                            className="w-full h-32 object-cover rounded-lg"
+                            className="w-full h-32 object-contain bg-gray-50 rounded-lg"
                           />
                           {!isEditingRestricted && (
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">

@@ -315,3 +315,71 @@ export interface CustomerAssignmentRequest {
   customerId: number;
 }
 
+// ===== CCCD VALIDATION TYPES =====
+export type ValidationStatus = 'VALID' | 'REVIEW' | 'INVALID';
+
+export interface CccdSideResult {
+  valid: boolean;
+  side: 'FRONT' | 'BACK' | 'UNKNOWN';
+  status: ValidationStatus;
+  qualityScore: number;
+  blurry: boolean;
+  cardDetected: boolean;
+  templateScore: number;
+  overallScore: number;
+  errors: string[];
+}
+
+export interface CccdExtractedData {
+  idCard?: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+}
+
+export interface CccdValidationResponse {
+  valid: boolean;
+  documentType: string;
+  status: ValidationStatus;
+  overallScore: number;
+  front?: CccdSideResult;
+  back?: CccdSideResult;
+  extractedData?: CccdExtractedData;
+  errorMessage?: string;
+  errors: string[];
+}
+
+export const CCCD_ERROR_MESSAGES: Record<string, string> = {
+  IMAGE_EMPTY: "Ảnh không được để trống",
+  INVALID_FILE_TYPE: "Định dạng file không hợp lệ. Chỉ chấp nhận JPG/PNG/WebP",
+  FILE_TOO_LARGE: "File ảnh vượt quá kích thước cho phép",
+  IMAGE_DECODE_FAILED: "Không thể đọc được file ảnh",
+  IMAGE_TOO_SMALL: "Độ phân giải ảnh quá thấp, vui lòng chụp/tải ảnh rõ nét hơn (Tối thiểu 300x200px)",
+  IMAGE_TOO_BLURRY: "Ảnh bị mờ, vui lòng chụp lại",
+  IMAGE_TOO_DARK: "Ảnh quá tối, vui lòng chụp ở nơi đủ sáng",
+  IMAGE_TOO_BRIGHT: "Ảnh quá sáng, vui lòng tránh ánh sáng trực tiếp",
+  LOW_CONTRAST: "Ảnh có độ tương phản thấp",
+  CARD_NOT_DETECTED: "Không phát hiện được thẻ CCCD trong ảnh",
+  CARD_CROPPED: "CCCD bị cắt mất góc, vui lòng chụp đầy đủ cả thẻ",
+  INVALID_ASPECT_RATIO: "Tỷ lệ kích thước không khớp với CCCD",
+  UNKNOWN_DOCUMENT_SIDE: "Không xác định được mặt trước hay mặt sau",
+  INVALID_FRONT_TEMPLATE: "Ảnh không khớp với template mặt trước CCCD",
+  INVALID_BACK_TEMPLATE: "Ảnh không khớp với template mặt sau CCCD",
+  MISSING_FRONT: "Thiếu ảnh mặt trước CCCD",
+  MISSING_BACK: "Thiếu ảnh mặt sau CCCD",
+  INVALID_DOCUMENT: "Tài liệu không phải CCCD Việt Nam",
+};
+
+export function getCccdErrorMessage(err: any): string {
+  if (!err) return "Ảnh CCCD không đạt tiêu chuẩn";
+  if (typeof err === "string") {
+    return CCCD_ERROR_MESSAGES[err] || err;
+  }
+  if (typeof err === "object" && err.message) {
+    return err.message;
+  }
+  return String(err);
+}
+
+

@@ -3,6 +3,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import Header from "@/components/Header";
+import { ErrorModalProvider } from "@/context/ErrorModalContext";
 
 export default function ClientLayout({
   children,
@@ -120,7 +121,7 @@ export default function ClientLayout({
   }, [pathname]);
 
   return (
-    <>
+    <ErrorModalProvider>
       <Toaster position="top-right" />
       {/* Header - Hidden on admin pages */}
       {!isAdminPage && <Header />}
@@ -258,6 +259,6 @@ export default function ClientLayout({
           </div>
         </footer>
       )}
-    </>
+    </ErrorModalProvider>
   );
 }

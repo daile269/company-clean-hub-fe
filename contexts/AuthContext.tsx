@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authService, AuthUser } from '@/services/authService';
+import { notificationService } from '@/services/notificationService';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const logout = () => {
+    notificationService.disconnectSSE(); // Đóng SSE trước khi logout
     authService.logout();
     setUser(null);
     router.push('/admin/login');

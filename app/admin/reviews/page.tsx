@@ -101,7 +101,7 @@ export default function ReviewsPage() {
     }
   };
 
-  // Sync State to URL
+  // Sync URL params mà KHÔNG trigger Next.js navigation (tránh vòng lặp render)
   useEffect(() => {
     const params = new URLSearchParams();
     if (filterContractId) params.set("filterContractId", filterContractId);
@@ -113,19 +113,12 @@ export default function ReviewsPage() {
     params.set("pageSize", pageSize.toString());
 
     const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
-      scroll: false,
-    });
-  }, [
-    filterContractId,
-    filterAssignmentId,
-    filterCustomerId,
-    filterEmployeeId,
-    page,
-    pageSize,
-    pathname,
-    router,
-  ]);
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterContractId, filterAssignmentId, filterCustomerId, filterEmployeeId, page, pageSize]);
 
   useEffect(() => {
     // If user lacks permission, mark forbidden and skip loading

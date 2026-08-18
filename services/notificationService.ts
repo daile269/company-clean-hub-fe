@@ -74,6 +74,14 @@ export interface PaginatedNotificationResponse {
 }
 
 class NotificationService {
+  // ── Singleton SSE State ────────────────────────────────────────────────────
+  // Giữ duy nhất 1 kết nối SSE toàn cục, dù connectSSE được gọi bao nhiêu lần.
+  private _sseController: AbortController | null = null;
+  private _sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private _sseShouldReconnect = false;
+  private _sseHandlers: Set<(n: NotificationResponse) => void> = new Set();
+  private _sseConnected = false;
+
   /**
    * Lấy thông báo — hỗ trợ server-side filter theo type và isRead.
    * type = 'ALL' hoặc không truyền → lấy tất cả loại.
@@ -179,86 +187,144 @@ class NotificationService {
   }
 
   /**
-   * Kết nối SSE realtime dùng fetch streaming (EventSource không hỗ trợ JWT header).
-   * Trả về cleanup function để đóng kết nối khi unmount.
+   * Kết nối SSE realtime — **SINGLETON TOÀN CỤC**.
+   * Kết nối sống suốt lifetime của tab — KHÔNG bao giờ tự đóng khi handlers thay đổi.
+   * Chỉ gọi disconnectSSE() khi logout để dừng hẳn.
+   *
+   * @param onNotification  Handler nhận thông báo mới.
+   * @returns Cleanup fn: chỉ huỷ đăng ký handler, KHÔNG đóng kết nối SSE.
    */
   connectSSE(onNotification: (n: NotificationResponse) => void): () => void {
-    const token = apiService.getToken();
-    if (!token) {
-      console.warn('[SSE] No token available, skipping SSE connection');
-      return () => {};
+    // Đăng ký handler mới vào tập chung
+    this._sseHandlers.add(onNotification);
+
+    if (this._sseConnected) {
+      // Kết nối đang chạy → reuse, không tạo thêm
+      console.log('[SSE] Reusing singleton connection, handlers:', this._sseHandlers.size);
+    } else {
+      // Chưa có kết nối → khởi động
+      const token = apiService.getToken();
+      if (token) {
+        this._startSseConnection(token);
+      } else {
+        console.warn('[SSE] No token, skipping SSE connection');
+        this._sseHandlers.delete(onNotification);
+        return () => {};
+      }
     }
 
+    // Cleanup: CHỈ xoá handler, KHÔNG stop connection.
+    // Connection sống suốt tab — tránh tích lũy kết nối do component re-render.
+    return () => {
+      this._sseHandlers.delete(onNotification);
+      console.log('[SSE] Handler removed, remaining:', this._sseHandlers.size);
+    };
+  }
+
+  /**
+   * Ngắt kết nối SSE hẳn — chỉ gọi khi logout.
+   * Sau khi gọi, mọi connectSSE tiếp theo sẽ tạo kết nối mới.
+   */
+  disconnectSSE(): void {
+    this._sseHandlers.clear();
+    this._stopSseConnection();
+  }
+
+  private _startSseConnection(token: string): void {
+    if (this._sseConnected) return;
+    this._sseShouldReconnect = true;
+    this._sseConnected = true;
+    console.log('[SSE] Starting singleton SSE connection...');
+    this._sseConnect(token);
+  }
+
+  private _stopSseConnection(): void {
+    console.log('[SSE] Stopping singleton SSE connection');
+    this._sseShouldReconnect = false;
+    this._sseConnected = false;
+    if (this._sseReconnectTimer) {
+      clearTimeout(this._sseReconnectTimer);
+      this._sseReconnectTimer = null;
+    }
+    if (this._sseController) {
+      try { this._sseController.abort(); } catch { /* ignore */ }
+      this._sseController = null;
+    }
+  }
+
+  private _sseConnect(token: string): void {
+    if (!this._sseShouldReconnect) return;
+
+    // Abort kết nối cũ nếu còn sót
+    if (this._sseController) {
+      try { this._sseController.abort(); } catch { /* ignore */ }
+    }
+    this._sseController = new AbortController();
+    const signal = this._sseController.signal;
+
     const url = `${API_BASE_URL}/notifications/subscribe`;
-    const controller = new AbortController();
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let shouldReconnect = true;
 
-    const connect = () => {
-      fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
-        },
-        signal: controller.signal,
-      }).then(async (response) => {
-        if (!response.ok || !response.body) {
-          console.warn('[SSE] Connection failed, will retry in 30s');
-          scheduleReconnect();
-          return;
-        }
+    fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/event-stream',
+      },
+      signal,
+    }).then(async (response) => {
+      if (!response.ok || !response.body) {
+        console.warn('[SSE] Connection failed (status', response.status, '), retry in 30s');
+        this._sseScheduleReconnect(token);
+        return;
+      }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+      console.log('[SSE] Singleton connection established');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('data:')) {
-              const jsonStr = trimmed.slice(5).trim();
-              if (!jsonStr) continue;
-              try {
-                const data = JSON.parse(jsonStr);
-                onNotification(data as NotificationResponse);
-              } catch {
-                // skip unparseable events
-              }
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data:')) {
+            const jsonStr = trimmed.slice(5).trim();
+            if (!jsonStr) continue;
+            try {
+              const data = JSON.parse(jsonStr);
+              // Dispatch tới tất cả handlers đang đăng ký
+              this._sseHandlers.forEach(h => {
+                try { h(data as NotificationResponse); } catch { /* ignore */ }
+              });
+            } catch {
+              // skip unparseable events
             }
           }
         }
-        // Stream ended — reconnect
-        scheduleReconnect();
-      }).catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('[SSE] Connection error:', err);
-          scheduleReconnect();
-        }
-      });
-    };
+      }
+      // Stream ended — reconnect
+      console.log('[SSE] Stream ended, scheduling reconnect...');
+      this._sseScheduleReconnect(token);
+    }).catch((err) => {
+      if (err?.name !== 'AbortError') {
+        console.error('[SSE] Connection error:', err);
+        this._sseScheduleReconnect(token);
+      }
+    });
+  }
 
-    const scheduleReconnect = () => {
-      if (!shouldReconnect) return;
-      reconnectTimer = setTimeout(() => {
-        console.log('[SSE] Reconnecting...');
-        connect();
-      }, 30000); // reconnect after 30s
-    };
-
-    connect();
-
-    return () => {
-      shouldReconnect = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      controller.abort();
-    };
+  private _sseScheduleReconnect(token: string): void {
+    if (!this._sseShouldReconnect) return;
+    if (this._sseReconnectTimer) clearTimeout(this._sseReconnectTimer);
+    this._sseReconnectTimer = setTimeout(() => {
+      console.log('[SSE] Reconnecting singleton...');
+      this._sseConnect(token);
+    }, 30_000); // reconnect sau 30s
   }
 }
 

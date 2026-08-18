@@ -574,7 +574,7 @@ export default function EmployeesPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Tên, mã NV, số điện thoại..."
+                  placeholder="Tên, mã NV, SĐT, số CCCD..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -684,6 +684,11 @@ export default function EmployeesPage() {
                         <div className="text-xs text-gray-400 mt-0.5">
                           ({employee.employeeCode})
                         </div>
+                        {employee.idCard && (
+                          <div className="text-[11px] font-mono text-gray-500 mt-0.5" title="Số CCCD">
+                            CCCD: {employee.idCard}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">

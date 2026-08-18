@@ -3451,19 +3451,11 @@ export default function CustomerDetail() {
                       .filter(isContractActive)
                       .map((contract: any) => {
                         const titleName = getContractLabel(contract);
-                        const typeLabel =
-                          contract.contractType === "ONE_TIME"
-                            ? "Một lần"
-                            : contract.contractType === "MONTHLY_FIXED"
-                              ? "Hàng tháng (cố định)"
-                              : contract.contractType === "MONTHLY_ACTUAL"
-                                ? "Hàng tháng (thực tế)"
-                                : "N/A";
                         return (
                           <option key={contract.id} value={contract.id}>
                             HĐ #{contract.id}{titleName ? ` - ${titleName}` : ""}{" "}
                             ({formatDate(contract.startDate)} -{" "}
-                            {formatDate(contract.endDate)}) - Hợp đồng {typeLabel}
+                            {formatDate(contract.endDate)})
                           </option>
                         );
                       })}

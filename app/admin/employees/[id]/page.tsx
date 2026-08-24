@@ -1252,6 +1252,22 @@ export default function EmployeeDetail() {
                             {getAssignmentStatusLabel(a.status)}
                           </span>
                         )}
+                        {a.customerId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentUrl = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
+                              router.push(`/admin/customers/${a.customerId}?returnUrl=${encodeURIComponent(currentUrl)}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border border-green-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Xem chi tiết Khách hàng"
+                          >
+                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-green-500" />
+                            <span>Xem khách hàng</span>
+                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-green-400 group-hover:text-green-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          </button>
+                        )}
                         {a.contractId && (
                           <button
                             type="button"
@@ -1359,7 +1375,7 @@ export default function EmployeeDetail() {
                             d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        Sửa
+                        Xin ứng lương
                       </button>
                     </div>
                 </div>

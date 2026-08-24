@@ -10,6 +10,7 @@ import workScheduleService, {
 } from "@/services/workScheduleService";
 import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
 import GpsMap from "@/components/GpsMap";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const now = new Date();
@@ -255,6 +256,9 @@ function VerificationEmployeeCard({ verification }: { verification: AssignmentVe
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function WorkSchedulesPage() {
+  const { user } = useAuth();
+  const isCustomer = user?.roleName === "CUSTOMER";
+
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [sort, setSort] = useState("name");
@@ -307,6 +311,7 @@ export default function WorkSchedulesPage() {
 
   // ── Open verification panel ──
   const handleOpenVerificationPanel = () => {
+    if (isCustomer) return; // CUSTOMER không được xem mục "Xác minh nhân viên mới"
     setShowVerificationPanel(true);
     setSelectedContract(null);
     setSelectedEmployee(null);
@@ -450,8 +455,8 @@ export default function WorkSchedulesPage() {
             <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* ── Card ghim: Xác minh nhân viên mới ── */}
-              <VerificationPinnedCard onClick={handleOpenVerificationPanel} />
+              {/* ── Card ghim: Xác minh nhân viên mới (ẩn với CUSTOMER) ── */}
+              {!isCustomer && <VerificationPinnedCard onClick={handleOpenVerificationPanel} />}
 
               {contracts.length === 0 ? null : contracts.map(c => (
                 <button key={c.contractId} onClick={() => handleSelectContract(c)}

@@ -17,6 +17,10 @@ export const ROUTE_ROLES: Record<string, string[]> = {
   '/admin/work-schedules': ['QLT1', 'QLT2', 'ACCOUNTANT', 'CUSTOMER'],
   '/admin/work-schedules/[id]': ['QLT1', 'QLT2', 'ACCOUNTANT', 'CUSTOMER'],
 
+  // Verification routes (CUSTOMER không được xem mục "Xác minh nhân viên mới")
+  '/admin/verifications': ['QLT1', 'QLT2', 'ACCOUNTANT'],
+  '/admin/verifications/[id]': ['QLT1', 'QLT2', 'ACCOUNTANT'],
+
   // Employee routes
   '/admin/employees': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT'],
   '/admin/employees/[id]': ['QLT1', 'QLT2', 'QLV', 'ACCOUNTANT', 'EMPLOYEE', 'CUSTOMER'],

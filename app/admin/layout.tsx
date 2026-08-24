@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AdminSidebar from "@/components/AdminSidebar";
+import AdminTopNav from "@/components/AdminTopNav";
 import NotificationBell from "@/components/NotificationBell";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
@@ -11,10 +12,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return true;
     return window.innerWidth > 640; // open on wider screens, collapsed on small/mobile
   });
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 640;
+  });
 
   useEffect(() => {
     function handleResize() {
       setSidebarOpen(window.innerWidth > 640);
+      setIsMobile(window.innerWidth <= 640);
     }
 
     window.addEventListener("resize", handleResize);
@@ -24,6 +30,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Quản lý vùng (QLV) có ít menu nên trên mobile dùng thanh nav ngang luôn hiển thị
+  // trên cùng, thay vì sidebar thu gọn phải bấm mới mở. Desktop giữ nguyên sidebar.
+  const isQlv = user?.roleName === "QLV";
+  const showTopNav = isQlv && isMobile;
 
   useEffect(() => {
     if (window.innerWidth <= 640) {
@@ -73,24 +84,26 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="text-gray-500 hover:text-gray-700 focus:outline-none mr-4"
-              >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              {!showTopNav && (
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="text-gray-500 hover:text-gray-700 focus:outline-none mr-4"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+              )}
               <Link href="/" className="flex items-center">
                 <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
               </Link>
@@ -127,18 +140,28 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <div className="flex pt-16">
-        {/* Sidebar */}
-        <AdminSidebar user={user} sidebarOpen={sidebarOpen} />
+      {showTopNav ? (
+        <div className="pt-16">
+          {/* Horizontal nav, always visible on top (mobile QLV only) */}
+          <AdminTopNav user={user} />
 
-        {/* Main Content */}
-        <main
-          className={`flex-1 min-w-0 ${sidebarOpen ? "ml-64" : "ml-0"
-            } transition-all duration-300 p-4 sm:p-8`}
-        >
-          {children}
-        </main>
-      </div>
+          {/* Main Content */}
+          <main className="p-4">{children}</main>
+        </div>
+      ) : (
+        <div className="flex pt-16">
+          {/* Sidebar */}
+          <AdminSidebar user={user} sidebarOpen={sidebarOpen} />
+
+          {/* Main Content */}
+          <main
+            className={`flex-1 min-w-0 ${sidebarOpen ? "ml-64" : "ml-0"
+              } transition-all duration-300 p-4 sm:p-8`}
+          >
+            {children}
+          </main>
+        </div>
+      )}
     </div>
   );
 }

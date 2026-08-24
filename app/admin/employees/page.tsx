@@ -1144,6 +1144,7 @@ export default function EmployeesPage() {
                     </label>
                     <input
                       type="tel"
+                      autoComplete="off"
                       value={addForm.phone}
                       onChange={(e) =>
                         setAddForm({
@@ -1162,6 +1163,7 @@ export default function EmployeesPage() {
                     </label>
                     <input
                       type="password"
+                      autoComplete="new-password"
                       value={addForm.password || ""}
                       onChange={(e) =>
                         setAddForm({ ...addForm, password: e.target.value })

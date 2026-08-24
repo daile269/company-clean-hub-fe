@@ -31,10 +31,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Quản lý vùng (QLV) có ít menu nên trên mobile dùng thanh nav ngang luôn hiển thị
-  // trên cùng, thay vì sidebar thu gọn phải bấm mới mở. Desktop giữ nguyên sidebar.
-  const isQlv = user?.roleName === "QLV";
-  const showTopNav = isQlv && isMobile;
+  // Quản lý vùng (QLV) và nhân viên (EMPLOYEE) có ít menu nên trên mobile dùng thanh
+  // nav ngang luôn hiển thị trên cùng, thay vì sidebar thu gọn phải bấm mới mở.
+  // Desktop giữ nguyên sidebar.
+  const hasFewMenus =
+    user?.roleName === "QLV" || user?.roleName === "EMPLOYEE";
+  const showTopNav = hasFewMenus && isMobile;
 
   useEffect(() => {
     if (window.innerWidth <= 640) {

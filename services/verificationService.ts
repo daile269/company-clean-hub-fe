@@ -24,6 +24,7 @@ export interface AssignmentVerificationResponse {
     employeeName: string;
     employeeCode: string;
     contractId: number;
+    customerId: number | null;
     reason: string;
     status: 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED' | 'AUTO_APPROVED' | 'BYPASS_APPROVED';
     maxAttempts: number;

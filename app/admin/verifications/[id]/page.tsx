@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
 import { employeeService, EmployeeImage, buildCloudinaryUrl } from "@/services/employeeService";
+import { useManagerCustomerScope } from "@/hooks/useManagerCustomerScope";
 import Image from "next/image";
 import GpsMap from "@/components/GpsMap";
 
@@ -24,6 +25,7 @@ function VerificationDetailContent() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const managerScope = useManagerCustomerScope();
 
   useEffect(() => {
     loadVerificationDetail();
@@ -176,6 +178,11 @@ function VerificationDetailContent() {
       </div>
     );
   }
+
+  // QLT2 chỉ được xác minh nhân viên thuộc KH mình quản lý → ẩn nút duyệt/từ chối nếu ngoài scope.
+  const canVerify =
+    managerScope === null ||
+    (verification.customerId != null && managerScope.has(Number(verification.customerId)));
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -379,7 +386,7 @@ function VerificationDetailContent() {
           </div>
 
           {/* Action buttons */}
-          {verification.status !== "APPROVED" && verification.status !== "AUTO_APPROVED" && verification.status !== "BYPASS_APPROVED" && (
+          {canVerify && verification.status !== "APPROVED" && verification.status !== "AUTO_APPROVED" && verification.status !== "BYPASS_APPROVED" && (
             <div className="border-t pt-4">
               <div className="flex gap-4 justify-end">
                 <button

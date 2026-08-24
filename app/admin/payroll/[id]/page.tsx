@@ -11,6 +11,7 @@ import AttendanceCalendar from "@/components/AttendanceCalendar";
 import toast, { Toaster } from "react-hot-toast";
 import FullPageLoading from "@/components/shared/FullPageLoading";
 import { usePermission } from "@/hooks/usePermission";
+import { useManagerCustomerScope } from "@/hooks/useManagerCustomerScope";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SolidIcons from "@fortawesome/free-solid-svg-icons";
 export default function PayrollDetailPage() {
@@ -28,6 +29,11 @@ export default function PayrollDetailPage() {
   const canEdit = usePermission("PAYROLL_EDIT");
   const canMarkPaid = usePermission("PAYROLL_MARK_PAID");
   const canEditAttendance = usePermission("ATTENDANCE_EDIT");
+
+  // QLT2 chỉ thấy nút "Xem HĐ"/"Xem khách hàng" với KH mình quản lý
+  const managerScope = useManagerCustomerScope();
+  const canViewCustomer = (customerId: number | null | undefined) =>
+    managerScope === null || (customerId != null && managerScope.has(Number(customerId)));
 
   const [payroll, setPayroll] = useState<Payroll | null>(null);
   const [loading, setLoading] = useState(true);
@@ -499,7 +505,7 @@ export default function PayrollDetailPage() {
                       {assignment.customerName && (
                         <span className="text-xs text-gray-700 font-medium">({assignment.customerName})</span>
                       )}
-                      {assignment.customerId && (
+                      {assignment.customerId && canViewCustomer(assignment.customerId) && (
                         <button
                           type="button"
                           onClick={() => {
@@ -514,7 +520,7 @@ export default function PayrollDetailPage() {
                           <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-green-400 group-hover:text-green-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                         </button>
                       )}
-                      {assignment.contractId && (
+                      {assignment.contractId && canViewCustomer(assignment.customerId) && (
                         <button
                           type="button"
                           onClick={() => {

@@ -306,7 +306,7 @@ export default function AdminSidebar({ user, sidebarOpen }: AdminSidebarProps) {
             Chụp ảnh chấm công
           </Link>
         )}
-        {user && ["CUSTOMER", "EMPLOYEE", "QLT1", "QLT2", "QLV"].includes(user.roleName) && (
+        {user && ["CUSTOMER", "EMPLOYEE", "QLT1", "QLT2", "QLV", "ACCOUNTANT"].includes(user.roleName) && (
             <Link
               href={
                 user?.roleName === "CUSTOMER"

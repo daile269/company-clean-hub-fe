@@ -1289,7 +1289,8 @@ export default function CompanyStaffDetailPage() {
         </div>
       )}
 
-      {/* Lịch làm việc & Chấm dứt Văn phòng */}
+      {/* Lịch làm việc & Chấm dứt Văn phòng — ẩn với QLV / ACCOUNTANT */}
+      {role !== "QLV" && role !== "ACCOUNTANT" && (
       <div className="mt-6">
         <EmployeeLeaveCalendar
           employeeId={employee.id}
@@ -1298,6 +1299,7 @@ export default function CompanyStaffDetailPage() {
           }}
         />
       </div>
+      )}
 
       {/* Assignments */}
       <div className="mt-6">
@@ -1380,6 +1382,22 @@ export default function CompanyStaffDetailPage() {
                           >
                             {getAssignmentStatusLabel(a.status)}
                           </span>
+                        )}
+                        {a.customerId && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentUrl = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "";
+                              router.push(`/admin/customers/${a.customerId}?returnUrl=${encodeURIComponent(currentUrl)}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border border-green-200 transition-all cursor-pointer shadow-2xs group"
+                            title="Xem chi tiết Khách hàng"
+                          >
+                            <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-green-500" />
+                            <span>Xem khách hàng</span>
+                            <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-green-400 group-hover:text-green-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          </button>
                         )}
                         {a.contractId && (
                           <button

@@ -152,8 +152,10 @@ export default function ContractDetailPage() {
   });
   const [editingSalaryNoteId, setEditingSalaryNoteId] = useState<number | null>(null);
   const [savingSalaryNote, setSavingSalaryNote] = useState(false);
-  const canManageSalaryNotes = role === 'QLT1' || role === 'QLT2' || role === 'QLV';
-  const canManageWorkLocations = role === 'QLT1' || role === 'QLT2' || role === 'QLV';
+  const canViewSalaryNotes = role === 'QLT1' || role === 'QLT2' || role === 'QLV';
+  const canManageSalaryNotes = role === 'QLT1' || role === 'QLT2';
+  const canViewWorkLocations = role === 'QLT1' || role === 'QLT2' || role === 'QLV';
+  const canManageWorkLocations = role === 'QLT1' || role === 'QLT2';
 
   // Work Locations state
   const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
@@ -451,7 +453,7 @@ export default function ContractDetailPage() {
 
   // Load work locations on mount
   useEffect(() => {
-    if (contractId && canManageWorkLocations) {
+    if (contractId && canViewWorkLocations) {
       loadWorkLocations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1210,9 +1212,31 @@ export default function ContractDetailPage() {
 
               <div>
                 <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {getCustomerName(contract.customerName)}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {getCustomerName(contract.customerName)}
+                  </p>
+                  {contract.customerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentUrl =
+                          typeof window !== "undefined"
+                            ? `${window.location.pathname}${window.location.search}`
+                            : "";
+                        router.push(
+                          `/admin/customers/${contract.customerId}?returnUrl=${encodeURIComponent(currentUrl)}`,
+                        );
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border border-green-200 transition-all cursor-pointer shadow-2xs group"
+                      title="Xem chi tiết Khách hàng"
+                    >
+                      <FontAwesomeIcon icon={SolidIcons.faBuilding} className="text-green-500" />
+                      <span>Xem khách hàng</span>
+                      <FontAwesomeIcon icon={SolidIcons.faArrowUpRightFromSquare} className="text-[10px] text-green-400 group-hover:text-green-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -2713,8 +2737,8 @@ export default function ContractDetailPage() {
         )}
       </div>
 
-      {/* Salary Notes Section — only for QLT1/QLT2/QLV */}
-      {canManageSalaryNotes && (
+      {/* Salary Notes Section — view: QLT1/QLT2/QLV; add/edit: QLT1/QLT2 */}
+      {canViewSalaryNotes && (
         <div className="mt-6 bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">
@@ -2722,7 +2746,8 @@ export default function ContractDetailPage() {
             </h3>
           </div>
 
-          {/* Form */}
+          {/* Form (add/edit) — manage roles only */}
+          {canManageSalaryNotes && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
             <h4 className="text-sm font-medium text-gray-700 mb-3">
               {editingSalaryNoteId ? "Sửa ghi chú" : "Thêm ghi chú mới"}
@@ -2811,6 +2836,7 @@ export default function ContractDetailPage() {
               />
             </div>
           </div>
+          )}
 
           {/* List */}
           {salaryNotesLoading ? (
@@ -2830,7 +2856,9 @@ export default function ContractDetailPage() {
                     <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Số tiền</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mô tả</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
+                    {canManageSalaryNotes && (
                     <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase"></th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -2856,6 +2884,7 @@ export default function ContractDetailPage() {
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {new Intl.DateTimeFormat("vi-VN").format(new Date(note.createdAt))}
                       </td>
+                      {canManageSalaryNotes && (
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
@@ -2872,6 +2901,7 @@ export default function ContractDetailPage() {
                           </button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -2881,14 +2911,14 @@ export default function ContractDetailPage() {
         </div>
       )}
 
-      {/* Work Locations Section — only for QLT1/QLT2/QLV */}
-      {canManageWorkLocations && (
+      {/* Work Locations Section — view: QLT1/QLT2/QLV; add/edit: QLT1/QLT2 */}
+      {canViewWorkLocations && (
         <div className="mt-6 bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               📍 Vị trí làm việc
             </h3>
-            {!showWorkLocationForm && (
+            {canManageWorkLocations && !showWorkLocationForm && (
               <button
                 onClick={() => setShowWorkLocationForm(true)}
                 className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -2899,7 +2929,7 @@ export default function ContractDetailPage() {
           </div>
 
           {/* Form */}
-          {showWorkLocationForm && (
+          {canManageWorkLocations && showWorkLocationForm && (
             <div className="mb-6 p-4 border border-blue-200 bg-blue-50/30 rounded-lg space-y-4">
               <h4 className="text-sm font-semibold text-blue-800">
                 {editingWorkLocationId ? "Sửa vị trí làm việc" : "Thêm vị trí làm việc mới"}
@@ -3004,6 +3034,7 @@ export default function ContractDetailPage() {
                       <p>📍 {loc.latitude}, {loc.longitude}</p>
                       <p>🔘 Bán kính: {loc.radiusMeters}m</p>
                     </div>
+                    {canManageWorkLocations && (
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => handleEditWorkLocation(loc)}
@@ -3018,6 +3049,7 @@ export default function ContractDetailPage() {
                         Xóa
                       </button>
                     </div>
+                    )}
                   </div>
                 </div>
               ))}

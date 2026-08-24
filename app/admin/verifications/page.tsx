@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import verificationService, { AssignmentVerificationResponse } from "@/services/verificationService";
+import { useManagerCustomerScope } from "@/hooks/useManagerCustomerScope";
 
 export default function VerificationsPage() {
   const router = useRouter();
   const [verifications, setVerifications] = useState<AssignmentVerificationResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const managerScope = useManagerCustomerScope();
 
   useEffect(() => {
     loadVerifications();
@@ -65,6 +67,13 @@ export default function VerificationsPage() {
     );
   }
 
+  // QLT2 chỉ thấy verification của nhân viên thuộc KH mình quản lý.
+  const visibleVerifications = verifications.filter(
+    (v) =>
+      managerScope === null ||
+      (v.customerId != null && managerScope.has(Number(v.customerId)))
+  );
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
@@ -85,7 +94,7 @@ export default function VerificationsPage() {
         </button>
       </div>
 
-      {verifications.length === 0 ? (
+      {visibleVerifications.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -120,7 +129,7 @@ export default function VerificationsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {verifications.map((verification) => (
+                {visibleVerifications.map((verification) => (
                   <tr key={verification.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">

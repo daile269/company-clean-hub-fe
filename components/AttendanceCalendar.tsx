@@ -7,6 +7,7 @@ import * as SolidIcons from '@fortawesome/free-solid-svg-icons';
 import { toast } from "react-hot-toast";
 import { authService } from "@/services/authService";
 import { useRouter } from "next/navigation";
+import { useManagerCustomerScope } from "@/hooks/useManagerCustomerScope";
 
 interface AttendanceCalendarProps {
     attendances: Attendance[];
@@ -131,6 +132,10 @@ export default function AttendanceCalendar({
 }: AttendanceCalendarProps) {
     const router = useRouter();
     const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
+    // QLT2 chỉ thấy nút "Xem HĐ" với KH mình quản lý
+    const managerScope = useManagerCustomerScope();
+    const canViewCustomer = (customerId: number | null | undefined) =>
+        managerScope === null || (customerId != null && managerScope.has(Number(customerId)));
     // Mỗi lịch tương ứng 1 assignment
     const [assignmentsById, setAssignmentsById] = useState<Map<number, Assignment | null>>(new Map());
     const [assignmentsLoading, setAssignmentsLoading] = useState(false);
@@ -294,7 +299,7 @@ export default function AttendanceCalendar({
                                     <h3 className="text-sm font-semibold text-gray-900 break-words">
                                         {customerName} (#{assignmentId})
                                     </h3>
-                                    {assignment?.contractId && (
+                                    {assignment?.contractId && canViewCustomer(assignment.customerId) && (
                                         <button
                                             type="button"
                                             onClick={() => router.push(`/admin/contracts/${assignment.contractId}`)}

@@ -15,8 +15,10 @@ interface NavItem {
 }
 
 /**
- * Horizontal top navigation for roles with few menu items (e.g. QLV - Quản lý vùng).
+ * Horizontal top navigation for roles with few menu items
+ * (QLV - Quản lý vùng, EMPLOYEE - Nhân viên).
  * Renders the menu always visible on top instead of a collapsible sidebar.
+ * Danh sách mục phải khớp với AdminSidebar + config/routeRole.ts theo từng role.
  */
 export default function AdminTopNav({ user }: AdminTopNavProps) {
   const pathname = usePathname();
@@ -28,7 +30,11 @@ export default function AdminTopNav({ user }: AdminTopNavProps) {
     setUserId(user?.id ? user.id.toString() : null);
   }, [user?.id]);
 
-  const items: NavItem[] = [
+  const isEmployee = user?.roleName === "EMPLOYEE";
+
+  // EMPLOYEE không có quyền vào /admin/employees và /admin/customers
+  // (config/routeRole.ts), nên 2 mục này chỉ dành cho QLV.
+  const managerOnlyItems: NavItem[] = [
     {
       href: "/admin/employees",
       label: "Nhân viên hợp đồng",
@@ -57,6 +63,10 @@ export default function AdminTopNav({ user }: AdminTopNavProps) {
         </svg>
       ),
     },
+  ];
+
+  const items: NavItem[] = [
+    ...(isEmployee ? [] : managerOnlyItems),
     {
       href: "/admin/attendance/today-tasks",
       label: "Chụp ảnh chấm công",
@@ -78,7 +88,9 @@ export default function AdminTopNav({ user }: AdminTopNavProps) {
       ),
     },
     {
-      href: `/admin/company-staff/${userId}`,
+      href: isEmployee
+        ? `/admin/employees/${userId}`
+        : `/admin/company-staff/${userId}`,
       label: "Quản lý thông tin",
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

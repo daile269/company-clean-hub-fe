@@ -86,26 +86,25 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              {!showTopNav && (
-                <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="text-gray-500 hover:text-gray-700 focus:outline-none mr-4"
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none mr-4"
+                aria-label="Mở menu"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                </button>
-              )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
               <Link href="/" className="flex items-center">
                 <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
               </Link>
@@ -144,8 +143,21 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
       {showTopNav ? (
         <div className="pt-16">
-          {/* Horizontal nav, always visible on top (mobile QLV only) */}
+          {/* Horizontal nav, always visible on top (mobile QLV/EMPLOYEE) */}
           <AdminTopNav user={user} />
+
+          {/* Sidebar drawer overlay (mở qua nút hamburger) */}
+          {sidebarOpen && (
+            <>
+              <div
+                onClick={() => setSidebarOpen(false)}
+                className="fixed inset-0 bg-black/40 z-40"
+              />
+              <div className="fixed top-16 bottom-0 left-0 z-50">
+                <AdminSidebar user={user} sidebarOpen={true} />
+              </div>
+            </>
+          )}
 
           {/* Main Content */}
           <main className="p-4">{children}</main>

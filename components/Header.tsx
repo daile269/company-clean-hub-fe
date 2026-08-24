@@ -106,13 +106,22 @@ export default function Header() {
             </a>
           </nav>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 text-white hover:bg-[#159461] rounded transition"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
+          {/* Mobile: nút Đăng nhập luôn hiển thị (không bị ẩn trong menu) + nút hamburger */}
+          <div className="md:hidden flex items-center gap-2">
+            <a
+              href="/admin/login"
+              className="bg-white text-[#19AD70] font-bold px-4 py-1.5 rounded-full text-sm transition hover:bg-[#e4efe7] shrink-0"
+            >
+              Đăng nhập
+            </a>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="p-2 text-white hover:bg-[#159461] rounded transition"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -140,8 +149,9 @@ export default function Header() {
                   d="M4 6h16M4 12h16M4 18h16"
                 />
               </svg>
-            )}
-          </button>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
